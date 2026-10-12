@@ -59,6 +59,9 @@ Advertencias:
 Las pruebas lentas generan canciones sintéticas (pop en Sol a 120 BPM, vals en Re a 150 BPM),
 las guardan como MP4 y comprueban tempo, compás, tonalidad y acordes.
 
+En GitHub se corren solas en cada PR y en cada cambio a `main`
+(workflow [Pruebas](.github/workflows/pruebas.yml), en Linux con Python 3.12).
+
 ## Dónde guarda cosas
 
 - `%LOCALAPPDATA%\analizador-musical\venv`: el entorno de Python.
