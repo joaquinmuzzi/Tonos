@@ -3,7 +3,7 @@
 python -m orfeo                 opens the app in the browser
 python -m orfeo song.mp4        analyzes a file and prints the result in the terminal
 python -m orfeo song.mp4 --json
-python -m orfeo --precargar     downloads and tests the models (used by instalar.ps1)
+python -m orfeo --preload       downloads and tests the models (used by instalar.ps1)
 """
 
 from __future__ import annotations
@@ -17,81 +17,107 @@ import threading
 import webbrowser
 from pathlib import Path
 
+from .messages import english, message
+
+INDENT = " " * 8
+
 
 def _mmss(seconds: float) -> str:
     return f"{int(seconds // 60)}:{int(seconds % 60):02d}"
 
 
-def _text_report(r: dict) -> str:
-    lines = [f"Archivo: {r['archivo']['nombre']} ({_mmss(r['archivo']['duracion'])})", ""]
+def _key(k: dict) -> str:
+    return f"{k['letter']} {k['mode']} ({k['solfege']} {k['mode']})"
 
-    t = r["tempo"]
-    if t.get("bpm"):
-        alt = t["alternativas"]
-        lines.append(
-            f"Tempo:      {t['bpm']:.0f} BPM  (al doble o a la mitad: {alt['doble']:.0f} / {alt['mitad']:.0f})"
-        )
-        if t["sugerencia"]:
-            lines.append(f"            probablemente lo sientas a {alt[t['sugerencia']]:.0f} BPM")
-        if not t["estable"]:
-            lines.append(f"            el tempo varía entre {t['rango'][0]:.0f} y {t['rango'][1]:.0f} BPM")
-        if t.get("aviso"):
-            lines.append(f"            {t['aviso']}")
+
+def _bar_label(bar: dict) -> str:
+    return bar["kind"] if bar["kind"] in ("pickup", "intro") else f"{bar['kind']} {bar['number']}"
+
+
+def _tempo_lines(t: dict) -> list[str]:
+    if not t.get("bpm"):
+        return [f"Tempo:  unknown. {english(t['reason'])}"]
+    alt = t["alternatives"]
+    lines = [f"Tempo:  {t['bpm']:.0f} BPM  (counted double / half: {alt['double']:.0f} / {alt['half']:.0f})"]
+    if t["suggestion"]:
+        lines.append(f"{INDENT}you will probably feel it at {alt[t['suggestion']]:.0f} BPM")
+    if not t["stable"]:
+        lines.append(f"{INDENT}the tempo varies between {t['range'][0]:.0f} and {t['range'][1]:.0f} BPM")
+    if t.get("warning"):
+        lines.append(f"{INDENT}{english(t['warning'])}")
+    return lines
+
+
+def _meter_lines(m: dict) -> list[str]:
+    if not m.get("beats_per_bar"):
+        return [f"Meter:  unknown. {english(m['reason'])}"]
+    reading = m["time_signature"] or f"{m['beats_per_bar']} beats per bar"
+    if m["swing"]:
+        reading += " swing"
+    if m["alternative"]:
+        reading += f" ({english(m['alternative'])})"
+    if m["source"] == "periodicity":
+        source = f"the harmony and the bass repeat every {m['beats_per_bar']} beats"
     else:
-        lines.append(f"Tempo:      no determinado ({t.get('motivo')})")
+        source = f"counts {m['beats_per_bar']} in {m['agreement'] * 100:.0f} % of the bars"
+        if (m.get("second_method") or {}).get("confirms"):
+            source += " (and the harmony confirms it)"
+    lines = [
+        f"Meter:  {reading}",
+        f"{INDENT}{source}; {m['subdivision']['kind']} subdivision; {m['confidence']} confidence",
+    ]
+    lines += [
+        f"{INDENT}{english(w)}"
+        for w in m["warnings"]
+        if w["code"] in ("meter_from_harmony", "approximate_grid")
+    ]
+    return lines
 
-    c = r["compas"]
-    if c.get("lectura"):
-        alt = f" ({c['alternativa']})" if c.get("alternativa") else ""
-        lines.append(f"Compás:     {c['lectura']}{alt}")
-        if c.get("fuente") == "periodicidad":
-            source_text = f"la armonía y el bajo se repiten cada {c['pulsos_por_compas']} pulsos"
-        else:
-            source_text = (
-                f"cuenta en {c['pulsos_por_compas']} en el {c['acuerdo'] * 100:.0f} % de los compases"
-            )
-            if (c.get("segundo_metodo") or {}).get("confirma"):
-                source_text += " (y la armonía lo confirma)"
+
+def _key_lines(k: dict, tuning: dict) -> list[str]:
+    reasons = {"relative": "relative key", "runner_up": "the model's second choice"}
+    alternatives = ", ".join(f"{_key(a)} ({reasons[a['reason']]})" for a in k["alternatives"])
+    lines = [
+        f"Key:    {_key(k['best'])}, {k['confidence']} confidence",
+        f"{INDENT}also possible: {alternatives}",
+    ]
+    for change in k["sections"]["changes"]:
         lines.append(
-            f"            {source_text}; subdivisión {c['subdivision']['tipo']}; confianza {c['confianza']}"
+            f"{INDENT}possible change to {_key(change)} between {_mmss(change['start'])} "
+            f"and {_mmss(change['end'])}"
         )
-        for warning in c.get("avisos", []):
-            if warning.startswith("El detector") or warning.startswith("No se pudo determinar"):
-                lines.append(f"            {warning}")
-    else:
-        lines.append(f"Compás:     no determinado. {c.get('motivo', '')}")
+    if tuning["warning"]:
+        lines.append(f"{INDENT}{english(tuning['warning'])}")
+    return lines
 
-    k = r["tonalidad"]
-    p = k["principal"]
-    lines.append(f"Tonalidad:  {p['latino']} ({p['americano']}), confianza {k['confianza']}")
-    alts = ", ".join(f"{a['latino']} ({a['motivo']})" for a in k["alternativas"])
-    lines.append(f"            alternativas: {alts}")
-    for change in k["por_tramos"]["cambios"]:
-        lines.append(
-            f"            posible cambio: {change['latino']} entre {_mmss(change['inicio'])} "
-            f"y {_mmss(change['fin'])}"
-        )
-    if r["afinacion"]["aviso"]:
-        lines.append(f"            {r['afinacion']['aviso']}")
 
-    summary = r["acordes"]["resumen_simple"]
+def _chord_lines(r: dict) -> list[str]:
+    summary = r["chords"]["summary_simple"]
     if not summary:
-        lines += ["", "Acordes:   no se detectaron acordes (¿solo percusión, voz hablada o ruido?)"]
-    else:
-        used = ", ".join(f"{a['latino']} {a['proporcion'] * 100:.0f} %" for a in summary[:8])
-        lines += ["", f"Acordes más usados: {used}", "", "Primeros 16 compases:"]
-        segs = r["acordes"]["segmentos"]
-        cells = []
-        for bar in r["compases"][:16]:
-            names = []
-            for i in bar["acordes"]:
-                n = segs[i]["latino_simple"]
-                if not names or names[-1] != n:
-                    names.append(n)
-            cells.append(f"{bar['etiqueta']}: {' '.join(names) or '—'}")
-        for i in range(0, len(cells), 4):
-            lines.append("| " + " | ".join(f"{c:<20}" for c in cells[i : i + 4]) + " |")
-    lines += ["", f"(análisis en {r['segundos_de_analisis']:.0f} s)"]
+        return ["Chords: none detected (percussion only, speech or noise?)"]
+    used = ", ".join(f"{a['letter']} {a['share'] * 100:.0f} %" for a in summary[:8])
+    lines = [f"Most used chords: {used}", "", "First 16 bars:"]
+    segments = r["chords"]["segments"]
+    cells = []
+    for bar in r["bars"][:16]:
+        names = []
+        for i in bar["chords"]:
+            name = segments[i]["letter_simple"]
+            if not names or names[-1] != name:
+                names.append(name)
+        cells.append(f"{_bar_label(bar)}: {' '.join(names) or '—'}")
+    for i in range(0, len(cells), 4):
+        lines.append("| " + " | ".join(f"{c:<20}" for c in cells[i : i + 4]) + " |")
+    return lines
+
+
+def _text_report(r: dict) -> str:
+    lines = [f"File:   {r['file']['name']} ({_mmss(r['file']['duration'])})", ""]
+    lines += _tempo_lines(r["tempo"])
+    lines += _meter_lines(r["meter"])
+    lines += _key_lines(r["key"], r["tuning"])
+    lines += ["", *_chord_lines(r)]
+    lines += ["", f"(analyzed in {r['analysis_seconds']:.0f} s)"]
     return "\n".join(lines)
 
 
@@ -111,47 +137,50 @@ def main() -> None:
     with contextlib.suppress(AttributeError):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    p = argparse.ArgumentParser(prog="python -m orfeo", description="Analizador musical")
-    p.add_argument("archivo", nargs="?", help="archivo a analizar en la terminal")
-    p.add_argument("--json", action="store_true", help="mostrar el resultado completo en JSON")
-    p.add_argument("--puerto", type=int, default=8765)
-    p.add_argument("--no-abrir", action="store_true", help="no abrir el navegador")
-    p.add_argument("--precargar", action="store_true", help="descargar y probar los modelos")
-    a = p.parse_args()
+    p = argparse.ArgumentParser(
+        prog="python -m orfeo", description="Find the tempo, meter, key and chords of a song."
+    )
+    p.add_argument("file", nargs="?", help="file to analyze in the terminal (without it, opens the app)")
+    p.add_argument("--json", action="store_true", help="print the full result as JSON")
+    p.add_argument("--port", type=int, default=8765, help="port of the local web app (default: 8765)")
+    p.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    p.add_argument("--preload", action="store_true", help="download and test the models")
+    args = p.parse_args()
 
-    if a.precargar:
+    if args.preload:
         _silence_logs()
         from .analysis import pipeline
 
         pipeline.preload()
-        print("Modelos listos.")
+        print("Models ready.")
         return
 
-    if a.archivo:
+    if args.file:
         _silence_logs()
         from .analysis import pipeline
         from .analysis.audio import AudioError
 
-        path = Path(a.archivo)
+        path = Path(args.file)
         if not path.is_file():
-            sys.exit(f"No encuentro el archivo: {path}")
+            sys.exit(f"File not found: {path}")
 
         def progress(step: str, fraction: float) -> None:
-            print(f"\r{fraction * 100:3.0f} %  {step:<50}", end="", file=sys.stderr, flush=True)
+            text = english(message(step))
+            print(f"\r{fraction * 100:3.0f} %  {text:<50}", end="", file=sys.stderr, flush=True)
 
         try:
             result = pipeline.analyze(path, progress)
         except AudioError as e:
             sys.exit(f"\n{e}")
         print("\r" + " " * 60 + "\r", end="", file=sys.stderr)
-        print(json.dumps(result, ensure_ascii=False, indent=2) if a.json else _text_report(result))
+        print(json.dumps(result, ensure_ascii=False, indent=2) if args.json else _text_report(result))
         return
 
-    url = f"http://127.0.0.1:{a.puerto}"
-    if _port_in_use(a.puerto):
+    url = f"http://127.0.0.1:{args.port}"
+    if _port_in_use(args.port):
         # The app is already running: do not start another one (it would delete the queued files)
-        print(f"El analizador ya está abierto en {url}")
-        if not a.no_abrir:
+        print(f"orfeo is already running at {url}")
+        if not args.no_browser:
             webbrowser.open(url)
         return
 
@@ -159,10 +188,10 @@ def main() -> None:
 
     from .server import app
 
-    if not a.no_abrir:
+    if not args.no_browser:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
-    print(f"Analizador musical abierto en {url}  (cerrá esta ventana o apretá Ctrl+C para salir)")
-    uvicorn.run(app, host="127.0.0.1", port=a.puerto, log_level="warning")
+    print(f"orfeo is running at {url}  (close this window or press Ctrl+C to quit)")
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":

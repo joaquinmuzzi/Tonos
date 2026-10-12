@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .analysis import pipeline
 from .analysis.audio import AudioError
+from .messages import message
 
 WEB = Path(__file__).parent / "web"
 DATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "analizador-musical"
@@ -28,7 +29,7 @@ UPLOAD_DIR = DATA_DIR / "subidas"
 MAX_UPLOAD_BYTES = 1024**3  # 1 GB
 MAX_JOBS = 30
 
-log = logging.getLogger("analizador")
+log = logging.getLogger("orfeo")
 
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
@@ -40,7 +41,7 @@ def _preload() -> None:
     try:
         pipeline.preload()
     except Exception:
-        log.exception("No se pudieron cargar los modelos")
+        log.exception("Could not load the models")
     finally:
         _models_ready.set()
 
@@ -55,10 +56,10 @@ async def _lifespan(_app: FastAPI):
     _executor.shutdown(wait=False, cancel_futures=True)
 
 
-app = FastAPI(title="Analizador musical", docs_url=None, redoc_url=None, lifespan=_lifespan)
+app = FastAPI(title="orfeo", docs_url=None, redoc_url=None, lifespan=_lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
-TOO_LARGE_MESSAGE = "El archivo es demasiado grande (máximo 1 GB)."
+TOO_LARGE = message("too_large", gigabytes=MAX_UPLOAD_BYTES // 1024**3)
 
 
 @app.middleware("http")
@@ -66,7 +67,7 @@ async def _limit_body_size(request: Request, call_next):
     # Reject before receiving the body: otherwise the whole file is written to disk anyway.
     length = request.headers.get("content-length", "")
     if request.method == "POST" and length.isdigit() and int(length) > MAX_UPLOAD_BYTES + (1 << 20):
-        return JSONResponse({"detail": TOO_LARGE_MESSAGE}, status_code=413)
+        return JSONResponse({"detail": TOO_LARGE}, status_code=413)
     response = await call_next(request)
     # Make the browser always check for a newer version of the page (otherwise, after an
     # update, it may keep using the old app.js it had cached)
@@ -81,9 +82,9 @@ def index():
 
 def _register_job(id_: str, **fields) -> None:
     with _lock:
-        _jobs[id_] = {"estado": "en_cola", "paso": "En espera", "progreso": 0.0, **fields}
+        _jobs[id_] = {"status": "queued", "step": "queued", "progress": 0.0, **fields}
         # Drop the oldest jobs, but never one that is still queued or being analyzed
-        finished = [k for k, t in _jobs.items() if t["estado"] in ("listo", "error")]
+        finished = [k for k, t in _jobs.items() if t["status"] in ("done", "error")]
         while len(_jobs) > MAX_JOBS and finished:
             _jobs.pop(finished.pop(0))
 
@@ -107,19 +108,19 @@ def _read_cache(path: Path) -> dict | None:
     return result if result.get("version") == pipeline.VERSION else None
 
 
-@app.post("/api/analisis")
-async def upload(archivo: UploadFile):
-    name = Path(archivo.filename or "cancion").name or "cancion"
+@app.post("/api/analyses")
+async def upload(file: UploadFile):
+    name = Path(file.filename or "song").name or "song"
     id_ = uuid.uuid4().hex[:12]
     folder = UPLOAD_DIR / id_
     # Neutral file name on disk: avoids ffmpeg problems with unusual characters
-    target = folder / ("entrada" + _safe_extension(name))
+    target = folder / ("input" + _safe_extension(name))
 
     hasher, total = hashlib.sha256(), 0
     try:
         folder.mkdir(parents=True, exist_ok=True)
         with open(target, "wb") as f:
-            while block := await archivo.read(1 << 20):
+            while block := await file.read(1 << 20):
                 total += len(block)
                 if total > MAX_UPLOAD_BYTES:
                     break
@@ -127,55 +128,57 @@ async def upload(archivo: UploadFile):
                 f.write(block)
     except OSError as e:
         shutil.rmtree(folder, ignore_errors=True)
-        log.exception("No se pudo guardar la subida")
-        raise HTTPException(500, f"No pude guardar el archivo en el disco: {e.strerror or e}") from e
+        log.exception("Could not save the upload")
+        raise HTTPException(500, message("save_failed", detail=str(e.strerror or e))) from e
     if total > MAX_UPLOAD_BYTES:
         shutil.rmtree(folder, ignore_errors=True)
-        raise HTTPException(413, TOO_LARGE_MESSAGE)
+        raise HTTPException(413, TOO_LARGE)
     if total == 0:
         shutil.rmtree(folder, ignore_errors=True)
-        raise HTTPException(400, "El archivo está vacío.")
+        raise HTTPException(400, message("empty_file"))
 
     cache_path = CACHE_DIR / f"{hasher.hexdigest()}.json"
     cached = _read_cache(cache_path)
     if cached is not None:
         shutil.rmtree(folder, ignore_errors=True)
-        cached["archivo"]["nombre"] = name
-        cached["desde_cache"] = True
-        _register_job(id_, nombre=name, estado="listo", paso="Listo", progreso=1.0, resultado=cached)
+        cached["file"]["name"] = name
+        cached["from_cache"] = True
+        _register_job(id_, name=name, status="done", step="done", progress=1.0, result=cached)
     else:
-        _register_job(id_, nombre=name)
+        _register_job(id_, name=name)
         _executor.submit(_run_analysis, id_, target, name, cache_path)
     return {"id": id_}
 
 
 def _run_analysis(id_: str, path: Path, name: str, cache_path: Path) -> None:
     def progress(step: str, fraction: float) -> None:
-        _update_job(id_, estado="procesando", paso=step, progreso=round(fraction, 3))
+        _update_job(id_, status="running", step=step, progress=round(fraction, 3))
 
     try:
         result = pipeline.analyze(path, progress)
-        result["archivo"]["nombre"] = name
+        result["file"]["name"] = name
         try:
             cache_path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
         except OSError:
-            log.warning("No se pudo guardar el análisis en caché", exc_info=True)
-        _update_job(id_, estado="listo", paso="Listo", progreso=1.0, resultado=result)
+            log.warning("Could not cache the analysis", exc_info=True)
+        _update_job(id_, status="done", step="done", progress=1.0, result=result)
     except AudioError as e:
-        _update_job(id_, estado="error", error=str(e))
+        _update_job(id_, status="error", error=e.message)
     except Exception as e:
-        log.exception("Falló el análisis de %s", name)
-        _update_job(id_, estado="error", error=f"Error inesperado al analizar: {e}")
+        log.exception("The analysis of %s failed", name)
+        _update_job(id_, status="error", error=message("unexpected_error", detail=str(e)))
     finally:
         shutil.rmtree(path.parent, ignore_errors=True)
 
 
-@app.get("/api/analisis/{id_}")
+@app.get("/api/analyses/{id_}")
 def job_status(id_: str):
+    """{"status": "queued" | "running" | "done" | "error", "step", "progress", "name",
+    "result" (when done), "error" (a message, when it failed)}."""
     with _lock:
         job = dict(_jobs.get(id_) or {})
     if not job:
-        raise HTTPException(404, "No existe ese análisis (¿se reinició el servidor?).")
-    if job["estado"] == "en_cola" and not _models_ready.is_set():
-        job["paso"] = "Cargando los modelos (la primera vez tarda un poco)"
+        raise HTTPException(404, message("job_not_found"))
+    if job["status"] == "queued" and not _models_ready.is_set():
+        job["step"] = "loading_models"
     return job

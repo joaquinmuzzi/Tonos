@@ -25,7 +25,7 @@ FAMILIES = {
     7: (7, 14, 21, 28),
 }
 MAX_LAG = 30  # in beats
-WEIGHTS = {"armonia": 0.5, "bajo": 0.25, "ataques": 0.25}
+WEIGHTS = {"harmony": 0.5, "bass": 0.25, "onsets": 0.25}
 CQT_HOP = 512
 PHASE_CLARITY_THRESHOLD = 1.0  # below this, the bar grid is reported as approximate
 
@@ -91,8 +91,8 @@ def analyze(
 ) -> tuple[dict | None, np.ndarray | None]:
     """Returns (summary, spectrum). The spectrum is reused to locate the bars.
 
-    summary = {"puntajes": {3: z, 4: z, 5: z, 7: z}, "armonia": {...}, "ganador": f,
-               "margen": difference with the runner-up family}; None if the song has too
+    summary = {"scores": {3: z, 4: z, 5: z, 7: z}, "harmony": {...}, "winner": f,
+               "margin": difference with the runner-up family}; None if the song has too
     few beats to measure repetitions of up to 30 beats.
     """
     if len(beats) < 3 * MAX_LAG + 2:
@@ -108,18 +108,18 @@ def analyze(
 
     lags = range(MAX_LAG + 3)
     series = {
-        "armonia": np.array([_similarity(harmony, L) if L else 1.0 for L in lags]),
-        "bajo": np.array([_similarity(bass, L) if L else 1.0 for L in lags]),
-        "ataques": np.array([float(np.mean(onsets[:-L] * onsets[L:])) if L else 1.0 for L in lags]),
+        "harmony": np.array([_similarity(harmony, L) if L else 1.0 for L in lags]),
+        "bass": np.array([_similarity(bass, L) if L else 1.0 for L in lags]),
+        "onsets": np.array([float(np.mean(onsets[:-L] * onsets[L:])) if L else 1.0 for L in lags]),
     }
-    per_feature = {k: _scores(_prominence(s, same_parity=(k == "ataques"))) for k, s in series.items()}
+    per_feature = {k: _scores(_prominence(s, same_parity=(k == "onsets"))) for k, s in series.items()}
     total = {f: sum(WEIGHTS[k] * per_feature[k][f] for k in WEIGHTS) for f in FAMILIES}
     order = sorted(total, key=total.get, reverse=True)
     summary = {
-        "puntajes": {f: round(v, 2) for f, v in total.items()},
-        "armonia": {f: round(v, 2) for f, v in per_feature["armonia"].items()},
-        "ganador": order[0],
-        "margen": round(total[order[0]] - total[order[1]], 2),
+        "scores": {f: round(v, 2) for f, v in total.items()},
+        "harmony": {f: round(v, 2) for f, v in per_feature["harmony"].items()},
+        "winner": order[0],
+        "margin": round(total[order[0]] - total[order[1]], 2),
     }
     return summary, spectrum
 

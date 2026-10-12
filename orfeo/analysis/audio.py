@@ -9,12 +9,19 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
+from ..messages import Message, english, message
+
 SAMPLE_RATE = 22050  # Hz: the rate Beat This!, S-KEY and Consonance-ACE use internally
+MIN_DURATION = 5  # seconds
 MAX_DURATION = 20 * 60  # seconds
 
 
 class AudioError(Exception):
-    """Error whose message is meant to be shown to the user."""
+    """Error meant to be shown to the user, as a message code with its parameters."""
+
+    def __init__(self, code: str, **params):
+        self.message: Message = message(code, **params)
+        super().__init__(english(self.message))
 
 
 class SilentAudioError(AudioError):
@@ -25,9 +32,7 @@ def find_ffmpeg(program: str = "ffmpeg") -> str:
     path = shutil.which(program)
     if path:
         return path
-    raise AudioError(
-        "No encontré ffmpeg. Instalalo con:  winget install Gyan.FFmpeg  y volvé a abrir la terminal."
-    )
+    raise AudioError("ffmpeg_missing")
 
 
 def count_audio_tracks(input_path: Path) -> int:
@@ -88,29 +93,26 @@ def extract_audio(input_path: Path, wav_path: Path, track: int = 0) -> None:
     if result.returncode != 0:
         detail = result.stderr.strip()
         if "matches no streams" in detail:
-            raise AudioError("El archivo no tiene ninguna pista de audio.")
+            raise AudioError("no_audio_track")
         if "drm" in detail.lower() or "protected" in detail.lower():
-            raise AudioError("El archivo está protegido con DRM y no se puede leer.")
+            raise AudioError("drm_protected")
         if "Invalid data found" in detail or "could not find codec" in detail.lower():
-            raise AudioError("No pude leer el archivo: no parece ser audio o video válido.")
-        raise AudioError(f"ffmpeg no pudo leer el archivo: {detail[-300:]}")
+            raise AudioError("not_media")
+        raise AudioError("ffmpeg_failed", detail=detail[-300:])
 
 
 def load_wav(path: Path) -> tuple[np.ndarray, int]:
     """Loads the generated WAV and checks its duration and that it is not silent."""
     duration = sf.info(str(path)).duration
-    if duration < 5:
-        raise AudioError("El audio dura menos de 5 segundos: es muy corto para analizarlo.")
+    if duration < MIN_DURATION:
+        raise AudioError("too_short", seconds=MIN_DURATION)
     if duration > MAX_DURATION:
-        raise AudioError(
-            f"El audio dura más de {MAX_DURATION // 60} minutos, que es el máximo "
-            "(para mezclas largas, cortá la canción que te interesa)."
-        )
+        raise AudioError("too_long", minutes=MAX_DURATION // 60)
     signal, sr = sf.read(str(path), dtype="float32")
     if signal.ndim > 1:
         signal = signal.mean(axis=1)
     if float(np.max(np.abs(signal))) < 1e-4:
-        raise SilentAudioError("El audio está en silencio.")
+        raise SilentAudioError("silent")
     return signal, sr
 
 
@@ -128,8 +130,6 @@ def read_audio(input_path: Path, wav_path: Path) -> tuple[np.ndarray, int, int]:
         except SilentAudioError:
             if track == tracks - 1:
                 if tracks > 1:
-                    raise SilentAudioError(
-                        f"Las {tracks} pistas de audio del archivo están en silencio."
-                    ) from None
+                    raise SilentAudioError("all_tracks_silent", tracks=tracks) from None
                 raise
-    raise AudioError("El archivo no tiene ninguna pista de audio.")
+    raise AudioError("no_audio_track")

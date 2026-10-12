@@ -42,27 +42,27 @@ def test_short_segments_without_beats_are_absorbed():
 
 def test_key_from_chords():
     progression = [(0, 2, "G:maj"), (2, 4, "D:maj"), (4, 6, "E:min"), (6, 8, "C:maj")] * 4
-    assert tonality.key_from_chords(progression) == (7, "mayor")
+    assert tonality.key_from_chords(progression) == (7, "major")
     assert tonality.key_from_chords([(0, 10, "N")]) is None
     assert tonality.key_from_chords([]) is None
 
 
-def _key_result(advantage, tonic=7, mode="mayor"):
+def _key_result(advantage, tonic=7, mode="major"):
     return {
-        "principal": {"tonica_pc": tonic, "modo": mode},
-        "ventaja": advantage,
-        "por_tramos": {"acuerdo": None},
+        "best": {"tonic_pc": tonic, "mode": mode},
+        "advantage": advantage,
+        "sections": {"agreement": None},
     }
 
 
 def test_key_without_chords_has_low_confidence():
     key_result = _key_result(advantage=3.0)
     tonality.assess_confidence(key_result, None)
-    assert key_result["confianza"] == "baja"
+    assert key_result["confidence"] == "low"
 
 
 def test_high_confidence_when_both_methods_agree():
     key_result = _key_result(advantage=1.5)
-    tonality.assess_confidence(key_result, (7, "mayor"))
-    assert key_result["confianza"] == "alta"
-    assert key_result["segundo_metodo"]["acuerdo"] == "igual"
+    tonality.assess_confidence(key_result, (7, "major"))
+    assert key_result["confidence"] == "high"
+    assert key_result["second_method"]["agreement"] == "same"

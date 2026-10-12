@@ -11,8 +11,8 @@ import re
 import mir_eval
 
 LETTERS = {
-    "latino": ["Do", "Re", "Mi", "Fa", "Sol", "La", "Si"],
-    "americano": ["C", "D", "E", "F", "G", "A", "B"],
+    "solfege": ["Do", "Re", "Mi", "Fa", "Sol", "La", "Si"],
+    "letter": ["C", "D", "E", "F", "G", "A", "B"],
 }
 _LETTER_PC = [0, 2, 4, 5, 7, 9, 11]  # pitch class of each natural letter
 
@@ -20,12 +20,12 @@ _LETTER_PC = [0, 2, 4, 5, 7, 9, 11]  # pitch class of each natural letter
 _FLAT_MAJOR_TONICS = {1, 3, 8, 10}  # D♭, E♭, A♭, B♭ major
 _FLAT_MINOR_TONICS = {3, 10}  # E♭ minor, B♭ minor
 
-_SCALE = {"mayor": [0, 2, 4, 5, 7, 9, 11], "menor": [0, 2, 3, 5, 7, 8, 10]}
+_SCALE = {"major": [0, 2, 4, 5, 7, 9, 11], "minor": [0, 2, 3, 5, 7, 8, 10]}
 # Out-of-scale notes: semitones above the tonic -> how many letters above the tonic.
 # Major: ♭II, ♭III, ♯IV, ♭VI, ♭VII (borrowed chords). Minor: ♭II, ♯III, ♯IV, ♯VI, ♯VII (leading tone).
 _CHROMATIC = {
-    "mayor": {1: 1, 3: 2, 6: 3, 8: 5, 10: 6},
-    "menor": {1: 1, 4: 2, 6: 3, 9: 5, 11: 6},
+    "major": {1: 1, 3: 2, 6: 3, 8: 5, 10: 6},
+    "minor": {1: 1, 4: 2, 6: 3, 9: 5, 11: 6},
 }
 # Interval in semitones -> number of letters (3rd = 2 letters, 5th = 4, 7th = 6...)
 _LETTERS_PER_INTERVAL = {0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 4, 7: 4, 8: 5, 9: 5, 10: 6, 11: 6}
@@ -45,10 +45,10 @@ def _simple_note(pc: int, flat: bool) -> Note:
 
 
 def _spell_tonic(tonic_pc: int, mode: str) -> Note:
-    return _simple_note(tonic_pc, tonic_pc in (_FLAT_MAJOR_TONICS if mode == "mayor" else _FLAT_MINOR_TONICS))
+    return _simple_note(tonic_pc, tonic_pc in (_FLAT_MAJOR_TONICS if mode == "major" else _FLAT_MINOR_TONICS))
 
 
-def write_note(name: Note, system: str = "latino") -> str:
+def write_note(name: Note, system: str = "solfege") -> str:
     letter, accidental = name
     return LETTERS[system][letter] + ("#" * accidental if accidental > 0 else "♭" * -accidental)
 
@@ -94,7 +94,7 @@ class Speller:
 
     def __init__(self, tonic_pc: int | None = None, mode: str | None = None):
         if tonic_pc is None or mode is None:
-            tonic_pc, mode = 0, "mayor"  # no key: spell as in C major
+            tonic_pc, mode = 0, "major"  # no key: spell as in C major
         self.tonic_pc = tonic_pc % 12
         self.mode = mode
         self.tonic = _spell_tonic(self.tonic_pc, mode)
@@ -103,7 +103,7 @@ class Speller:
         pc %= 12
         relative = (pc - self.tonic_pc) % 12
         scale = _SCALE[self.mode]
-        minor_leading_tone = self.mode == "menor" and relative == 11
+        minor_leading_tone = self.mode == "minor" and relative == 11
         if relative not in scale and pc in _LETTER_PC and not minor_leading_tone:
             # An out-of-scale note on a white key is written natural: C, not B# (Cm in G# minor).
             # The leading tone of a minor key does keep its accidental (B#dim in C# minor).
@@ -126,54 +126,51 @@ class Speller:
             return self.spell(pc)
         return letter, accidental
 
-    def name(self, pc: int, system: str = "latino") -> str:
+    def name(self, pc: int, system: str = "solfege") -> str:
         return write_note(self.spell(pc), system)
 
 
 def key_name(tonic_pc: int, mode: str) -> dict:
-    """Name of a key in both notations. mode: 'mayor' | 'menor'."""
+    """Name of the tonic of a key in both notations (mode: 'major' | 'minor')."""
     tonic = _spell_tonic(tonic_pc, mode)
-    return {
-        "latino": f"{write_note(tonic, 'latino')} {mode}",
-        "americano": f"{write_note(tonic, 'americano')}{'m' if mode == 'menor' else ''}",
-    }
+    return {"solfege": write_note(tonic, "solfege"), "letter": write_note(tonic, "letter")}
 
 
 def relative_key(tonic_pc: int, mode: str) -> tuple[int, str]:
     """C major <-> A minor."""
-    if mode == "mayor":
-        return (tonic_pc + 9) % 12, "menor"
-    return (tonic_pc + 3) % 12, "mayor"
+    if mode == "major":
+        return (tonic_pc + 9) % 12, "minor"
+    return (tonic_pc + 3) % 12, "major"
 
 
 # --- Chords -------------------------------------------------------------------
 
 # Templates: set of intervals (semitones above the root) -> (suffix, simple suffix, description)
 _TEMPLATES: list[tuple[frozenset[int], str, str, str]] = [
-    (frozenset({0, 4, 7}), "", "", "mayor"),
-    (frozenset({0, 3, 7}), "m", "m", "menor"),
-    (frozenset({0, 4, 7, 10}), "7", "", "séptima de dominante"),
-    (frozenset({0, 4, 7, 11}), "maj7", "", "séptima mayor"),
-    (frozenset({0, 3, 7, 10}), "m7", "m", "menor con séptima"),
-    (frozenset({0, 3, 7, 11}), "m(maj7)", "m", "menor con séptima mayor"),
-    (frozenset({0, 3, 6}), "dim", "dim", "disminuido"),
-    (frozenset({0, 3, 6, 9}), "dim7", "dim", "disminuido con séptima"),
-    (frozenset({0, 3, 6, 10}), "m7(♭5)", "dim", "semidisminuido"),
-    (frozenset({0, 4, 8}), "aug", "aug", "aumentado"),
+    (frozenset({0, 4, 7}), "", "", "major"),
+    (frozenset({0, 3, 7}), "m", "m", "minor"),
+    (frozenset({0, 4, 7, 10}), "7", "", "dominant seventh"),
+    (frozenset({0, 4, 7, 11}), "maj7", "", "major seventh"),
+    (frozenset({0, 3, 7, 10}), "m7", "m", "minor seventh"),
+    (frozenset({0, 3, 7, 11}), "m(maj7)", "m", "minor major seventh"),
+    (frozenset({0, 3, 6}), "dim", "dim", "diminished"),
+    (frozenset({0, 3, 6, 9}), "dim7", "dim", "diminished seventh"),
+    (frozenset({0, 3, 6, 10}), "m7(♭5)", "dim", "half-diminished"),
+    (frozenset({0, 4, 8}), "aug", "aug", "augmented"),
     # No third: neither major nor minor, so the simple names keep them as they are
-    (frozenset({0, 5, 7}), "sus4", "sus4", "suspendido de cuarta"),
-    (frozenset({0, 2, 7}), "sus2", "sus2", "suspendido de segunda"),
-    (frozenset({0, 5, 7, 10}), "7sus4", "sus4", "séptima con cuarta suspendida"),
-    (frozenset({0, 4, 7, 9}), "6", "", "sexta"),
-    (frozenset({0, 3, 7, 9}), "m6", "m", "menor con sexta"),
-    (frozenset({0, 2, 4, 7}), "add9", "", "con novena agregada"),
-    (frozenset({0, 2, 3, 7}), "m(add9)", "m", "menor con novena agregada"),
-    (frozenset({0, 2, 4, 7, 10}), "9", "", "novena"),
-    (frozenset({0, 2, 4, 7, 11}), "maj9", "", "novena mayor"),
-    (frozenset({0, 2, 3, 7, 10}), "m9", "m", "menor con novena"),
-    (frozenset({0, 7}), "5", "5", "quinta (power chord)"),
-    (frozenset({0, 4}), "", "", "mayor (sin quinta)"),
-    (frozenset({0, 3}), "m", "m", "menor (sin quinta)"),
+    (frozenset({0, 5, 7}), "sus4", "sus4", "suspended fourth"),
+    (frozenset({0, 2, 7}), "sus2", "sus2", "suspended second"),
+    (frozenset({0, 5, 7, 10}), "7sus4", "sus4", "seventh with suspended fourth"),
+    (frozenset({0, 4, 7, 9}), "6", "", "sixth"),
+    (frozenset({0, 3, 7, 9}), "m6", "m", "minor sixth"),
+    (frozenset({0, 2, 4, 7}), "add9", "", "added ninth"),
+    (frozenset({0, 2, 3, 7}), "m(add9)", "m", "minor added ninth"),
+    (frozenset({0, 2, 4, 7, 10}), "9", "", "ninth"),
+    (frozenset({0, 2, 4, 7, 11}), "maj9", "", "major ninth"),
+    (frozenset({0, 2, 3, 7, 10}), "m9", "m", "minor ninth"),
+    (frozenset({0, 7}), "5", "5", "fifth (power chord)"),
+    (frozenset({0, 4}), "", "", "major (no fifth)"),
+    (frozenset({0, 3}), "m", "m", "minor (no fifth)"),
 ]
 
 
@@ -186,26 +183,26 @@ def _suffixes(intervals: frozenset[int]) -> tuple[str, str, str]:
     contained = [p for p in _TEMPLATES if p[0] <= intervals and len(p[0]) >= 3]
     if contained:
         _, suffix, simple, description = max(contained, key=lambda p: len(p[0]))
-        return suffix, simple, f"{description} (con notas agregadas)"
+        return suffix, simple, f"{description} (with added notes)"
     if 4 in intervals:
-        return "", "", "mayor (con notas agregadas)"
+        return "", "", "major (with added notes)"
     if 3 in intervals:
-        return "m", "m", "menor (con notas agregadas)"
+        return "m", "m", "minor (with added notes)"
     if 7 in intervals:
-        return "5", "5", "sin tercera"
+        return "5", "5", "no third"
     # Neither third nor fifth: it cannot be called major or minor
-    return "(sin 3.ª)", "(sin 3.ª)", "sin tercera"
+    return "(no3)", "(no3)", "no third"
 
 
 def describe_chord(label: str, speller: Speller) -> dict:
     """Turns a Harte label ('A:min7/b3', 'N') into readable names.
 
-    Returns a dict with: es_acorde, fundamental_pc, latino, americano,
-    latino_simple, americano_simple (major/minor only, more reliable) and descripcion.
+    Returns a dict with: is_chord, root_pc, solfege, letter, solfege_simple, letter_simple
+    (major/minor only, more reliable) and description.
     """
     if label in ("N", "X", ""):
-        no_names = {"latino": "—", "americano": "—", "latino_simple": "—", "americano_simple": "—"}
-        return {"es_acorde": False, "fundamental_pc": None, "descripcion": "sin acorde", **no_names}
+        no_names = {"solfege": "—", "letter": "—", "solfege_simple": "—", "letter_simple": "—"}
+        return {"is_chord": False, "root_pc": None, "description": "no chord", **no_names}
 
     root, bitmap, bass = mir_eval.chord.encode(label, reduce_extended_chords=True)
     intervals = frozenset(int(i) for i in bitmap.nonzero()[0])
@@ -215,8 +212,8 @@ def describe_chord(label: str, speller: Speller) -> dict:
     if bass % 12:
         is_augmented = 8 in intervals and 7 not in intervals
         bass_note = speller.above(spelled_root, bass, augmented=is_augmented)
-    output = {"es_acorde": True, "fundamental_pc": int(root), "descripcion": description}
-    for system in ("latino", "americano"):
+    output = {"is_chord": True, "root_pc": int(root), "description": description}
+    for system in ("solfege", "letter"):
         base = write_note(spelled_root, system)
         name = base + suffix
         if bass_note:
@@ -230,8 +227,8 @@ _SKEY_LABEL = re.compile(r"^([A-G][#b]?) (Major|minor)$")
 
 
 def parse_skey_label(label: str) -> tuple[int, str]:
-    """'Bb Major' -> (10, 'mayor'); 'C# minor' -> (1, 'menor')."""
+    """'Bb Major' -> (10, 'major'); 'C# minor' -> (1, 'minor')."""
     m = _SKEY_LABEL.match(label)
     if not m:
-        raise ValueError(f"Etiqueta de tonalidad inesperada: {label!r}")
-    return note_to_pc(m.group(1)), ("mayor" if m.group(2) == "Major" else "menor")
+        raise ValueError(f"unexpected key label: {label!r}")
+    return note_to_pc(m.group(1)), ("major" if m.group(2) == "Major" else "minor")

@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import torchaudio
 
+from ..messages import message
 from .notation import key_name, parse_skey_label, relative_key
 
 WINDOW_SECONDS = 30.0  # to see whether the key changes along the song
@@ -42,9 +43,9 @@ def _probabilities(hcqt, chromanet, crop, wave: torch.Tensor) -> np.ndarray:
 
 def _describe(tonic_pc: int, mode: str, prob: float) -> dict:
     return {
-        "tonica_pc": tonic_pc,
-        "modo": mode,
-        "probabilidad": round(float(prob), 3),
+        "tonic_pc": tonic_pc,
+        "mode": mode,
+        "probability": round(float(prob), 3),
         **key_name(tonic_pc, mode),
     }
 
@@ -71,19 +72,19 @@ def detect_key(signal: np.ndarray, sr: int) -> dict:
 
     rel = relative_key(tonic, mode)
     relative_idx = classes.index(rel)
-    alternatives = [{**_describe(*rel, probs[relative_idx]), "motivo": "relativa"}]
+    alternatives = [{**_describe(*rel, probs[relative_idx]), "reason": "relative"}]
     for i in order[1:3]:
         if i != relative_idx:
-            alternatives.append({**_describe(*classes[i], probs[i]), "motivo": "segunda opción del modelo"})
+            alternatives.append({**_describe(*classes[i], probs[i]), "reason": "runner_up"})
             break
 
     return {
-        "principal": best,
-        "confianza": None,  # filled in by assess_confidence() once the chords are known
+        "best": best,
+        "confidence": None,  # filled in by assess_confidence() once the chords are known
         # How many times more likely the first choice is than the second
-        "ventaja": round(float(probs[order[0]] / max(probs[order[1]], 1e-6)), 2),
-        "alternativas": alternatives,
-        "por_tramos": _by_section(windows, duration, classes, (tonic, mode)),
+        "advantage": round(float(probs[order[0]] / max(probs[order[1]], 1e-6)), 2),
+        "alternatives": alternatives,
+        "sections": _by_section(windows, duration, classes, (tonic, mode)),
     }
 
 
@@ -111,7 +112,7 @@ def key_from_chords(chord_segments: list[tuple[float, float, str]]) -> tuple[int
     candidates = [
         (float(np.corrcoef(profile, np.roll(template, tonic))[0, 1]), tonic, mode)
         for tonic in range(12)
-        for mode, template in (("mayor", _KK_MAJOR), ("menor", _KK_MINOR))
+        for mode, template in (("major", _KK_MAJOR), ("minor", _KK_MINOR))
     ]
     _, tonic, mode = max(candidates)
     return tonic, mode
@@ -119,34 +120,38 @@ def key_from_chords(chord_segments: list[tuple[float, float, str]]) -> tuple[int
 
 def assess_confidence(key_result: dict, chord_key: tuple[int, str] | None) -> None:
     """Combines the model's advantage with the agreement of the second method (updates `key_result`)."""
-    p = key_result["principal"]
-    global_key = (p["tonica_pc"], p["modo"])
+    p = key_result["best"]
+    global_key = (p["tonic_pc"], p["mode"])
     if chord_key is None:
         agreement = None
     elif chord_key == global_key:
-        agreement = "igual"
+        agreement = "same"
     elif chord_key == relative_key(*global_key):
-        agreement = "relativa"
+        agreement = "relative"
     else:
-        agreement = "distinta"
+        agreement = "different"
 
-    advantage = key_result["ventaja"]
+    advantage = key_result["advantage"]
     if agreement is None:
         # Without chords (percussion only, noise, speech...) a key is meaningless
-        confidence = "baja"
-    elif agreement == "igual" and advantage >= 1.3:
-        confidence = "alta"
-    elif agreement == "igual" or (agreement == "relativa" and advantage >= 1.5) or advantage >= 2.5:
-        confidence = "media"
+        confidence = "low"
+    elif agreement == "same" and advantage >= 1.3:
+        confidence = "high"
+    elif agreement == "same" or (agreement == "relative" and advantage >= 1.5) or advantage >= 2.5:
+        confidence = "medium"
     else:
-        confidence = "baja"
-    # If more than half of the song is in another key, confidence cannot be "alta" (high)
-    stretches = key_result["por_tramos"]
-    if confidence == "alta" and stretches["acuerdo"] is not None and stretches["acuerdo"] < 0.5:
-        confidence = "media"
+        confidence = "low"
+    # If more than half of the song is in another key, confidence cannot be high
+    sections = key_result["sections"]
+    if confidence == "high" and sections["agreement"] is not None and sections["agreement"] < 0.5:
+        confidence = "medium"
 
-    key_result["confianza"] = confidence
-    key_result["segundo_metodo"] = {"acuerdo": agreement, **key_name(*chord_key)} if chord_key else None
+    key_result["confidence"] = confidence
+    key_result["second_method"] = (
+        {"agreement": agreement, "tonic_pc": chord_key[0], "mode": chord_key[1], **key_name(*chord_key)}
+        if chord_key
+        else None
+    )
 
 
 def _windows(wave: torch.Tensor, sr: int) -> list[tuple[float, float, np.ndarray]]:
@@ -167,7 +172,7 @@ def _windows(wave: torch.Tensor, sr: int) -> list[tuple[float, float, np.ndarray
 def _by_section(windows: list, duration: float, classes: list, global_key: tuple[int, str]) -> dict:
     """Detects possible key changes along the song."""
     if duration < WINDOW_SECONDS * 1.5:
-        return {"tramos": [], "acuerdo": None, "cambios": []}
+        return {"windows": [], "agreement": None, "changes": []}
 
     rel = relative_key(*global_key)
     stretches = []
@@ -176,17 +181,17 @@ def _by_section(windows: list, duration: float, classes: list, global_key: tuple
         tonic, mode = classes[i]
         stretches.append(
             {
-                "inicio": round(start, 1),
-                "fin": round(end, 1),
-                "tonica_pc": tonic,
-                "modo": mode,
-                "probabilidad": round(float(probs[i]), 3),
+                "start": round(start, 1),
+                "end": round(end, 1),
+                "tonic_pc": tonic,
+                "mode": mode,
+                "probability": round(float(probs[i]), 3),
                 **key_name(tonic, mode),
             }
         )
 
     def same_or_relative(t):
-        return (t["tonica_pc"], t["modo"]) in (global_key, rel)
+        return (t["tonic_pc"], t["mode"]) in (global_key, rel)
 
     agreement = sum(same_or_relative(t) for t in stretches) / len(stretches) if stretches else None
 
@@ -197,24 +202,23 @@ def _by_section(windows: list, duration: float, classes: list, global_key: tuple
         if same_or_relative(stretches[i]):
             i += 1
             continue
-        stretch_key = (stretches[i]["tonica_pc"], stretches[i]["modo"])
+        stretch_key = (stretches[i]["tonic_pc"], stretches[i]["mode"])
         j = i
         while (
-            j + 1 < len(stretches)
-            and (stretches[j + 1]["tonica_pc"], stretches[j + 1]["modo"]) == stretch_key
+            j + 1 < len(stretches) and (stretches[j + 1]["tonic_pc"], stretches[j + 1]["mode"]) == stretch_key
         ):
             j += 1
         if j - i + 1 >= 3:
             changes.append(
-                {k: stretches[i][k] for k in ("inicio", "tonica_pc", "modo", "latino", "americano")}
-                | {"fin": stretches[j]["fin"]}
+                {k: stretches[i][k] for k in ("start", "tonic_pc", "mode", "solfege", "letter")}
+                | {"end": stretches[j]["end"]}
             )
         i = j + 1
 
     return {
-        "tramos": stretches,
-        "acuerdo": round(agreement, 2) if agreement is not None else None,
-        "cambios": changes,
+        "windows": stretches,
+        "agreement": round(agreement, 2) if agreement is not None else None,
+        "changes": changes,
     }
 
 
@@ -224,10 +228,5 @@ def estimate_tuning(signal: np.ndarray, sr: int) -> dict:
     deviation = float(librosa.estimate_tuning(y=chunk, sr=sr)) * 100
     warning = None
     if abs(deviation) >= 25:
-        direction = "más aguda" if deviation > 0 else "más grave"
-        warning = (
-            f"La grabación está {abs(deviation):.0f} cents {direction} que la afinación estándar "
-            "(La = 440 Hz). Con un desvío así, la tonalidad y los acordes pueden salir "
-            "corridos medio tono."
-        )
-    return {"cents": round(deviation), "aviso": warning}
+        warning = message("tuning_sharp" if deviation > 0 else "tuning_flat", cents=round(abs(deviation)))
+    return {"cents": round(deviation), "warning": warning}

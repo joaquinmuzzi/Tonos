@@ -39,27 +39,27 @@ def test_pop_tempo(pop_in_g):
 
 
 def test_pop_meter(pop_in_g):
-    assert pop_in_g["compas"]["pulsos_por_compas"] in (4, 2)
+    assert pop_in_g["meter"]["beats_per_bar"] in (4, 2)
 
 
 def test_pop_key(pop_in_g):
-    p = pop_in_g["tonalidad"]["principal"]
-    assert (p["tonica_pc"], p["modo"]) in [(7, "mayor"), (4, "menor")]  # G major or its relative minor
+    p = pop_in_g["key"]["best"]
+    assert (p["tonic_pc"], p["mode"]) in [(7, "major"), (4, "minor")]  # G major or its relative minor
 
 
 def test_pop_chords(pop_in_g):
     used = Counter()
-    for s in pop_in_g["acordes"]["segmentos"]:
-        if s["es_acorde"]:
-            used[s["americano_simple"]] += s["fin"] - s["inicio"]
+    for s in pop_in_g["chords"]["segments"]:
+        if s["is_chord"]:
+            used[s["letter_simple"]] += s["end"] - s["start"]
     top_chords = {name for name, _ in used.most_common(4)}
     assert top_chords == {"G", "D", "Em", "C"}
 
 
 def test_pop_report_is_complete(pop_in_g):
-    assert pop_in_g["compases"], "there should be bars"
-    assert pop_in_g["acordes"]["resumen_simple"]
-    assert pop_in_g["tonalidad"]["confianza"] in ("alta", "media", "baja")
+    assert pop_in_g["bars"], "there should be bars"
+    assert pop_in_g["chords"]["summary_simple"]
+    assert pop_in_g["key"]["confidence"] in ("high", "medium", "low")
 
 
 def test_waltz_tempo(waltz_in_d):
@@ -67,12 +67,12 @@ def test_waltz_tempo(waltz_in_d):
 
 
 def test_waltz_meter(waltz_in_d):
-    assert waltz_in_d["compas"]["pulsos_por_compas"] in (3, 6)
+    assert waltz_in_d["meter"]["beats_per_bar"] in (3, 6)
 
 
 def test_pop_and_waltz_confirmed_by_harmony(pop_in_g, waltz_in_d):
-    assert pop_in_g["compas"]["fuente"] == "primeros tiempos"
-    assert waltz_in_d["compas"]["fuente"] == "primeros tiempos"
+    assert pop_in_g["meter"]["source"] == "downbeats"
+    assert waltz_in_d["meter"]["source"] == "downbeats"
 
 
 @pytest.mark.parametrize(
@@ -86,26 +86,26 @@ def test_odd_meter_end_to_end(tmp_path, beats_per_bar, progression):
     """The downbeat detector fails on 5/4 and 7/4; the repetition of the harmony does not."""
     y = song(130, beats_per_bar, progression, bars=32)
     result = pipeline.analyze(save_mp4(y, tmp_path / f"in {beats_per_bar}.mp4"))
-    meter = result["compas"]
-    assert meter["lectura"] == f"{beats_per_bar}/4"
-    assert meter["fuente"] == "periodicidad"
-    assert not meter["grilla_aproximada"]
-    downbeats = result["primeros_tiempos"]
+    meter = result["meter"]
+    assert meter["time_signature"] == f"{beats_per_bar}/4"
+    assert meter["source"] == "periodicity"
+    assert not meter["approximate_grid"]
+    downbeats = result["downbeats"]
     assert downbeats[0] == pytest.approx(0.0, abs=0.05)
     assert np.median(np.diff(downbeats)) == pytest.approx(beats_per_bar * 60 / 130, rel=0.03)
 
 
 def test_waltz_key(waltz_in_d):
-    p = waltz_in_d["tonalidad"]["principal"]
-    assert (p["tonica_pc"], p["modo"]) in [(2, "mayor"), (11, "menor")]
+    p = waltz_in_d["key"]["best"]
+    assert (p["tonic_pc"], p["mode"]) in [(2, "major"), (11, "minor")]
 
 
 def test_pop_ending_has_no_gaps(pop_in_g):
     # Chords continue up to the end, with no "no chord" caused by silence padding
-    segments = pop_in_g["acordes"]["segmentos"]
-    duration = pop_in_g["archivo"]["duracion"]
-    last_segments = [s for s in segments if s["fin"] > duration - 8 and s["inicio"] < duration - 1.5]
-    assert all(s["es_acorde"] for s in last_segments)
+    segments = pop_in_g["chords"]["segments"]
+    duration = pop_in_g["file"]["duration"]
+    last_segments = [s for s in segments if s["end"] > duration - 8 and s["start"] < duration - 1.5]
+    assert all(s["is_chord"] for s in last_segments)
 
 
 def test_file_without_audio(tmp_path):
@@ -122,7 +122,7 @@ def _ffmpeg(*args):
 def test_too_long_file_is_rejected_early(tmp_path):
     path = tmp_path / "long.mp3"
     _ffmpeg("-f", "lavfi", "-i", "sine=frequency=220:duration=1500", "-b:a", "32k", str(path))
-    with pytest.raises(AudioError, match="más de 20 minutos"):
+    with pytest.raises(AudioError, match="longer than 20 minutes"):
         pipeline.analyze(path)
 
 
@@ -147,5 +147,13 @@ def test_silent_first_track_uses_the_second(tmp_path):
         str(path),
     )
     result = pipeline.analyze(path)
-    assert result["archivo"]["pista_de_audio"] == 2
+    assert result["file"]["audio_track"] == 2
     assert result["tempo"]["bpm"]
+
+
+def test_text_report(pop_in_g):
+    from orfeo.__main__ import _text_report
+
+    text = _text_report(pop_in_g)
+    for heading in ("File:", "Tempo:", "Meter:", "Key:", "Most used chords:", "First 16 bars:"):
+        assert heading in text

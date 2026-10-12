@@ -2,624 +2,615 @@
 
 const $ = (id) => document.getElementById(id);
 
-const estado = {
-  resultado: null,
-  url: null, // URL local del archivo elegido, para reproducirlo sin volver a subirlo
-  notacion: leerPreferencia("notacion", "latino"),
-  detalle: leerPreferencia("detalle", "simple"),
-  pulsos: [],
-  numeros: [], // número de pulso dentro del compás (1 = primer tiempo)
-  primeros: new Set(),
-  compasActivo: -1,
-  proximoClic: 0,
-  reloj: null,
+const state = {
+  result: null,
+  url: null, // local URL of the chosen file, to play it without uploading it again
+  notation: readPreference("notation", "solfege"),
+  detail: readPreference("detail", "simple"),
+  beats: [],
+  beatNumbers: [], // number of each beat within its bar (1 = downbeat)
+  downbeats: new Set(),
+  activeBar: -1,
+  nextClick: 0,
+  timer: null,
 };
 
 const audio = $("audio");
-let contextoAudio = null;
+let audioContext = null;
 
-// ---------------------------------------------------------------- utilidades
+// ---------------------------------------------------------------- helpers
 
-function leerPreferencia(clave, porDefecto) {
+function readPreference(key, fallback) {
   try {
-    return localStorage.getItem("analizador-" + clave) || porDefecto;
+    return localStorage.getItem("orfeo-" + key) || fallback;
   } catch {
-    return porDefecto;
+    return fallback;
   }
 }
 
-function guardarPreferencia(clave, valor) {
+function savePreference(key, value) {
   try {
-    localStorage.setItem("analizador-" + clave, valor);
+    localStorage.setItem("orfeo-" + key, value);
   } catch {
-    /* sin almacenamiento: no pasa nada */
+    /* no storage: nothing to do */
   }
 }
 
-/** Crea un elemento. Los textos van como textContent (nunca como HTML). */
-function el(etiqueta, atributos = {}, ...hijos) {
-  const nodo = document.createElement(etiqueta);
-  for (const [clave, valor] of Object.entries(atributos)) {
-    if (clave === "class") nodo.className = valor;
-    else if (clave.startsWith("on")) nodo.addEventListener(clave.slice(2), valor);
-    else nodo.setAttribute(clave, valor);
+/** Creates an element. Texts go in as textContent (never as HTML). */
+function el(tag, attributes = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attributes)) {
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
   }
-  for (const hijo of hijos) {
-    if (hijo === null || hijo === undefined || hijo === false) continue;
-    nodo.append(hijo instanceof Node ? hijo : String(hijo));
+  for (const child of children) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : String(child));
   }
-  return nodo;
+  return node;
 }
 
-/** Como padre.append(), pero ignora los null (append los mostraría como el texto "null"). */
-function anexar(padre, ...hijos) {
-  padre.append(...hijos.filter((h) => h !== null && h !== undefined && h !== false));
+/** Like parent.append(), but skips nulls (append would show them as the text "null"). */
+function appendAll(parent, ...children) {
+  parent.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
 }
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-const porcentaje = (x) => `${Math.round(x * 100)} %`;
-const redondo = (x) => String(Math.round(x));
+const percent = (x) => `${Math.round(x * 100)} %`;
+const rounded = (x) => String(Math.round(x));
 
-/** Último índice i tal que lista[i][clave] <= t (o -1). */
-function buscar(lista, t, clave = "inicio") {
-  let bajo = 0;
-  let alto = lista.length - 1;
-  let respuesta = -1;
-  while (bajo <= alto) {
-    const medio = (bajo + alto) >> 1;
-    const valor = clave ? lista[medio][clave] : lista[medio];
-    if (valor <= t) {
-      respuesta = medio;
-      bajo = medio + 1;
+/** Last index i such that list[i][key] <= time (or -1). */
+function search(list, time, key = "start") {
+  let low = 0;
+  let high = list.length - 1;
+  let answer = -1;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    const value = key ? list[middle][key] : list[middle];
+    if (value <= time) {
+      answer = middle;
+      low = middle + 1;
     } else {
-      alto = medio - 1;
+      high = middle - 1;
     }
   }
-  return respuesta;
+  return answer;
 }
 
-function insignia(confianza) {
-  const texto = { alta: "Confianza alta", media: "Confianza media", baja: "Confianza baja" }[confianza];
-  return texto ? el("span", { class: `insignia ${confianza}` }, texto) : null;
+function badge(confidence) {
+  if (!["high", "medium", "low"].includes(confidence)) return null;
+  return el("span", { class: `badge ${confidence}` }, t(`confidence_${confidence}`));
 }
 
-function mostrar(seccion) {
-  for (const id of ["subida", "progreso", "error", "reporte"]) $(id).hidden = id !== seccion;
+function show(section) {
+  for (const id of ["upload", "progress", "error", "report"]) $(id).hidden = id !== section;
 }
 
-// ---------------------------------------------------------------- subida
+// ---------------------------------------------------------------- upload
 
-const zona = $("zona");
-const entrada = $("archivo");
+const dropzone = $("dropzone");
+const fileInput = $("file-input");
 
-entrada.addEventListener("change", () => {
-  if (entrada.files.length) subir(entrada.files[0]);
-  entrada.value = "";
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length) upload(fileInput.files[0]);
+  fileInput.value = "";
 });
-zona.addEventListener("dragover", () => zona.classList.add("encima"));
-zona.addEventListener("dragleave", () => zona.classList.remove("encima"));
-// Se aceptan archivos soltados en cualquier parte de la página (también sobre un reporte,
-// para analizar otra canción). Sin esto, el navegador abriría el archivo y se perdería todo.
+dropzone.addEventListener("dragover", () => dropzone.classList.add("dragover"));
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("dragover"));
+// Files dropped anywhere on the page are accepted (also on a report, to analyze another
+// song). Without this, the browser would open the file and everything would be lost.
 document.addEventListener("dragover", (e) => e.preventDefault());
 document.addEventListener("drop", (e) => {
   e.preventDefault();
-  zona.classList.remove("encima");
-  if (!$("progreso").hidden) return; // ya hay un análisis en curso
-  if (e.dataTransfer && e.dataTransfer.files.length) subir(e.dataTransfer.files[0]);
+  dropzone.classList.remove("dragover");
+  if (!$("progress").hidden) return; // an analysis is already running
+  if (e.dataTransfer && e.dataTransfer.files.length) upload(e.dataTransfer.files[0]);
 });
 
-const TAMANO_MAXIMO = 1024 ** 3;
+const MAX_UPLOAD_BYTES = 1024 ** 3;
 
-function ponerProgreso(texto, fraccion) {
-  $("paso").textContent = texto;
-  const valor = Math.max(0, Math.min(100, fraccion * 100));
-  $("barra-relleno").style.width = `${valor}%`;
-  $("barra").setAttribute("aria-valuenow", String(Math.round(valor)));
+function setProgress(text, fraction) {
+  $("step").textContent = text;
+  const value = Math.max(0, Math.min(100, fraction * 100));
+  $("progress-fill").style.width = `${value}%`;
+  $("progress-track").setAttribute("aria-valuenow", String(Math.round(value)));
 }
 
-function subir(archivo) {
-  if (archivo.size > TAMANO_MAXIMO) {
-    mostrarError("El archivo es demasiado grande (máximo 1 GB). Si es un video, probá con una versión más liviana o solo con el audio.");
+function upload(file) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    showError(t("too_large_client"));
     return;
   }
-  detenerReproduccion();
-  estado.resultado = null;
-  if (estado.url) URL.revokeObjectURL(estado.url);
-  estado.url = URL.createObjectURL(archivo);
+  stopPlayback();
+  state.result = null;
+  if (state.url) URL.revokeObjectURL(state.url);
+  state.url = URL.createObjectURL(file);
 
-  mostrar("progreso");
-  ponerProgreso("Subiendo el archivo…", 0);
-  const inicio = performance.now();
-  clearInterval(estado.reloj);
-  estado.reloj = setInterval(() => {
-    $("tiempo").textContent = `${Math.round((performance.now() - inicio) / 1000)} s`;
+  show("progress");
+  setProgress(t("uploading"), 0);
+  const start = performance.now();
+  clearInterval(state.timer);
+  state.timer = setInterval(() => {
+    $("elapsed").textContent = `${Math.round((performance.now() - start) / 1000)} s`;
   }, 500);
 
-  const datos = new FormData();
-  datos.append("archivo", archivo);
-  const pedido = new XMLHttpRequest();
-  pedido.open("POST", "/api/analisis");
-  pedido.upload.addEventListener("progress", (e) => {
+  const form = new FormData();
+  form.append("file", file);
+  const request = new XMLHttpRequest();
+  request.open("POST", "/api/analyses");
+  request.upload.addEventListener("progress", (e) => {
     if (e.lengthComputable) {
-      ponerProgreso(`Subiendo el archivo… ${porcentaje(e.loaded / e.total)}`, 0.02 * (e.loaded / e.total));
+      setProgress(t("uploading_percent", { percent: percent(e.loaded / e.total) }), 0.02 * (e.loaded / e.total));
     }
   });
-  pedido.addEventListener("load", () => {
-    let cuerpo = {};
+  request.addEventListener("load", () => {
+    let body = {};
     try {
-      cuerpo = JSON.parse(pedido.responseText);
+      body = JSON.parse(request.responseText);
     } catch {
-      /* respuesta vacía */
+      /* empty response */
     }
-    if (pedido.status === 200 && cuerpo.id) consultar(cuerpo.id);
-    else mostrarError(cuerpo.detail || `El servidor respondió con un error (${pedido.status}).`);
+    if (request.status === 200 && body.id) poll(body.id);
+    else showError(messageText(body.detail) || t("server_error", { status: request.status }));
   });
-  pedido.addEventListener("error", () =>
-    mostrarError("No me pude conectar con el analizador. ¿Sigue abierta su ventana?")
-  );
-  pedido.send(datos);
+  request.addEventListener("error", () => showError(t("connection_failed")));
+  request.send(form);
 }
 
-async function consultar(id) {
-  let fallos = 0;
+async function poll(id) {
+  let failures = 0;
   for (;;) {
-    let trabajo;
+    let job;
     try {
-      const respuesta = await fetch(`/api/analisis/${id}`);
-      trabajo = await respuesta.json();
-      if (!respuesta.ok) throw new Error(trabajo.detail || "Error del servidor");
-      fallos = 0;
+      const response = await fetch(`/api/analyses/${id}`);
+      job = await response.json();
+      if (!response.ok) throw new Error(messageText(job.detail) || t("server_error", { status: response.status }));
+      failures = 0;
     } catch (error) {
-      if (++fallos >= 5) {
-        mostrarError(`Perdí la conexión con el analizador: ${error.message}`);
+      if (++failures >= 5) {
+        showError(t("connection_lost", { detail: error.message }));
         return;
       }
       await new Promise((r) => setTimeout(r, 1000));
       continue;
     }
-    if (trabajo.estado === "listo") {
-      clearInterval(estado.reloj);
-      mostrarReporte(trabajo.resultado);
+    if (job.status === "done") {
+      clearInterval(state.timer);
+      showReport(job.result);
       return;
     }
-    if (trabajo.estado === "error") {
-      mostrarError(trabajo.error);
+    if (job.status === "error") {
+      showError(messageText(job.error));
       return;
     }
-    ponerProgreso(`${trabajo.paso}…`, trabajo.progreso);
+    setProgress(`${t(job.step)}…`, job.progress);
     await new Promise((r) => setTimeout(r, 600));
   }
 }
 
-function mostrarError(mensaje) {
-  clearInterval(estado.reloj);
-  $("error-texto").textContent = mensaje;
-  mostrar("error");
+function showError(text) {
+  clearInterval(state.timer);
+  $("error-text").textContent = text;
+  show("error");
 }
 
-$("reintentar").addEventListener("click", () => mostrar("subida"));
-$("otra").addEventListener("click", () => {
-  detenerReproduccion();
-  estado.resultado = null;
-  mostrar("subida");
+$("retry").addEventListener("click", () => show("upload"));
+$("another").addEventListener("click", () => {
+  stopPlayback();
+  state.result = null;
+  show("upload");
   window.scrollTo({ top: 0 });
 });
 
-$("descargar").addEventListener("click", () => {
-  if (!estado.resultado) return;
-  const blob = new Blob([JSON.stringify(estado.resultado, null, 2)], { type: "application/json" });
-  const enlace = el("a", { href: URL.createObjectURL(blob), download: `${estado.resultado.archivo.nombre}.analisis.json` });
-  document.body.append(enlace);
-  enlace.click();
-  enlace.remove();
-  setTimeout(() => URL.revokeObjectURL(enlace.href), 1000);
+$("download").addEventListener("click", () => {
+  if (!state.result) return;
+  const blob = new Blob([JSON.stringify(state.result, null, 2)], { type: "application/json" });
+  const link = el("a", { href: URL.createObjectURL(blob), download: `${state.result.file.name}.orfeo.json` });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 });
 
-// ---------------------------------------------------------------- reporte
+// ---------------------------------------------------------------- report
 
-function mostrarReporte(resultado) {
-  estado.resultado = resultado;
-  estado.pulsos = resultado.pulsos;
-  estado.primeros = new Set(resultado.primeros_tiempos.map((t) => t.toFixed(3)));
-  estado.numeros = numerarPulsos(resultado);
-  estado.compasActivo = -1;
+function showReport(result) {
+  state.result = result;
+  state.beats = result.beats;
+  state.downbeats = new Set(result.downbeats.map((time) => time.toFixed(3)));
+  state.beatNumbers = numberBeats(result);
+  state.activeBar = -1;
 
-  $("nombre-archivo").textContent = resultado.archivo.nombre;
-  $("duracion").textContent = mmss(resultado.archivo.duracion);
-  $("cache").hidden = !resultado.desde_cache;
+  $("file-name").textContent = result.file.name;
+  $("duration").textContent = mmss(result.file.duration);
+  $("cached").hidden = !result.from_cache;
   $("audio-error").hidden = true;
-  audio.src = estado.url;
+  audio.src = state.url;
 
-  marcarBotones();
-  dibujarTempo(resultado.tempo);
-  dibujarCompas(resultado.compas);
-  dibujarNombres();
-  mostrar("reporte");
-  actualizarReproduccion();
+  markButtons();
+  drawReport();
+  show("report");
+  updatePlayback();
 }
 
-/** Número de cada pulso dentro de su compás (1 = primer tiempo). */
-function numerarPulsos(resultado) {
-  const porCompas = resultado.compas.pulsos_por_compas;
-  const primero = resultado.primeros_tiempos.length ? resultado.primeros_tiempos[0] : Infinity;
-  const anacrusa = resultado.pulsos.filter((t) => t < primero).length;
-  let contador = 0;
-  return resultado.pulsos.map((t, i) => {
-    if (estado.primeros.has(t.toFixed(3))) contador = 1;
-    else if (contador > 0) contador += 1;
-    // Antes del primer primer-tiempo (anacrusa): se cuentan los últimos pulsos del compás
-    else return porCompas && anacrusa < porCompas ? porCompas - anacrusa + i + 1 : null;
-    return contador;
+/** Number of each beat within its bar (1 = downbeat). */
+function numberBeats(result) {
+  const perBar = result.meter.beats_per_bar;
+  const first = result.downbeats.length ? result.downbeats[0] : Infinity;
+  const pickup = result.beats.filter((time) => time < first).length;
+  let counter = 0;
+  return result.beats.map((time, i) => {
+    if (state.downbeats.has(time.toFixed(3))) counter = 1;
+    else if (counter > 0) counter += 1;
+    // Before the first downbeat (a pickup): these are the last beats of a bar
+    else return perBar && pickup < perBar ? perBar - pickup + i + 1 : null;
+    return counter;
   });
 }
 
-/** Lo que depende de la notación elegida se vuelve a dibujar al cambiarla. */
-function dibujarNombres() {
-  dibujarTonalidad(estado.resultado.tonalidad, estado.resultado.afinacion);
-  dibujarAcordes();
-  estado.compasActivo = -1;
-  actualizarReproduccion();
+/** Draws every card. Called again when the notation or the chord detail changes. */
+function drawReport() {
+  drawTempo(state.result.tempo);
+  drawMeter(state.result.meter);
+  drawKey(state.result.key, state.result.tuning);
+  drawChords();
+  state.activeBar = -1;
+  updatePlayback();
 }
 
-function textoSegundoMetodo(segundo) {
-  const bpm = redondo(segundo.bpm);
-  switch (segundo.relacion) {
-    case "igual":
-      return `Un segundo método independiente da casi lo mismo (${bpm} BPM).`;
-    case "doble":
-    case "mitad":
-      return `Un segundo método da ${bpm} BPM (${segundo.relacion === "doble" ? "el doble" : "la mitad"}): es la ambigüedad típica del tempo.`;
-    case "triple":
-    case "tercio":
-      return `Un segundo método da ${bpm} BPM (${segundo.relacion === "triple" ? "el triple" : "un tercio"}): suele pasar cuando el pulso se divide en tres.`;
-    default:
-      return `Un segundo método da ${bpm} BPM, que no coincide: tomá el tempo con cuidado.`;
-  }
+function secondTempoMethodText(second) {
+  const bpm = rounded(second.bpm);
+  const known = ["same", "double", "half", "triple", "third"].includes(second.relation);
+  return t(known ? `tempo_${second.relation}` : "tempo_mismatch", { bpm });
 }
 
-function curvaDeTempo(curva, duracion) {
-  if (!curva || curva.length < 2) return null;
-  const valores = curva.map(([, b]) => b);
-  const promedio = valores.reduce((a, b) => a + b, 0) / valores.length;
-  let minimo = Math.min(...valores);
-  let maximo = Math.max(...valores);
-  if (maximo - minimo < 8) {
-    minimo = promedio - 4;
-    maximo = promedio + 4;
+function tempoCurve(curve, duration) {
+  if (!curve || curve.length < 2) return null;
+  const values = curve.map(([, b]) => b);
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (max - min < 8) {
+    min = mean - 4;
+    max = mean + 4;
   }
-  const ancho = 300;
-  const alto = 60;
-  const puntos = curva
-    .map(([t, b]) => `${((t / duracion) * ancho).toFixed(1)},${(alto - 6 - ((b - minimo) / (maximo - minimo)) * (alto - 12)).toFixed(1)}`)
+  const width = 300;
+  const height = 60;
+  const points = curve
+    .map(([time, bpm]) => `${((time / duration) * width).toFixed(1)},${(height - 6 - ((bpm - min) / (max - min)) * (height - 12)).toFixed(1)}`)
     .join(" ");
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${ancho} ${alto}`);
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.setAttribute("preserveAspectRatio", "none");
-  svg.setAttribute("class", "curva");
+  svg.setAttribute("class", "tempo-curve");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", `Tempo a lo largo de la canción, entre ${redondo(Math.min(...valores))} y ${redondo(Math.max(...valores))} BPM`);
-  const linea = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  linea.setAttribute("points", puntos);
-  svg.append(linea);
-  return el("div", {}, el("p", { class: "tenue" }, "Tempo a lo largo de la canción:"), svg);
+  svg.setAttribute(
+    "aria-label",
+    t("tempo_curve_label", { min: rounded(Math.min(...values)), max: rounded(Math.max(...values)) })
+  );
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  line.setAttribute("points", points);
+  svg.append(line);
+  return el("div", {}, el("p", { class: "muted" }, t("tempo_curve_title")), svg);
 }
 
-function dibujarTempo(t) {
-  const tarjeta = $("t-tempo");
-  tarjeta.replaceChildren(el("h2", {}, "Tempo"));
-  if (!t.bpm) {
-    anexar(tarjeta, el("p", { class: "grande" }, "—"), el("p", {}, t.motivo), insignia("baja"));
+function drawTempo(tempo) {
+  const card = $("tempo-card");
+  card.replaceChildren(el("h2", {}, t("tempo_title")));
+  if (!tempo.bpm) {
+    appendAll(card, el("p", { class: "big" }, "—"), el("p", {}, messageText(tempo.reason)), badge("low"));
     return;
   }
-  anexar(tarjeta, 
-    el("p", { class: "grande" }, redondo(t.bpm), el("span", { class: "unidad" }, " BPM")),
-    insignia(t.confianza),
-    t.sugerencia
-      ? el("p", { class: "destacado" }, `Probablemente lo sientas a ${redondo(t.alternativas[t.sugerencia])} BPM.`)
+  const alt = tempo.alternatives;
+  appendAll(
+    card,
+    el("p", { class: "big" }, rounded(tempo.bpm), el("span", { class: "unit" }, " BPM")),
+    badge(tempo.confidence),
+    tempo.suggestion
+      ? el("p", { class: "highlight" }, t("tempo_suggestion", { bpm: rounded(alt[tempo.suggestion]) }))
       : null,
-    el("p", {}, `Si lo contás al doble o a la mitad: ${redondo(t.alternativas.doble)} o ${redondo(t.alternativas.mitad)} BPM.`),
-    el("p", {}, t.estable ? "Tempo estable." : `El tempo varía entre ${redondo(t.rango[0])} y ${redondo(t.rango[1])} BPM.`),
-    t.regularidad < 0.7
-      ? el("p", { class: "aviso" }, "El pulso es irregular (tempo libre o rubato): tomá el número como aproximado.")
-      : null,
-    t.aviso ? el("p", { class: "aviso" }, t.aviso) : null,
-    el("p", { class: "tenue" }, textoSegundoMetodo(t.segundo_metodo)),
-    curvaDeTempo(t.curva, estado.resultado.archivo.duracion)
+    el("p", {}, t("tempo_double_half", { double: rounded(alt.double), half: rounded(alt.half) })),
+    el(
+      "p",
+      {},
+      tempo.stable ? t("tempo_stable") : t("tempo_varies", { min: rounded(tempo.range[0]), max: rounded(tempo.range[1]) })
+    ),
+    tempo.regularity < 0.7 ? el("p", { class: "warning" }, t("tempo_irregular")) : null,
+    tempo.warning ? el("p", { class: "warning" }, messageText(tempo.warning)) : null,
+    el("p", { class: "muted" }, secondTempoMethodText(tempo.second_method)),
+    tempoCurve(tempo.curve, state.result.file.duration)
   );
 }
 
-const SUBDIVISION = {
-  binaria: "Cada pulso se divide en 2 (subdivisión binaria).",
-  ternaria: "Cada pulso se divide en 3 (subdivisión ternaria).",
-  "no clara": "No queda claro si cada pulso se divide en 2 o en 3.",
-};
+function meterReading(meter) {
+  if (!meter.time_signature) return t("meter_beats_per_bar", { beats: meter.beats_per_bar });
+  return meter.swing ? t("meter_swing", { signature: meter.time_signature }) : meter.time_signature;
+}
 
-function dibujarCompas(c) {
-  const tarjeta = $("t-compas");
-  tarjeta.replaceChildren(el("h2", {}, "Compás"));
-  if (!c.lectura) {
-    anexar(tarjeta, el("p", { class: "grande" }, "—"), insignia("baja"), el("p", {}, c.motivo));
+function drawMeter(meter) {
+  const card = $("meter-card");
+  card.replaceChildren(el("h2", {}, t("meter_title")));
+  if (!meter.beats_per_bar) {
+    appendAll(card, el("p", { class: "big" }, "—"), badge("low"), el("p", {}, messageText(meter.reason)));
     return;
   }
-  const segundo = c.segundo_metodo;
-  let origen;
-  if (c.fuente === "periodicidad") {
-    origen = `Cuenta en ${c.pulsos_por_compas}: la armonía y el bajo se repiten cada ${c.pulsos_por_compas} pulsos (o múltiplos).`;
-  } else {
-    origen = `Cuenta en ${c.pulsos_por_compas}: así cuentan el ${porcentaje(c.acuerdo)} de los ${c.compases_contados} compases detectados.`;
-  }
-  anexar(
-    tarjeta,
-    el("p", { class: "grande" }, c.lectura),
-    c.alternativa ? el("p", { class: "tenue" }, c.alternativa) : null,
-    insignia(c.confianza),
-    el("p", {}, origen),
-    segundo && segundo.confirma
-      ? el("p", { class: "tenue" }, "Un segundo método (cada cuántos pulsos se repite la armonía) confirma el compás.")
-      : null,
-    el("p", {}, SUBDIVISION[c.subdivision.tipo]),
-    ...c.avisos.map((a) => el("p", { class: "aviso" }, a))
+  const source =
+    meter.source === "periodicity"
+      ? t("meter_source_periodicity", { beats: meter.beats_per_bar })
+      : t("meter_source_downbeats", {
+          beats: meter.beats_per_bar,
+          percent: percent(meter.agreement),
+          bars: meter.bars_counted,
+        });
+  appendAll(
+    card,
+    el("p", { class: "big" }, meterReading(meter)),
+    meter.alternative ? el("p", { class: "muted" }, messageText(meter.alternative)) : null,
+    badge(meter.confidence),
+    el("p", {}, source),
+    meter.second_method && meter.second_method.confirms ? el("p", { class: "muted" }, t("meter_confirmed")) : null,
+    el("p", {}, t(`subdivision_${meter.subdivision.kind}`)),
+    ...meter.warnings.map((w) => el("p", { class: "warning" }, messageText(w)))
   );
 }
 
-function nombreTonalidad(t) {
-  return t[estado.notacion];
+/** "Sol mayor", "G mayor"... in the chosen notation. */
+function keyName(key, notation = state.notation) {
+  return t("key_name", { tonic: key[notation], mode: t(key.mode) });
 }
 
-function dibujarTonalidad(k, afinacion) {
-  const otra = estado.notacion === "latino" ? "americano" : "latino";
-  const tarjeta = $("t-tonalidad");
-  tarjeta.replaceChildren();
-  anexar(
-    tarjeta,
-    el("h2", {}, "Tonalidad"),
-    el("p", { class: "grande" }, nombreTonalidad(k.principal)),
-    el("p", { class: "tenue" }, `(${k.principal[otra]})`),
-    insignia(k.confianza)
+function drawKey(key, tuning) {
+  const other = state.notation === "solfege" ? "letter" : "solfege";
+  const card = $("key-card");
+  card.replaceChildren();
+  appendAll(
+    card,
+    el("h2", {}, t("key_title")),
+    el("p", { class: "big" }, keyName(key.best)),
+    el("p", { class: "muted" }, `(${keyName(key.best, other)})`),
+    badge(key.confidence)
   );
-  const alternativas = k.alternativas.map(
-    (a) => `${nombreTonalidad(a)} (${a.motivo === "relativa" ? "su relativa" : "segunda opción del modelo"})`
-  );
-  anexar(tarjeta, el("p", {}, `También podría ser: ${alternativas.join(", ")}.`));
+  const alternatives = key.alternatives.map((a) => `${keyName(a)} (${t(`key_reason_${a.reason}`)})`);
+  appendAll(card, el("p", {}, t("key_alternatives", { keys: alternatives.join(", ") })));
 
-  const segundo = k.segundo_metodo;
-  if (segundo) {
-    const texto = {
-      igual: "Los acordes detectados apuntan a la misma tonalidad.",
-      relativa: `Los acordes detectados apuntan a ${nombreTonalidad(segundo)}, su relativa.`,
-      distinta: `Los acordes detectados apuntan a ${nombreTonalidad(segundo)}: no coincide, así que hay dudas.`,
-    }[segundo.acuerdo];
-    anexar(tarjeta, el("p", { class: "tenue" }, texto));
+  const second = key.second_method;
+  if (second) {
+    appendAll(card, el("p", { class: "muted" }, t(`key_chords_${second.agreement}`, { key: keyName(second) })));
   }
-  for (const cambio of k.por_tramos.cambios) {
-    anexar(tarjeta, 
-      el("p", { class: "aviso" }, `Posible cambio de tonalidad: entre ${mmss(cambio.inicio)} y ${mmss(cambio.fin)} parece estar en ${nombreTonalidad(cambio)}.`)
+  for (const change of key.sections.changes) {
+    appendAll(
+      card,
+      el(
+        "p",
+        { class: "warning" },
+        t("key_change", { start: mmss(change.start), end: mmss(change.end), key: keyName(change) })
+      )
     );
   }
-  if (afinacion.aviso) anexar(tarjeta, el("p", { class: "aviso" }, afinacion.aviso));
+  if (tuning.warning) appendAll(card, el("p", { class: "warning" }, messageText(tuning.warning)));
 }
 
-function nombreAcorde(segmento) {
-  if (!segmento) return "—";
-  return segmento[estado.detalle === "simple" ? `${estado.notacion}_simple` : estado.notacion];
+function chordName(segment) {
+  if (!segment) return "—";
+  return segment[state.detail === "simple" ? `${state.notation}_simple` : state.notation];
 }
 
-function nombresDelCompas(compas) {
-  const nombres = [];
-  for (const i of compas.acordes) {
-    const nombre = nombreAcorde(estado.resultado.acordes.segmentos[i]);
-    if (nombres[nombres.length - 1] !== nombre) nombres.push(nombre);
+function barLabel(bar) {
+  return t(bar.kind, { number: bar.number });
+}
+
+function chordsOfBar(bar) {
+  const names = [];
+  for (const i of bar.chords) {
+    const name = chordName(state.result.chords.segments[i]);
+    if (names[names.length - 1] !== name) names.push(name);
   }
-  return nombres.length ? nombres.join(" · ") : "—";
+  return names.length ? names.join(" · ") : "—";
 }
 
-function dibujarAcordes() {
-  const acordes = estado.resultado.acordes;
-  const resumen = estado.detalle === "simple" ? acordes.resumen_simple : acordes.resumen;
-  $("nota-grilla").textContent = estado.resultado.compas.grilla_aproximada
-    ? "Grilla aproximada: no se sabe con seguridad en qué pulso empieza cada compás. Hacé clic en un compás para escucharlo desde ahí."
-    : "Hacé clic en un compás para escucharlo desde ahí.";
-  $("nota-acordes").textContent =
-    estado.detalle === "simple"
-      ? "Modo simple: solo mayor y menor, que es lo más confiable. Pasá a “Completos” para ver séptimas, bajos e inversiones."
-      : "Modo completo: incluye séptimas, bajos e inversiones, que fallan más seguido.";
-  $("resumen-acordes").replaceChildren(
-    ...resumen.map((a) => el("span", { class: "chip" }, a[estado.notacion], el("span", {}, porcentaje(a.proporcion))))
+function drawChords() {
+  const chords = state.result.chords;
+  const summary = state.detail === "simple" ? chords.summary_simple : chords.summary;
+  $("grid-note").textContent = t(state.result.meter.approximate_grid ? "grid_note_approximate" : "grid_note");
+  $("chords-note").textContent = t(state.detail === "simple" ? "chords_note_simple" : "chords_note_full");
+  $("chord-summary").replaceChildren(
+    ...summary.map((a) => el("span", { class: "chip" }, a[state.notation], el("span", {}, percent(a.share))))
   );
-  if (!resumen.length) $("resumen-acordes").append(el("p", { class: "tenue" }, "No se detectaron acordes."));
+  if (!summary.length) $("chord-summary").append(el("p", { class: "muted" }, t("no_chords")));
 
-  const celdas = estado.resultado.compases.map((compas, i) =>
+  const cells = state.result.bars.map((bar, i) =>
     el(
       "button",
       {
         type: "button",
-        class: "celda",
+        class: "bar-cell",
         "data-i": String(i),
-        title: `Escuchar desde ${mmss(compas.inicio)}`,
+        title: t("listen_from", { time: mmss(bar.start) }),
         onclick: () => {
-          audio.currentTime = compas.inicio;
+          audio.currentTime = bar.start;
           audio.play().catch(() => {});
         },
       },
-      el("span", { class: "num" }, compas.etiqueta),
-      el("span", { class: "nombres" }, nombresDelCompas(compas))
+      el("span", { class: "num" }, barLabel(bar)),
+      el("span", { class: "chord-names" }, chordsOfBar(bar))
     )
   );
-  $("grilla").replaceChildren(...celdas);
-  if (!celdas.length) $("grilla").append(el("p", { class: "tenue" }, "No se detectaron compases."));
+  $("bar-grid").replaceChildren(...cells);
+  if (!cells.length) $("bar-grid").append(el("p", { class: "muted" }, t("no_bars")));
 }
 
-// ---------------------------------------------------------------- notación
+// ---------------------------------------------------------------- notation
 
-function marcarBotones() {
-  for (const boton of document.querySelectorAll("[data-notacion]")) {
-    boton.setAttribute("aria-pressed", String(boton.dataset.notacion === estado.notacion));
+function markButtons() {
+  for (const button of document.querySelectorAll("[data-notation]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.notation === state.notation));
   }
-  for (const boton of document.querySelectorAll("[data-detalle]")) {
-    boton.setAttribute("aria-pressed", String(boton.dataset.detalle === estado.detalle));
+  for (const button of document.querySelectorAll("[data-detail]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.detail === state.detail));
   }
 }
 
-for (const boton of document.querySelectorAll("[data-notacion]")) {
-  boton.addEventListener("click", () => {
-    estado.notacion = boton.dataset.notacion;
-    guardarPreferencia("notacion", estado.notacion);
-    marcarBotones();
-    if (estado.resultado) dibujarNombres();
+for (const button of document.querySelectorAll("[data-notation]")) {
+  button.addEventListener("click", () => {
+    state.notation = button.dataset.notation;
+    savePreference("notation", state.notation);
+    markButtons();
+    if (state.result) drawReport();
   });
 }
-for (const boton of document.querySelectorAll("[data-detalle]")) {
-  boton.addEventListener("click", () => {
-    estado.detalle = boton.dataset.detalle;
-    guardarPreferencia("detalle", estado.detalle);
-    marcarBotones();
-    if (estado.resultado) dibujarNombres();
+for (const button of document.querySelectorAll("[data-detail]")) {
+  button.addEventListener("click", () => {
+    state.detail = button.dataset.detail;
+    savePreference("detail", state.detail);
+    markButtons();
+    if (state.result) drawReport();
   });
 }
 
-// ---------------------------------------------------------------- reproducción
+// ---------------------------------------------------------------- playback
 
-function actualizarReproduccion() {
-  if (!estado.resultado) return;
-  const t = audio.currentTime;
-  const segmentos = estado.resultado.acordes.segmentos;
+function updatePlayback() {
+  if (!state.result) return;
+  const now = audio.currentTime;
+  const segments = state.result.chords.segments;
 
-  const i = buscar(segmentos, t);
-  const actual = i >= 0 && t < segmentos[i].fin ? segmentos[i] : null;
-  $("acorde-actual").textContent = nombreAcorde(actual);
-  let siguiente = null;
-  for (let j = i + 1; j < segmentos.length; j++) {
-    if (segmentos[j].es_acorde && nombreAcorde(segmentos[j]) !== nombreAcorde(actual)) {
-      siguiente = segmentos[j];
+  const i = search(segments, now);
+  const current = i >= 0 && now < segments[i].end ? segments[i] : null;
+  $("current-chord").textContent = chordName(current);
+  let next = null;
+  for (let j = i + 1; j < segments.length; j++) {
+    if (segments[j].is_chord && chordName(segments[j]) !== chordName(current)) {
+      next = segments[j];
       break;
     }
   }
-  $("acorde-siguiente").textContent = nombreAcorde(siguiente);
+  $("next-chord").textContent = chordName(next);
 
-  const compases = estado.resultado.compases;
-  const k = buscar(compases, t);
-  const compas = k >= 0 && t < compases[k].fin ? compases[k] : null;
-  $("compas-actual").textContent = compas ? compas.etiqueta : "—";
-  if (k !== estado.compasActivo) {
-    $("grilla").querySelector(".celda.activa")?.classList.remove("activa");
-    const celda = $("grilla").querySelector(`.celda[data-i="${k}"]`);
-    if (celda) {
-      celda.classList.add("activa");
-      if ($("seguir").checked && !audio.paused) desplazarGrilla(celda);
+  const bars = state.result.bars;
+  const k = search(bars, now);
+  const bar = k >= 0 && now < bars[k].end ? bars[k] : null;
+  $("current-bar").textContent = bar ? barLabel(bar) : "—";
+  if (k !== state.activeBar) {
+    $("bar-grid").querySelector(".bar-cell.active")?.classList.remove("active");
+    const cell = $("bar-grid").querySelector(`.bar-cell[data-i="${k}"]`);
+    if (cell) {
+      cell.classList.add("active");
+      if ($("follow").checked && !audio.paused) scrollGrid(cell);
     }
-    estado.compasActivo = k;
+    state.activeBar = k;
   }
 
-  const p = buscar(estado.pulsos, t, null);
-  const cerca = p >= 0 && t - estado.pulsos[p] < 0.25;
-  const porCompas = estado.resultado.compas.pulsos_por_compas;
-  let numero = cerca ? estado.numeros[p] : null;
-  // Si falta un primer tiempo, la cuenta seguiría de largo (8, 9, 10…): mejor no mostrar nada
-  if (numero && porCompas && numero > porCompas + 1) numero = null;
-  const cuenta = $("cuenta");
-  cuenta.textContent = numero ? String(numero) : "";
-  cuenta.classList.toggle("uno", numero === 1);
+  const p = search(state.beats, now, null);
+  const near = p >= 0 && now - state.beats[p] < 0.25;
+  const perBar = state.result.meter.beats_per_bar;
+  let number = near ? state.beatNumbers[p] : null;
+  // If a downbeat is missing, the count would run on (8, 9, 10...): better show nothing
+  if (number && perBar && number > perBar + 1) number = null;
+  const count = $("beat-count");
+  count.textContent = number ? String(number) : "";
+  count.classList.toggle("downbeat", number === 1);
 }
 
-/** Mueve solo la grilla (no la página) para que se vea el compás que está sonando. */
-function desplazarGrilla(celda) {
-  const grilla = $("grilla");
-  const arriba = celda.offsetTop;
-  const abajo = arriba + celda.offsetHeight;
-  if (arriba < grilla.scrollTop || abajo > grilla.scrollTop + grilla.clientHeight) {
-    grilla.scrollTo({ top: Math.max(0, arriba - grilla.clientHeight / 3), behavior: "smooth" });
+/** Scrolls only the grid (not the page) so that the bar being played is visible. */
+function scrollGrid(cell) {
+  const grid = $("bar-grid");
+  const top = cell.offsetTop;
+  const bottom = top + cell.offsetHeight;
+  if (top < grid.scrollTop || bottom > grid.scrollTop + grid.clientHeight) {
+    grid.scrollTo({ top: Math.max(0, top - grid.clientHeight / 3), behavior: "smooth" });
   }
 }
 
-function asegurarContextoDeAudio() {
-  const Contexto = window.AudioContext || window.webkitAudioContext;
-  if (!contextoAudio && Contexto) contextoAudio = new Contexto();
-  if (contextoAudio && contextoAudio.state === "suspended") contextoAudio.resume();
+function ensureAudioContext() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!audioContext && Context) audioContext = new Context();
+  if (audioContext && audioContext.state === "suspended") audioContext.resume();
 }
 
-function sonarClic(cuando, acento) {
-  const oscilador = contextoAudio.createOscillator();
-  const volumen = contextoAudio.createGain();
-  oscilador.frequency.value = acento ? 1760 : 1100;
-  volumen.gain.setValueAtTime(0.0001, cuando);
-  volumen.gain.exponentialRampToValueAtTime(acento ? 0.5 : 0.3, cuando + 0.002);
-  volumen.gain.exponentialRampToValueAtTime(0.0001, cuando + 0.05);
-  oscilador.connect(volumen).connect(contextoAudio.destination);
-  oscilador.start(cuando);
-  oscilador.stop(cuando + 0.06);
-  clicsPendientes.add(oscilador);
-  oscilador.addEventListener("ended", () => clicsPendientes.delete(oscilador));
+function playClick(when, accent) {
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.frequency.value = accent ? 1760 : 1100;
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, when + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+  oscillator.connect(gain).connect(audioContext.destination);
+  oscillator.start(when);
+  oscillator.stop(when + 0.06);
+  pendingClicks.add(oscillator);
+  oscillator.addEventListener("ended", () => pendingClicks.delete(oscillator));
 }
 
-/** Los clics se programan ~0,1 s antes: al pausar o saltar hay que cancelar los que faltan sonar. */
-const clicsPendientes = new Set();
+/** Clicks are scheduled ~0.1 s ahead: on pause or seek the ones still to sound are cancelled. */
+const pendingClicks = new Set();
 
-function cancelarClics() {
-  for (const oscilador of clicsPendientes) {
+function cancelClicks() {
+  for (const oscillator of pendingClicks) {
     try {
-      oscilador.stop();
+      oscillator.stop();
     } catch {
-      /* ya terminó */
+      /* already finished */
     }
   }
-  clicsPendientes.clear();
+  pendingClicks.clear();
 }
 
-function reiniciarClics() {
-  cancelarClics();
-  estado.proximoClic = buscar(estado.pulsos, audio.currentTime - 0.001, null) + 1;
+function resetClicks() {
+  cancelClicks();
+  state.nextClick = search(state.beats, audio.currentTime - 0.001, null) + 1;
 }
 
-function programarClics() {
-  if (!$("clic").checked || audio.paused || audio.seeking || !contextoAudio) return;
-  const t = audio.currentTime;
-  const pulsos = estado.pulsos;
-  while (estado.proximoClic < pulsos.length && pulsos[estado.proximoClic] < t - 0.03) estado.proximoClic++;
-  while (estado.proximoClic < pulsos.length && pulsos[estado.proximoClic] < t + 0.12) {
-    const pulso = pulsos[estado.proximoClic];
-    const cuando = contextoAudio.currentTime + Math.max(0, (pulso - t) / audio.playbackRate);
-    sonarClic(cuando, estado.primeros.has(pulso.toFixed(3)));
-    estado.proximoClic++;
+function scheduleClicks() {
+  if (!$("click").checked || audio.paused || audio.seeking || !audioContext) return;
+  const now = audio.currentTime;
+  const beats = state.beats;
+  while (state.nextClick < beats.length && beats[state.nextClick] < now - 0.03) state.nextClick++;
+  while (state.nextClick < beats.length && beats[state.nextClick] < now + 0.12) {
+    const beat = beats[state.nextClick];
+    const when = audioContext.currentTime + Math.max(0, (beat - now) / audio.playbackRate);
+    playClick(when, state.downbeats.has(beat.toFixed(3)));
+    state.nextClick++;
   }
 }
 
-let temporizador = null;
+let playbackTimer = null;
 
 audio.addEventListener("play", () => {
-  if ($("clic").checked) asegurarContextoDeAudio();
-  reiniciarClics();
-  clearInterval(temporizador);
-  temporizador = setInterval(() => {
-    programarClics();
-    actualizarReproduccion();
+  if ($("click").checked) ensureAudioContext();
+  resetClicks();
+  clearInterval(playbackTimer);
+  playbackTimer = setInterval(() => {
+    scheduleClicks();
+    updatePlayback();
   }, 30);
 });
 audio.addEventListener("pause", () => {
-  clearInterval(temporizador);
-  cancelarClics();
-  actualizarReproduccion();
+  clearInterval(playbackTimer);
+  cancelClicks();
+  updatePlayback();
 });
-audio.addEventListener("seeking", cancelarClics);
+audio.addEventListener("seeking", cancelClicks);
 audio.addEventListener("seeked", () => {
-  reiniciarClics();
-  actualizarReproduccion();
+  resetClicks();
+  updatePlayback();
 });
-audio.addEventListener("ratechange", reiniciarClics);
+audio.addEventListener("ratechange", resetClicks);
 audio.addEventListener("error", () => {
-  if (estado.resultado && audio.getAttribute("src")) $("audio-error").hidden = false;
+  if (state.result && audio.getAttribute("src")) $("audio-error").hidden = false;
 });
 
-$("clic").addEventListener("change", () => {
-  if ($("clic").checked) asegurarContextoDeAudio();
-  reiniciarClics();
+$("click").addEventListener("change", () => {
+  if ($("click").checked) ensureAudioContext();
+  resetClicks();
 });
 
-function detenerReproduccion() {
+function stopPlayback() {
   audio.pause();
-  clearInterval(temporizador);
-  cancelarClics();
+  clearInterval(playbackTimer);
+  cancelClicks();
   audio.removeAttribute("src");
   audio.load();
 }
 
-marcarBotones();
+markButtons();

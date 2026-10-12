@@ -17,6 +17,8 @@ from functools import lru_cache
 import librosa
 import numpy as np
 
+from ..messages import Message, message
+
 HOP_LENGTH = 256  # samples per frame of the onset envelope (~11.6 ms at 22050 Hz)
 
 
@@ -59,7 +61,7 @@ def unify_beats(beats: np.ndarray, downbeats: np.ndarray) -> tuple[np.ndarray, n
     number of beats (a fermata, a bar that is half a beat shorter).
     """
     if len(beats) < 8:
-        return beats, downbeats, {"quitados": 0, "agregados": 0}
+        return beats, downbeats, {"removed": 0, "added": 0}
     typical = float(np.median(np.diff(beats)))
     downbeats = np.asarray(downbeats, dtype=float)
 
@@ -130,7 +132,7 @@ def unify_beats(beats: np.ndarray, downbeats: np.ndarray) -> tuple[np.ndarray, n
     target = [moved.get(float(p), float(p)) for p in downbeats]
     nearest = [float(new[np.argmin(np.abs(new - p))]) for p in target]
     new_downbeats = np.unique([c for c, p in zip(nearest, target) if abs(c - p) <= 0.25 * typical])
-    return new, new_downbeats, {"quitados": removed, "agregados": added}
+    return new, new_downbeats, {"removed": removed, "added": added}
 
 
 # --- Tempo --------------------------------------------------------------------
@@ -145,7 +147,7 @@ def _period(intervals: np.ndarray) -> float:
 
 def analyze_tempo(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dict:
     if len(beats) < 8:
-        return {"bpm": None, "motivo": "Se detectaron muy pocos pulsos para estimar el tempo."}
+        return {"bpm": None, "reason": message("too_few_beats")}
 
     intervals = np.diff(beats)
     median = float(np.median(intervals))
@@ -167,31 +169,31 @@ def analyze_tempo(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dict:
     # Second, independent method (autocorrelation of the onset envelope)
     librosa_bpm = float(librosa.feature.tempo(onset_envelope=envelope, sr=sr, hop_length=HOP_LENGTH)[0])
     relation = None
-    for factor, name in ((1, "igual"), (2, "doble"), (0.5, "mitad"), (3, "triple"), (1 / 3, "tercio")):
+    for factor, name in ((1, "same"), (2, "double"), (0.5, "half"), (3, "triple"), (1 / 3, "third")):
         if abs(librosa_bpm - bpm * factor) <= 0.04 * bpm * factor:
             relation = name
             break
 
     # Outside the usual range, it is most likely felt at double or half the tempo
-    suggestion = "doble" if bpm < 55 else "mitad" if bpm > 200 else None
+    suggestion = "double" if bpm < 55 else "half" if bpm > 200 else None
 
-    if regularity >= 0.85 and relation in ("igual", "doble", "mitad"):
-        confidence = "alta"
+    if regularity >= 0.85 and relation in ("same", "double", "half"):
+        confidence = "high"
     elif regularity >= 0.7:
-        confidence = "media"
+        confidence = "medium"
     else:
-        confidence = "baja"
+        confidence = "low"
 
     return {
         "bpm": round(bpm, 1),
-        "confianza": confidence,
-        "alternativas": {"mitad": round(bpm / 2, 1), "doble": round(bpm * 2, 1)},
-        "sugerencia": suggestion,
-        "rango": [round(p10, 1), round(p90, 1)],
-        "estable": bool(variation < 0.08),
-        "regularidad": round(regularity, 2),
-        "curva": curve,
-        "segundo_metodo": {"bpm": round(librosa_bpm, 1), "relacion": relation},
+        "confidence": confidence,
+        "alternatives": {"half": round(bpm / 2, 1), "double": round(bpm * 2, 1)},
+        "suggestion": suggestion,
+        "range": [round(p10, 1), round(p90, 1)],
+        "stable": bool(variation < 0.08),
+        "regularity": round(regularity, 2),
+        "curve": curve,
+        "second_method": {"bpm": round(librosa_bpm, 1), "relation": relation},
     }
 
 
@@ -273,72 +275,70 @@ def analyze_subdivision(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dic
             (_onset_peak(envelope, b0 + 0.42 * d, sr) + _onset_peak(envelope, b0 + 0.58 * d, sr)) / 2
         )
     if len(binary) < 8:
-        return {"tipo": "no clara", "razon": None}
+        return {"kind": "unclear", "ratio": None}
 
     b, t = float(np.median(binary)), float(np.median(ternary))
     background = float(np.median(off_grid)) + 1e-6  # same statistic (max over ±2 frames) as b and t
     ratio = (t + 1e-6) / (b + 1e-6)
     if max(b, t) < 1.15 * background:
-        kind = "no clara"
+        kind = "unclear"
     elif ratio >= 1.25:
-        kind = "ternaria"
+        kind = "ternary"
     elif ratio <= 0.80:
-        kind = "binaria"
+        kind = "binary"
     else:
-        kind = "no clara"
-    return {"tipo": kind, "razon": round(ratio, 2)}
+        kind = "unclear"
+    return {"kind": kind, "ratio": round(ratio, 2)}
 
 
-_READINGS = {
-    (4, "binaria"): ("4/4", None),
-    (4, "no clara"): ("4/4", None),
-    # (4, "ternaria") depends on the tempo: see _reading()
-    (2, "binaria"): ("2/4", "o 4/4 contado más rápido"),
-    (2, "no clara"): ("2/4", "o 6/8"),
-    (2, "ternaria"): ("6/8", "o 2/4 con tresillos"),
-    (3, "binaria"): ("3/4", "o 6/8"),
-    (3, "no clara"): ("3/4", "o 6/8"),
-    (3, "ternaria"): ("3/4", "o 9/8, o 6/8"),
-    (6, "binaria"): ("6/8", "o 3/4"),
-    (6, "no clara"): ("6/8", "o 3/4"),
-    (6, "ternaria"): ("6/8", "o 3/4"),
+# (beats per bar, subdivision) -> (time signature, alternative reading: message code and parameters)
+_READINGS: dict[tuple[int, str], tuple[str, tuple[str, dict] | None]] = {
+    (4, "binary"): ("4/4", None),
+    (4, "unclear"): ("4/4", None),
+    # (4, "ternary") depends on the tempo: see _reading()
+    (2, "binary"): ("2/4", ("or_counted_faster", {"signature": "4/4"})),
+    (2, "unclear"): ("2/4", ("or", {"signature": "6/8"})),
+    (2, "ternary"): ("6/8", ("or_with_triplets", {"signature": "2/4"})),
+    (3, "binary"): ("3/4", ("or", {"signature": "6/8"})),
+    (3, "unclear"): ("3/4", ("or", {"signature": "6/8"})),
+    (3, "ternary"): ("3/4", ("or_either", {"first": "9/8", "second": "6/8"})),
+    (6, "binary"): ("6/8", ("or", {"signature": "3/4"})),
+    (6, "unclear"): ("6/8", ("or", {"signature": "3/4"})),
+    (6, "ternary"): ("6/8", ("or", {"signature": "3/4"})),
 }
 
-TERNARY_WARNING = (
-    "El 3/4 y el 6/8 se confunden con mucha facilidad (y en la chacarera o la zamba se "
-    "alternan a propósito). Ninguna herramienta automática los distingue bien: escuchá si "
-    "el pulso que marcás con el pie se divide en 2 o en 3."
-)
 
-
-def _reading(n: int, subdivision: str, bpm: float | None) -> tuple[str, str | None]:
-    if n == 4 and subdivision == "ternaria":
+def _reading(n: int, subdivision: str, bpm: float | None) -> tuple[str | None, bool, Message | None]:
+    """(time signature, swing, alternative reading) for bars of n beats."""
+    if n == 4 and subdivision == "ternary":
         # Fast with beats in three = swing/shuffle (written in 4/4); slow = a 12/8 ballad
         if bpm is not None and bpm < 80:
-            return "12/8", "o 4/4 con tresillos"
-        return "4/4 con swing", "o shuffle; también se puede escribir en 12/8"
+            return "12/8", False, message("or_with_triplets", signature="4/4")
+        return "4/4", True, message("or_shuffle")
     if (n, subdivision) in _READINGS:
-        return _READINGS[(n, subdivision)]
+        signature, alternative = _READINGS[(n, subdivision)]
+        return signature, False, message(alternative[0], **alternative[1]) if alternative else None
     if n in (5, 7):
-        return f"{n}/4", f"o {n}/8 (compás irregular)"
-    return f"{n} pulsos por compás", "compás poco común: tomalo con pinzas"
+        return f"{n}/4", False, message("or_odd_meter", signature=f"{n}/8")
+    return None, False, message("unusual_meter")
 
 
-def _no_meter(subdivision: dict, reason: str, second_method: dict | None = None) -> dict:
+def _no_meter(subdivision: dict, reason: Message, second_method: dict | None = None) -> dict:
     return {
-        "pulsos_por_compas": None,
-        "lectura": None,
-        "alternativa": None,
-        "confianza": "baja",
-        "motivo": reason,
+        "beats_per_bar": None,
+        "time_signature": None,
+        "swing": False,
+        "alternative": None,
+        "confidence": "low",
+        "reason": reason,
         "subdivision": subdivision,
-        "avisos": [],
-        "fuente": None,
-        "segundo_metodo": second_method,
+        "warnings": [],
+        "source": None,
+        "second_method": second_method,
     }
 
 
-_LEVELS = ["baja", "media", "alta"]
+_LEVELS = ["low", "medium", "high"]
 # Meters the periodicity method cannot tell apart (2 and 4 both repeat every 4 beats)
 _FAMILY = {2: 4, 4: 4, 8: 4, 3: 3, 6: 3, 9: 3, 5: 5, 10: 5, 7: 7}
 
@@ -353,28 +353,28 @@ def compare_with_periodicity(n: int | None, periodicity: dict | None) -> dict | 
     """
     if periodicity is None:
         return None
-    scores, harmony, winner = periodicity["puntajes"], periodicity["armonia"], periodicity["ganador"]
+    scores, harmony, winner = periodicity["scores"], periodicity["harmony"], periodicity["winner"]
     family = _FAMILY.get(n) if n else None
     output = {
-        "pulsos": winner,
-        "puntajes": scores,
-        "confirma": False,
-        "reemplaza": False,
-        "contradice": False,
-        "fuerte": False,
+        "beats": winner,
+        "scores": scores,
+        "confirms": False,
+        "replaces": False,
+        "contradicts": False,
+        "strong": False,
     }
     if family == winner:
-        output["confirma"] = periodicity["margen"] >= 0.5
+        output["confirms"] = periodicity["margin"] >= 0.5
         return output
     if family is None:  # the count was unusable (or gave an odd meter): a clear win is enough
-        advantage = periodicity["margen"]
+        advantage = periodicity["margin"]
         clear = scores[winner] >= 0.3 and advantage >= 0.3
     else:
         advantage = scores[winner] - scores[family]
         clear = scores[winner] >= 0.3 and advantage >= 0.6 and harmony[winner] > harmony[family]
-    output["reemplaza"] = clear and (family is None or winner in (5, 7))
-    output["contradice"] = clear and not output["reemplaza"]
-    output["fuerte"] = advantage >= 1.0 and harmony[winner] >= 0.8
+    output["replaces"] = clear and (family is None or winner in (5, 7))
+    output["contradicts"] = clear and not output["replaces"]
+    output["strong"] = advantage >= 1.0 and harmony[winner] >= 0.8
     return output
 
 
@@ -398,106 +398,88 @@ def analyze_meter(
     agreement = count / len(bar_lengths) if bar_lengths else 0.0
     count_is_valid = len(bar_lengths) >= 4 and n is not None and n >= 2
     second = compare_with_periodicity(n if count_is_valid else None, periodicity)
-    replaces = bool(second and second["reemplaza"])
+    replaces = bool(second and second["replaces"])
 
     if not count_is_valid and not replaces:
-        if len(bar_lengths) < 4:
-            reason = "No se detectaron suficientes primeros tiempos para estimar el compás."
-        else:
-            reason = (
-                "Casi todos los pulsos detectados quedaron marcados como primer tiempo, así que "
-                "no se pudo contar el compás. Pasa con música muy libre o con mucho rubato."
-            )
+        reason = message("too_few_downbeats" if len(bar_lengths) < 4 else "all_beats_downbeats")
         return _no_meter(subdivision, reason, second)
 
     warnings = []
     if replaces:
         # The downbeat count is discarded: the repetition of the harmony decides
-        g = second["pulsos"]
-        reading, alternative = _reading(g, subdivision["tipo"], bpm)
-        confidence = "media" if second["fuerte"] else "baja"
+        g = second["beats"]
+        signature, swing, alternative = _reading(g, subdivision["kind"], bpm)
+        confidence = "medium" if second["strong"] else "low"
         if count_is_valid:
-            warnings.append(
-                f"El detector de primeros tiempos marcó compases de {n} pulsos, pero la armonía y el "
-                f"bajo se repiten cada {g} pulsos: lo más probable es que el compás sea de {g}. Los "
-                "detectores automáticos se entrenaron casi solo con música en 4/4 y tienden a forzarlo."
-            )
+            warnings.append(message("meter_from_harmony", counted=n, beats=g))
         else:
-            warnings.append(
-                f"Los primeros tiempos detectados no alcanzaron para contar el compás, pero la armonía "
-                f"y el bajo se repiten cada {g} pulsos."
-            )
-        number, source = g, "periodicidad"
+            warnings.append(message("meter_from_harmony_only", beats=g))
+        number, source = g, "periodicity"
     else:
-        reading, alternative = _reading(n, subdivision["tipo"], bpm)
+        signature, swing, alternative = _reading(n, subdivision["kind"], bpm)
         if agreement >= 0.85:
-            confidence = "alta"
+            confidence = "high"
         elif agreement >= 0.6:
-            confidence = "media"
+            confidence = "medium"
         else:
-            confidence = "baja"
-        if second and second["confirma"] and confidence != "alta":
+            confidence = "low"
+        if second and second["confirms"] and confidence != "high":
             confidence = _LEVELS[_LEVELS.index(confidence) + 1]  # two independent methods agree
-        if second and second["contradice"]:
+        if second and second["contradicts"]:
             confidence = _LEVELS[max(_LEVELS.index(confidence) - 1, 0)]
-            warnings.append(
-                f"Un segundo método (cada cuántos pulsos se repite la armonía) sugiere compases de "
-                f"{second['pulsos']} pulsos: escuchalo con el clic activado para decidir."
-            )
+            warnings.append(message("harmony_suggests", beats=second["beats"]))
         if agreement < 0.6:
-            warnings.append(
-                "Los compases detectados no cuentan siempre lo mismo: puede que el compás cambie "
-                "durante la canción o que los primeros tiempos estén mal ubicados."
-            )
-        number, source = n, "primeros tiempos"
+            warnings.append(message("inconsistent_bars"))
+        number, source = n, "downbeats"
     # If the beats themselves are doubtful, the meter (counted from them) cannot be more certain
     confidence = cap_confidence(confidence, tempo_confidence)
     if number in (2, 3, 6):
-        warnings.insert(0, TERNARY_WARNING)
+        warnings.insert(0, message("ternary_ambiguity"))
 
     return {
-        "pulsos_por_compas": number,
-        "lectura": reading,
-        "alternativa": alternative,
-        "fuente": source,
-        "acuerdo": round(agreement, 2),
-        "confianza": confidence,
-        "compases_contados": len(bar_lengths),
-        "conteo_primeros_tiempos": n,
-        "distribucion": {str(k): round(v / len(bar_lengths), 2) for k, v in sorted(counts.items())},
+        "beats_per_bar": number,
+        "time_signature": signature,
+        "swing": swing,
+        "alternative": alternative,
+        "source": source,
+        "agreement": round(agreement, 2),
+        "confidence": confidence,
+        "bars_counted": len(bar_lengths),
+        "downbeat_count": n,
+        "distribution": {str(k): round(v / len(bar_lengths), 2) for k, v in sorted(counts.items())},
         "subdivision": subdivision,
-        "segundo_metodo": second,
-        "avisos": warnings,
+        "second_method": second,
+        "warnings": warnings,
     }
 
 
 def bar_grid(beats: np.ndarray, downbeats: np.ndarray, duration: float) -> list[dict]:
     """Cells [start, end) to show the chords bar by bar.
 
-    - With downbeats: one bar between each pair. What sounds before the first one is the
-      pickup (if it is shorter than a bar) or the intro (bar 0).
-    - Without downbeats: stretches of 4 beats, or of 4 seconds if there are no beats either,
+    - With downbeats: one "bar" between each pair. What sounds before the first one is the
+      "pickup" (if it is shorter than a bar) or the "intro" (number 0).
+    - Without downbeats: "section"s of 4 beats, or of 4 seconds if there are no beats either,
       so that the chords can still be shown.
     """
     if len(downbeats):
         edges = [float(x) for x in downbeats]
-        kind = "compás"
+        kind = "bar"
         typical_bar_length = float(np.median(np.diff(downbeats))) if len(downbeats) > 1 else 2.0
     elif len(beats) >= 4:
         edges = [float(x) for x in beats[::4]]
-        kind = "tramo"
+        kind = "section"
         typical_bar_length = 4 * float(np.median(np.diff(beats)))
     else:
         edges = [float(x) for x in np.arange(0.0, duration, 4.0)]
-        kind = "tramo"
+        kind = "section"
         typical_bar_length = 4.0
 
     output = []
     if edges and edges[0] > 0.3:
-        label = "anacrusa" if kind == "compás" and edges[0] < 1.05 * typical_bar_length else "intro"
-        output.append({"numero": 0, "etiqueta": label, "inicio": 0.0, "fin": edges[0]})
+        first = "pickup" if kind == "bar" and edges[0] < 1.05 * typical_bar_length else "intro"
+        output.append({"number": 0, "kind": first, "start": 0.0, "end": edges[0]})
     edges.append(duration)
     for i, (begin, end) in enumerate(itertools.pairwise(edges), start=1):
         if end - begin > 0.05:
-            output.append({"numero": i, "etiqueta": f"{kind} {i}", "inicio": begin, "fin": end})
+            output.append({"number": i, "kind": kind, "start": begin, "end": end})
     return output

@@ -3,88 +3,88 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Analizador musical</title>
-  <link rel="stylesheet" href="/static/styles.css?v=5">
+  <title>orfeo</title>
+  <link rel="stylesheet" href="/static/styles.css?v=6">
 </head>
 <body>
-  <header class="encabezado">
-    <h1>Analizador musical</h1>
+  <header class="site-header">
+    <h1>orfeo</h1>
     <p>Subí una canción o un video y te digo el tempo, el compás, la tonalidad y los acordes.
        Todo se procesa en tu PC: el archivo no sale de tu computadora.</p>
   </header>
 
   <main>
-    <section id="subida">
-      <label class="zona" id="zona">
-        <input type="file" id="archivo"
+    <section id="upload">
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file-input"
                accept="audio/*,video/*,.mp4,.m4a,.mp3,.wav,.flac,.ogg,.opus,.aac,.webm,.mkv,.mov">
-        <span class="zona-titulo">Arrastrá un archivo acá o hacé clic para elegirlo</span>
-        <span class="zona-pista">MP4, MP3, M4A, WAV, FLAC, MKV… de hasta 20 minutos (y 1 GB)</span>
+        <span class="dropzone-title">Arrastrá un archivo acá o hacé clic para elegirlo</span>
+        <span class="dropzone-hint">MP4, MP3, M4A, WAV, FLAC, MKV… de hasta 20 minutos (y 1 GB)</span>
       </label>
     </section>
 
-    <section id="progreso" class="progreso" hidden>
-      <div class="progreso-paso" id="paso" aria-live="polite">Subiendo el archivo…</div>
-      <div class="barra" role="progressbar" aria-label="Progreso del análisis" aria-valuemin="0" aria-valuemax="100" id="barra">
-        <div class="barra-relleno" id="barra-relleno"></div>
+    <section id="progress" class="progress" hidden>
+      <div class="progress-step" id="step" aria-live="polite">Subiendo el archivo…</div>
+      <div class="progress-track" role="progressbar" aria-label="Progreso del análisis" aria-valuemin="0" aria-valuemax="100" id="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
       </div>
-      <div class="progreso-tiempo" id="tiempo" aria-hidden="true"></div>
+      <div class="progress-time" id="elapsed" aria-hidden="true"></div>
     </section>
 
-    <section id="error" class="aviso-error" hidden role="alert">
-      <p id="error-texto"></p>
-      <button type="button" class="boton" id="reintentar">Probar con otro archivo</button>
+    <section id="error" class="error-box" hidden role="alert">
+      <p id="error-text"></p>
+      <button type="button" class="button" id="retry">Probar con otro archivo</button>
     </section>
 
-    <section id="reporte" hidden>
-      <div class="reproductor tarjeta">
-        <div class="archivo-info">
-          <strong id="nombre-archivo"></strong>
-          <span id="duracion" class="tenue"></span>
-          <span id="cache" class="tenue" hidden>· resultado guardado de un análisis anterior</span>
+    <section id="report" hidden>
+      <div class="player card">
+        <div class="file-info">
+          <strong id="file-name"></strong>
+          <span id="duration" class="muted"></span>
+          <span id="cached" class="muted" hidden>· resultado guardado de un análisis anterior</span>
         </div>
         <audio id="audio" controls preload="metadata"></audio>
-        <p id="audio-error" class="tenue" hidden>Tu navegador no puede reproducir este formato, pero el análisis está completo.</p>
-        <div class="ahora" aria-live="off">
-          <div><span class="tenue">Ahora</span> <b id="acorde-actual">—</b></div>
-          <div><span class="tenue">Después</span> <span id="acorde-siguiente">—</span></div>
-          <div><span class="tenue">Compás</span> <span id="compas-actual">—</span></div>
-          <div class="cuenta" id="cuenta" aria-hidden="true"></div>
+        <p id="audio-error" class="muted" hidden>Tu navegador no puede reproducir este formato, pero el análisis está completo.</p>
+        <div class="now-playing" aria-live="off">
+          <div><span class="muted">Ahora</span> <b id="current-chord">—</b></div>
+          <div><span class="muted">Después</span> <span id="next-chord">—</span></div>
+          <div><span class="muted">Compás</span> <span id="current-bar">—</span></div>
+          <div class="beat-count" id="beat-count" aria-hidden="true"></div>
         </div>
-        <div class="controles">
-          <label class="interruptor"><input type="checkbox" id="clic"> Clic en cada pulso</label>
-          <div class="segmentado" role="group" aria-label="Notación">
-            <button type="button" data-notacion="latino" aria-pressed="true">Do Re Mi</button>
-            <button type="button" data-notacion="americano" aria-pressed="false">C D E</button>
+        <div class="controls">
+          <label class="toggle"><input type="checkbox" id="click"> Clic en cada pulso</label>
+          <div class="segmented" role="group" aria-label="Notación">
+            <button type="button" data-notation="solfege" aria-pressed="true">Do Re Mi</button>
+            <button type="button" data-notation="letter" aria-pressed="false">C D E</button>
           </div>
-          <div class="segmentado" role="group" aria-label="Detalle de los acordes">
-            <button type="button" data-detalle="simple" aria-pressed="true">Acordes simples</button>
-            <button type="button" data-detalle="completo" aria-pressed="false">Completos</button>
+          <div class="segmented" role="group" aria-label="Detalle de los acordes">
+            <button type="button" data-detail="simple" aria-pressed="true">Acordes simples</button>
+            <button type="button" data-detail="full" aria-pressed="false">Completos</button>
           </div>
         </div>
       </div>
 
-      <div class="tarjetas">
-        <article class="tarjeta" id="t-tempo"></article>
-        <article class="tarjeta" id="t-compas"></article>
-        <article class="tarjeta" id="t-tonalidad"></article>
+      <div class="cards">
+        <article class="card" id="tempo-card"></article>
+        <article class="card" id="meter-card"></article>
+        <article class="card" id="key-card"></article>
       </div>
 
-      <article class="tarjeta">
-        <div class="titulo-fila">
+      <article class="card">
+        <div class="title-row">
           <h2>Acordes</h2>
-          <label class="interruptor"><input type="checkbox" id="seguir" checked> Seguir la reproducción</label>
+          <label class="toggle"><input type="checkbox" id="follow" checked> Seguir la reproducción</label>
         </div>
-        <p class="tenue" id="nota-acordes"></p>
-        <div class="chips" id="resumen-acordes"></div>
+        <p class="muted" id="chords-note"></p>
+        <div class="chips" id="chord-summary"></div>
         <h3>Compás por compás</h3>
-        <p class="tenue" id="nota-grilla">Hacé clic en un compás para escucharlo desde ahí.</p>
-        <div class="grilla" id="grilla"></div>
+        <p class="muted" id="grid-note">Hacé clic en un compás para escucharlo desde ahí.</p>
+        <div class="bar-grid" id="bar-grid"></div>
       </article>
 
-      <details class="tarjeta">
+      <details class="card">
         <summary><h2>¿Qué tan confiable es esto?</h2></summary>
-        <ul class="confiabilidad">
+        <ul class="reliability">
           <li><b>Tempo y pulsos:</b> muy buenos en pop, rock y electrónica con batería. El error típico
             es dar el doble o la mitad. En música sin batería, en vivo o con rubato, bastante peor.
             Activá el <i>clic</i> para comprobarlo de oído.</li>
@@ -100,17 +100,18 @@
           <li><b>Repertorio:</b> los modelos se entrenaron sobre todo con pop y rock en inglés.
             Folklore, tango y otros géneros latinos pueden dar peores resultados.</li>
         </ul>
-        <p class="tenue">Modelos: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) y Consonance-ACE
+        <p class="muted">Modelos: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) y Consonance-ACE
           (Poltronieri, Serra y Rocamora, 2025), más librosa para el tempo de control y la afinación.</p>
       </details>
 
-      <div class="acciones">
-        <button type="button" class="boton" id="otra">Analizar otra canción</button>
-        <button type="button" class="boton secundario" id="descargar">Descargar datos (JSON)</button>
+      <div class="actions">
+        <button type="button" class="button" id="another">Analizar otra canción</button>
+        <button type="button" class="button secondary" id="download">Descargar datos (JSON)</button>
       </div>
     </section>
   </main>
 
-  <script src="/static/app.js?v=5"></script>
+  <script src="/static/i18n.js?v=6"></script>
+  <script src="/static/app.js?v=6"></script>
 </body>
 </html>

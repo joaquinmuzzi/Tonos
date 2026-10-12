@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 from orfeo.analysis import periodicity, rhythm
+from orfeo.messages import message
 from tests.synthetic import FS, song
 
 PROGRESSIONS = {
@@ -27,9 +28,9 @@ def test_detects_meter_from_repetition(beats_per_bar):
     y, beats = _synthetic(beats_per_bar)
     envelope = rhythm.onset_envelope(y, 22050)
     summary, _spectrum = periodicity.analyze(y, 22050, beats, envelope, rhythm.HOP_LENGTH)
-    assert summary["ganador"] == beats_per_bar
+    assert summary["winner"] == beats_per_bar
     if beats_per_bar in (5, 7):  # the only cases where the method can take over
-        assert summary["margen"] > 0.3
+        assert summary["margin"] > 0.3
 
 
 @pytest.mark.parametrize("beats_per_bar", [3, 5, 7])
@@ -88,10 +89,10 @@ def test_short_song_is_not_analyzed():
 def _repetition(winner, scores, harmony):
     others = sorted((v for f, v in scores.items() if f != winner), reverse=True)
     return {
-        "ganador": winner,
-        "puntajes": scores,
-        "armonia": harmony,
-        "margen": round(scores[winner] - others[0], 2),
+        "winner": winner,
+        "scores": scores,
+        "harmony": harmony,
+        "margin": round(scores[winner] - others[0], 2),
     }
 
 
@@ -100,28 +101,28 @@ FIVE = _repetition(5, {3: -0.4, 4: -0.66, 5: 0.36, 7: -0.47}, {3: -0.49, 4: -0.5
 
 def test_harmony_in_five_replaces_count_of_four():
     beats = np.arange(400) * 0.5
-    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120, "alta", FIVE)
-    assert result["lectura"] == "5/4"
-    assert result["fuente"] == "periodicidad"
-    assert result["pulsos_por_compas"] == 5
-    assert result["conteo_primeros_tiempos"] == 4
-    assert result["confianza"] == "media"  # advantage of 1.02 with the harmony in favour
-    assert any("se repiten cada 5" in a for a in result["avisos"])
+    result = rhythm.analyze_meter(beats, beats[::4], {"kind": "binary"}, 120, "high", FIVE)
+    assert result["time_signature"] == "5/4"
+    assert result["source"] == "periodicity"
+    assert result["beats_per_bar"] == 5
+    assert result["downbeat_count"] == 4
+    assert result["confidence"] == "medium"  # advantage of 1.02 with the harmony in favour
+    assert message("meter_from_harmony", counted=4, beats=5) in result["warnings"]
 
 
 def test_weak_evidence_does_not_replace_count():
     weak = _repetition(5, {3: -0.3, 4: 0.0, 5: 0.4, 7: -0.5}, {3: 0.0, 4: 0.1, 5: 0.2, 7: 0.0})
     beats = np.arange(400) * 0.5
-    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120, "alta", weak)
-    assert result["lectura"] == "4/4"
-    assert result["fuente"] == "primeros tiempos"
+    result = rhythm.analyze_meter(beats, beats[::4], {"kind": "binary"}, 120, "high", weak)
+    assert result["time_signature"] == "4/4"
+    assert result["source"] == "downbeats"
 
 
 def test_does_not_replace_without_harmony_support():
     against = _repetition(5, {3: -0.4, 4: -0.5, 5: 0.6, 7: -0.5}, {3: 0.0, 4: 0.5, 5: 0.1, 7: 0.0})
     beats = np.arange(400) * 0.5
-    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120, "alta", against)
-    assert result["fuente"] == "primeros tiempos"
+    result = rhythm.analyze_meter(beats, beats[::4], {"kind": "binary"}, 120, "high", against)
+    assert result["source"] == "downbeats"
 
 
 def test_agreement_raises_confidence():
@@ -131,22 +132,22 @@ def test_agreement_raises_confidence():
     for n in [4] * 30 + [3, 5] * 5:  # 75 % of the bars count 4: medium confidence
         downbeats.append(beats[i])
         i += n
-    result = rhythm.analyze_meter(beats, np.array(downbeats), {"tipo": "binaria"}, 120, "alta", four)
-    assert result["segundo_metodo"]["confirma"]
-    assert result["confianza"] == "alta"
+    result = rhythm.analyze_meter(beats, np.array(downbeats), {"kind": "binary"}, 120, "high", four)
+    assert result["second_method"]["confirms"]
+    assert result["confidence"] == "high"
 
 
 def test_between_three_and_four_only_warns():
     three = _repetition(3, {3: 0.9, 4: -0.2, 5: -0.5, 7: -0.5}, {3: 0.9, 4: -0.1, 5: -0.4, 7: -0.4})
     beats = np.arange(400) * 0.5
-    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120, "alta", three)
-    assert result["lectura"] == "4/4"  # the detector tells 3 from 4 well: no replacement
-    assert result["confianza"] == "media"  # but the confidence drops
-    assert any("sugiere compases de 3" in a for a in result["avisos"])
+    result = rhythm.analyze_meter(beats, beats[::4], {"kind": "binary"}, 120, "high", three)
+    assert result["time_signature"] == "4/4"  # the detector tells 3 from 4 well: no replacement
+    assert result["confidence"] == "medium"  # but the confidence drops
+    assert message("harmony_suggests", beats=3) in result["warnings"]
 
 
 def test_invalid_count_but_clear_harmony():
     beats = np.arange(300) * 0.46
-    result = rhythm.analyze_meter(beats, beats, {"tipo": "binaria"}, 130, "alta", FIVE)
-    assert result["lectura"] == "5/4"
-    assert result["fuente"] == "periodicidad"
+    result = rhythm.analyze_meter(beats, beats, {"kind": "binary"}, 130, "high", FIVE)
+    assert result["time_signature"] == "5/4"
+    assert result["source"] == "periodicity"

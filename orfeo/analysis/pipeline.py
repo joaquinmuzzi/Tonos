@@ -11,13 +11,14 @@ from pathlib import Path
 
 import numpy as np
 
+from ..messages import message
 from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 5  # bumping it invalidates the cached analyses
+VERSION = 6  # bumping it invalidates the cached analyses
 
-ProgressCallback = Callable[[str, float], None]
+ProgressCallback = Callable[[str, float], None]  # (step code, fraction done)
 
 
 def preload() -> None:
@@ -33,115 +34,105 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
     notify = progress or (lambda step, fraction: None)
     start = time.perf_counter()
 
-    with tempfile.TemporaryDirectory(prefix="analizador-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="orfeo-") as tmp:
         wav = Path(tmp) / "audio.wav"
-        notify("Extrayendo el audio", 0.02)
+        notify("extracting_audio", 0.02)
         signal, sr, track = read_audio(path, wav)
         duration = len(signal) / sr
 
-        notify("Buscando los pulsos y los primeros tiempos", 0.08)
+        notify("finding_beats", 0.08)
         beats, downbeats = rhythm.detect_beats(signal, sr)
         beats, downbeats, unified = rhythm.unify_beats(beats, downbeats)
         envelope = rhythm.onset_envelope(signal, sr)
 
-        notify("Calculando el tempo y el compás", 0.25)
+        notify("tempo_and_meter", 0.25)
         tempo = rhythm.analyze_tempo(beats, envelope, sr)
-        tempo["pulsos_unificados"] = unified
-        corrected = unified["quitados"] + unified["agregados"]
-        if corrected >= 8:
-            tempo["aviso"] = (
-                f"En algunos tramos el detector marcó pulsos de más (el doble) o de menos: se "
-                f"corrigieron {corrected} pulsos para que la grilla quede pareja y se puedan "
-                "contar los compases."
-            )
+        tempo["unified_beats"] = unified
+        corrected = unified["removed"] + unified["added"]
+        tempo["warning"] = message("beats_corrected", count=corrected) if corrected >= 8 else None
         subdivision = rhythm.analyze_subdivision(beats, envelope, sr)
         repetition, spectrum = periodicity.analyze(signal, sr, beats, envelope, rhythm.HOP_LENGTH)
         meter = rhythm.analyze_meter(
-            beats, downbeats, subdivision, tempo.get("bpm"), tempo.get("confianza", "baja"), repetition
+            beats, downbeats, subdivision, tempo.get("bpm"), tempo.get("confidence", "low"), repetition
         )
         del envelope
 
-        notify("Buscando la tonalidad", 0.32)
+        notify("finding_key", 0.32)
         key_result = tonality.detect_key(signal, sr)
         tuning = tonality.estimate_tuning(signal, sr)
 
-        notify("Reconociendo los acordes", 0.45)
+        notify("recognizing_chords", 0.45)
         raw_segments = chords.detect_chords(
             wav,
             duration,
             beats,
-            progress=lambda f: notify("Reconociendo los acordes", 0.45 + 0.5 * f),
+            progress=lambda f: notify("recognizing_chords", 0.45 + 0.5 * f),
         )
 
-        if meter["fuente"] == "primeros tiempos":
+        if meter["source"] == "downbeats":
             # Bars split wrongly by an extra or missing downbeat (3+1, 3+5...)
-            downbeats, regrouped = rhythm.regularize_bars(beats, downbeats, meter["pulsos_por_compas"])
-            meter["compases_rearmados"] = regrouped
-        elif meter["fuente"] == "periodicidad":
+            downbeats, regrouped = rhythm.regularize_bars(beats, downbeats, meter["beats_per_bar"])
+            meter["regrouped_bars"] = regrouped
+        elif meter["source"] == "periodicity":
             # The detector's downbeats are unusable: rebuild them for the new meter, where
             # the chords and the harmony change
-            notify("Ubicando los compases", 0.96)
+            notify("locating_bars", 0.96)
             changes = periodicity.chord_changes_per_beat(beats, raw_segments)
-            downbeats, clarity = periodicity.locate_bars(
-                beats, meter["pulsos_por_compas"], spectrum, sr, changes
-            )
+            downbeats, clarity = periodicity.locate_bars(beats, meter["beats_per_bar"], spectrum, sr, changes)
             _finish_grid(meter, clarity, tempo)
         del spectrum
 
-    notify("Armando el reporte", 0.97)
+    notify("building_report", 0.97)
     tonality.assess_confidence(key_result, tonality.key_from_chords(raw_segments))
-    best = key_result["principal"]
-    speller = Speller(best["tonica_pc"], best["modo"])
+    best = key_result["best"]
+    speller = Speller(best["tonic_pc"], best["mode"])
     segments = [
-        {"inicio": round(a, 3), "fin": round(b, 3), "etiqueta": e, **describe_chord(e, speller)}
+        {"start": round(a, 3), "end": round(b, 3), "label": e, **describe_chord(e, speller)}
         for a, b, e in raw_segments
     ]
     bar_cells = rhythm.bar_grid(beats, downbeats, duration)
 
     return {
         "version": VERSION,
-        "archivo": {"nombre": path.name, "duracion": round(duration, 2), "pista_de_audio": track + 1},
-        "segundos_de_analisis": round(time.perf_counter() - start, 1),
+        "file": {"name": path.name, "duration": round(duration, 2), "audio_track": track + 1},
+        "analysis_seconds": round(time.perf_counter() - start, 1),
         "tempo": tempo,
-        "compas": meter,
-        "tonalidad": key_result,
-        "afinacion": tuning,
-        "acordes": {
-            "segmentos": segments,
-            "resumen": _summary(segments, "latino", "americano"),
-            "resumen_simple": _summary(segments, "latino_simple", "americano_simple"),
+        "meter": meter,
+        "key": key_result,
+        "tuning": tuning,
+        "chords": {
+            "segments": segments,
+            "summary": _summary(segments, ""),
+            "summary_simple": _summary(segments, "_simple"),
         },
-        "compases": _chords_per_bar(bar_cells, segments, beats),
-        "pulsos": [round(float(p), 3) for p in beats],
-        "primeros_tiempos": [round(float(p), 3) for p in downbeats],
+        "bars": _chords_per_bar(bar_cells, segments, beats),
+        "beats": [round(float(p), 3) for p in beats],
+        "downbeats": [round(float(p), 3) for p in downbeats],
     }
 
 
 def _finish_grid(meter: dict, clarity: float, tempo: dict) -> None:
     """Confidence and warnings for a bar grid rebuilt from periodicity."""
-    meter["grilla_aproximada"] = clarity < periodicity.PHASE_CLARITY_THRESHOLD
-    if clarity >= 2 * periodicity.PHASE_CLARITY_THRESHOLD and meter["confianza"] == "baja":
+    meter["approximate_grid"] = clarity < periodicity.PHASE_CLARITY_THRESHOLD
+    if clarity >= 2 * periodicity.PHASE_CLARITY_THRESHOLD and meter["confidence"] == "low":
         # The chords always change on the same beat of the bar: the structure is clear
-        meter["confianza"] = rhythm.cap_confidence("media", tempo.get("confianza", "baja"))
-    if meter["grilla_aproximada"]:
-        meter["avisos"].append(
-            "No se pudo determinar con seguridad en qué pulso empieza cada compás: la grilla "
-            "de compases es aproximada (puede estar corrida algunos pulsos)."
-        )
+        meter["confidence"] = rhythm.cap_confidence("medium", tempo.get("confidence", "low"))
+    if meter["approximate_grid"]:
+        meter["warnings"].append(message("approximate_grid"))
 
 
-def _summary(segments: list[dict], solfege_key: str, letter_key: str, max_count: int = 10) -> list[dict]:
-    """Most used chords, by the total time they sound."""
+def _summary(segments: list[dict], suffix: str, max_count: int = 10) -> list[dict]:
+    """Most used chords, by the total time they sound (suffix "" or "_simple" picks the names)."""
     total = defaultdict(float)
     names = {}
     for s in segments:
-        if not s["es_acorde"]:
+        if not s["is_chord"]:
             continue
-        total[s[solfege_key]] += s["fin"] - s["inicio"]
-        names[s[solfege_key]] = s[letter_key]
+        total[s["solfege" + suffix]] += s["end"] - s["start"]
+        names[s["solfege" + suffix]] = s["letter" + suffix]
     grand_total = sum(total.values()) or 1.0
     order = sorted(total.items(), key=lambda kv: kv[1], reverse=True)[:max_count]
-    return [{"latino": k, "americano": names[k], "proporcion": round(v / grand_total, 3)} for k, v in order]
+    return [{"solfege": k, "letter": names[k], "share": round(v / grand_total, 3)} for k, v in order]
 
 
 def _chords_per_bar(bar_cells: list[dict], segments: list[dict], beats) -> list[dict]:
@@ -150,16 +141,16 @@ def _chords_per_bar(bar_cells: list[dict], segments: list[dict], beats) -> list[
     output = []
     j = 0
     for c in bar_cells:
-        while j < len(segments) and segments[j]["fin"] <= c["inicio"]:
+        while j < len(segments) and segments[j]["end"] <= c["start"]:
             j += 1
         indices = []
         k = j
-        while k < len(segments) and segments[k]["inicio"] < c["fin"]:
+        while k < len(segments) and segments[k]["start"] < c["end"]:
             s = segments[k]
-            overlap = min(s["fin"], c["fin"]) - max(s["inicio"], c["inicio"])
+            overlap = min(s["end"], c["end"]) - max(s["start"], c["start"])
             # Ignore chords that reach less than a third of a beat into the bar
             if overlap >= typical_beat / 3:
                 indices.append(k)
             k += 1
-        output.append({**c, "acordes": indices})
+        output.append({**c, "chords": indices})
     return output
