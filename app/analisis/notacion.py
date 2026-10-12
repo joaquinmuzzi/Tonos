@@ -80,8 +80,14 @@ class Ortografia:
         self.tonica = _deletrear_tonica(self.tonica_pc, modo)
 
     def deletrear(self, pc: int) -> Nota:
+        pc %= 12
         relativo = (pc - self.tonica_pc) % 12
         escala = _ESCALA[self.modo]
+        sensible_menor = self.modo == "menor" and relativo == 11
+        if relativo not in escala and pc in _PC_LETRA and not sensible_menor:
+            # Nota fuera de la escala que es una tecla blanca: Do, no Si# (Dom en Sol# menor).
+            # La sensible de una tonalidad menor sí se escribe alterada (Si#dim en Do# menor).
+            return _PC_LETRA.index(pc), 0
         letras = escala.index(relativo) if relativo in escala else _CROMATICAS[self.modo][relativo]
         letra = (self.tonica[0] + letras) % 7
         alteracion = _alteracion(pc, letra)
