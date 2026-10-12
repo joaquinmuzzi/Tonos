@@ -1,4 +1,4 @@
-"""Une todos los análisis y arma el reporte (un dict listo para JSON)."""
+"""Runs every analysis and builds the report (a dict ready for JSON)."""
 
 from __future__ import annotations
 
@@ -15,17 +15,17 @@ from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 5  # subirla invalida los análisis guardados en caché
+VERSION = 5  # bumping it invalidates the cached analyses
 
 ProgressCallback = Callable[[str, float], None]
 
 
 def preload() -> None:
-    """Carga los tres modelos en memoria (la primera vez descarga el de pulsos, ~77 MB)."""
+    """Loads the three models into memory (the first time it downloads the beat model, ~77 MB)."""
     rhythm.preload()
     tonality.preload()
     chords.preload()
-    # Algunas librerías configuran el log en modo INFO al importarse: lo bajamos a avisos.
+    # Some libraries set the root logger to INFO on import: turn it back down to warnings.
     logging.getLogger().setLevel(logging.WARNING)
 
 
@@ -74,12 +74,12 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
         )
 
         if meter["fuente"] == "primeros tiempos":
-            # Compases mal cortados por un primer tiempo de más o de menos (3+1, 3+5...)
+            # Bars split wrongly by an extra or missing downbeat (3+1, 3+5...)
             downbeats, regrouped = rhythm.regularize_bars(beats, downbeats, meter["pulsos_por_compas"])
             meter["compases_rearmados"] = regrouped
         elif meter["fuente"] == "periodicidad":
-            # Los primeros tiempos del detector no sirven: se rearman con el compás nuevo,
-            # donde cambian los acordes y la armonía
+            # The detector's downbeats are unusable: rebuild them for the new meter, where
+            # the chords and the harmony change
             notify("Ubicando los compases", 0.96)
             changes = periodicity.chord_changes_per_beat(beats, raw_segments)
             downbeats, clarity = periodicity.locate_bars(
@@ -118,10 +118,10 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
 
 
 def _finish_grid(meter: dict, clarity: float, tempo: dict) -> None:
-    """Confianza y avisos de la grilla de compases rearmada por periodicidad."""
+    """Confidence and warnings for a bar grid rebuilt from periodicity."""
     meter["grilla_aproximada"] = clarity < periodicity.PHASE_CLARITY_THRESHOLD
     if clarity >= 2 * periodicity.PHASE_CLARITY_THRESHOLD and meter["confianza"] == "baja":
-        # Los acordes cambian siempre en el mismo pulso del compás: la estructura es clara
+        # The chords always change on the same beat of the bar: the structure is clear
         meter["confianza"] = rhythm.cap_confidence("media", tempo.get("confianza", "baja"))
     if meter["grilla_aproximada"]:
         meter["avisos"].append(
@@ -131,7 +131,7 @@ def _finish_grid(meter: dict, clarity: float, tempo: dict) -> None:
 
 
 def _summary(segments: list[dict], solfege_key: str, letter_key: str, max_count: int = 10) -> list[dict]:
-    """Acordes más usados, por tiempo total que suenan."""
+    """Most used chords, by the total time they sound."""
     total = defaultdict(float)
     names = {}
     for s in segments:
@@ -145,7 +145,7 @@ def _summary(segments: list[dict], solfege_key: str, letter_key: str, max_count:
 
 
 def _chords_per_bar(bar_cells: list[dict], segments: list[dict], beats) -> list[dict]:
-    """Para cada compás, los índices de los acordes que suenan en él (en orden)."""
+    """For each bar, the indices of the chords that sound in it (in order)."""
     typical_beat = float(np.median(np.diff(beats))) if len(beats) > 1 else 0.5
     output = []
     j = 0
@@ -157,7 +157,7 @@ def _chords_per_bar(bar_cells: list[dict], segments: list[dict], beats) -> list[
         while k < len(segments) and segments[k]["inicio"] < c["fin"]:
             s = segments[k]
             overlap = min(s["fin"], c["fin"]) - max(s["inicio"], c["inicio"])
-            # Se ignoran acordes que asoman menos de un tercio de pulso en el compás
+            # Ignore chords that reach less than a third of a beat into the bar
             if overlap >= typical_beat / 3:
                 indices.append(k)
             k += 1

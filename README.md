@@ -61,7 +61,7 @@ Advertencias:
 
 ```powershell
 & "$env:LOCALAPPDATA\analizador-musical\venv\Scripts\python.exe" -m pytest            # todas (~1 min)
-& "$env:LOCALAPPDATA\analizador-musical\venv\Scripts\python.exe" -m pytest -m "not lento"  # solo las rápidas
+& "$env:LOCALAPPDATA\analizador-musical\venv\Scripts\python.exe" -m pytest -m "not slow"  # solo las rápidas
 ```
 
 Las pruebas lentas generan canciones sintéticas (pop en Sol a 120 BPM, vals en Re a 150 BPM),

@@ -1,4 +1,4 @@
-"""Genera canciones sintéticas con tempo, compás, tonalidad y acordes conocidos."""
+"""Generates synthetic songs with known tempo, meter, key and chords."""
 
 from __future__ import annotations
 
@@ -30,13 +30,13 @@ def _midi_to_hz(m: float) -> float:
 
 
 def _chord(root: str, minor: bool) -> list[int]:
-    r = 48 + NOTES[root]  # Do3
+    r = 48 + NOTES[root]  # C3
     return [r - 12, r, r + (3 if minor else 4), r + 7, r + 12]
 
 
 def _tone(freq: float, dur: float, vol: float) -> np.ndarray:
     t = np.arange(int(dur * FS)) / FS
-    wave = sum(np.sin(2 * np.pi * freq * k * t) / k for k in range(1, 6))  # timbre tipo órgano
+    wave = sum(np.sin(2 * np.pi * freq * k * t) / k for k in range(1, 6))  # organ-like timbre
     env = np.minimum(1, t / 0.01) * np.exp(-t * 1.2)
     return vol * wave * env
 
@@ -76,9 +76,9 @@ def song(
     subdivision: int = 2,
     anticipation: float = 0.0,
 ) -> np.ndarray:
-    """Batería + acordes. Cada acorde de `progresion` dura un compás y se repite en ciclo.
+    """Drums + chords. Each chord of `progression` lasts one bar, cycling through the list.
 
-    `anticipo`: fracción de pulso que cada acorde entra antes del primer tiempo (síncopa).
+    `anticipation`: fraction of a beat by which each chord comes in before the downbeat (syncopation).
     """
     beat = 60.0 / bpm
     meter = beats_per_bar * beat
@@ -105,7 +105,7 @@ def song(
 
 
 def save_mp4(y: np.ndarray, target: Path) -> Path:
-    """Guarda como MP4 (AAC), igual que un video descargado sin imagen."""
+    """Saves as MP4 (AAC), like a downloaded video without picture."""
     wav = target.with_suffix(".wav")
     sf.write(wav, y, FS)
     subprocess.run(

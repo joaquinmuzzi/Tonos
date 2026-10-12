@@ -1,4 +1,4 @@
-"""Compás por repetición de la armonía, con canciones sintéticas y pulsos conocidos."""
+"""Meter from the repetition of the harmony, with synthetic songs and known beats."""
 
 import librosa
 import numpy as np
@@ -28,7 +28,7 @@ def test_detects_meter_from_repetition(beats_per_bar):
     envelope = rhythm.onset_envelope(y, 22050)
     summary, _spectrum = periodicity.analyze(y, 22050, beats, envelope, rhythm.HOP_LENGTH)
     assert summary["ganador"] == beats_per_bar
-    if beats_per_bar in (5, 7):  # los únicos casos en que el método puede imponerse
+    if beats_per_bar in (5, 7):  # the only cases where the method can take over
         assert summary["margen"] > 0.3
 
 
@@ -44,8 +44,8 @@ def test_locates_the_downbeat(beats_per_bar):
 
 
 def test_anticipated_chords_do_not_shift_the_downbeat():
-    """Si los acordes entran medio pulso antes, la armonía sola marca el primer tiempo un
-    pulso antes de tiempo; los cambios de acorde reconocidos (en el pulso 1) lo corrigen."""
+    """If chords come in half a beat early, the harmony alone puts the downbeat one beat
+    early; the recognized chord changes (on beat 1) correct it."""
     L, bpm = 7, 105
     y = song(bpm, L, PROGRESSIONS[7], bars=36, anticipation=0.5)
     y = librosa.resample(y, orig_sr=FS, target_sr=22050)
@@ -53,7 +53,7 @@ def test_anticipated_chords_do_not_shift_the_downbeat():
     envelope = rhythm.onset_envelope(y, 22050)
     _, spectrum = periodicity.analyze(y, 22050, beats, envelope, rhythm.HOP_LENGTH)
     changes = np.zeros(len(beats))
-    changes[::L] = 1.0  # donde el reconocedor de acordes marca el cambio
+    changes[::L] = 1.0  # where the chord recognizer marks the change
     changes[0] = 0.0
     downbeats, _ = periodicity.locate_bars(beats, L, spectrum, 22050, changes)
     assert downbeats[0] == pytest.approx(0.0)
@@ -64,7 +64,7 @@ def test_short_stretch_continues_the_count():
     beats = np.concatenate(
         [
             np.arange(60) * 0.5,
-            30.0 + 0.8 + np.arange(6) * 0.5,  # salto y tramo corto
+            30.0 + 0.8 + np.arange(6) * 0.5,  # jump and short stretch
             33.8 + 0.8 + np.arange(60) * 0.5,
         ]
     )
@@ -73,7 +73,7 @@ def test_short_stretch_continues_the_count():
     changes[::L] = 1.0
     downbeats, _ = periodicity.locate_bars(beats, L, spectrum, 22050, changes)
     bar_lengths = np.diff(np.searchsorted(beats, downbeats))
-    assert len(downbeats) >= 20  # el tramo corto no deja un hueco sin compases
+    assert len(downbeats) >= 20  # the short stretch does not leave a gap without bars
     assert np.all(bar_lengths <= 2 * L)
 
 
@@ -105,7 +105,7 @@ def test_harmony_in_five_replaces_count_of_four():
     assert result["fuente"] == "periodicidad"
     assert result["pulsos_por_compas"] == 5
     assert result["conteo_primeros_tiempos"] == 4
-    assert result["confianza"] == "media"  # ventaja de 1,02 con la armonía a favor
+    assert result["confianza"] == "media"  # advantage of 1.02 with the harmony in favour
     assert any("se repiten cada 5" in a for a in result["avisos"])
 
 
@@ -128,7 +128,7 @@ def test_agreement_raises_confidence():
     four = _repetition(4, {3: -0.4, 4: 0.9, 5: -0.5, 7: -0.4}, {3: -0.3, 4: 1.1, 5: -0.4, 7: -0.3})
     beats = np.arange(200) * 0.5
     downbeats, i = [], 0
-    for n in [4] * 30 + [3, 5] * 5:  # 75 % de los compases cuentan 4: confianza media
+    for n in [4] * 30 + [3, 5] * 5:  # 75 % of the bars count 4: medium confidence
         downbeats.append(beats[i])
         i += n
     result = rhythm.analyze_meter(beats, np.array(downbeats), {"tipo": "binaria"}, 120, "alta", four)
@@ -140,8 +140,8 @@ def test_between_three_and_four_only_warns():
     three = _repetition(3, {3: 0.9, 4: -0.2, 5: -0.5, 7: -0.5}, {3: 0.9, 4: -0.1, 5: -0.4, 7: -0.4})
     beats = np.arange(400) * 0.5
     result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120, "alta", three)
-    assert result["lectura"] == "4/4"  # el detector distingue bien 3 de 4: no se reemplaza
-    assert result["confianza"] == "media"  # pero baja la confianza
+    assert result["lectura"] == "4/4"  # the detector tells 3 from 4 well: no replacement
+    assert result["confianza"] == "media"  # but the confidence drops
     assert any("sugiere compases de 3" in a for a in result["avisos"])
 
 

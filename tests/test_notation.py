@@ -47,7 +47,7 @@ def test_relative_key():
         ("F:maj7", "Famaj7", "Fmaj7", "Fa"),
         ("C:maj/3", "Do/Mi", "C/E", "Do"),
         ("B:hdim7", "Sim7(♭5)", "Bm7(♭5)", "Sidim"),
-        ("E:(1,b3,5,b7,11)", "Mim7", "Em7", "Mim"),  # extensión rara: se queda con el núcleo
+        ("E:(1,b3,5,b7,11)", "Mim7", "Em7", "Mim"),  # unusual extension: keeps the core chord
     ],
 )
 def test_describe_chord(label, solfege_name, letter_name, simple):
@@ -59,13 +59,13 @@ def test_describe_chord(label, solfege_name, letter_name, simple):
 
 
 def test_chord_uses_flats_in_flat_key():
-    speller = Speller(3, "mayor")  # Mi♭ mayor
+    speller = Speller(3, "mayor")  # E♭ major
     assert describe_chord("A#:maj", speller)["latino"] == "Si♭"
     assert describe_chord("D#:maj", speller)["americano"] == "E♭"
 
 
 def test_chord_uses_sharps_in_sharp_key():
-    speller = Speller(4, "mayor")  # Mi mayor
+    speller = Speller(4, "mayor")  # E major
     assert describe_chord("C#:min", speller)["latino"] == "Do#m"
     assert describe_chord("G#:min", speller)["americano"] == "G#m"
 
@@ -73,14 +73,14 @@ def test_chord_uses_sharps_in_sharp_key():
 @pytest.mark.parametrize(
     ("tonic", "mode", "label", "expected"),
     [
-        (5, "mayor", "D:maj/3", "D/F#"),  # nunca D/G♭
-        (2, "menor", "A:maj/3", "A/C#"),  # dominante de Re menor en primera inversión
+        (5, "mayor", "D:maj/3", "D/F#"),  # never D/G♭
+        (2, "menor", "A:maj/3", "A/C#"),  # dominant of D minor in first inversion
         (2, "menor", "A:7/3", "A7/C#"),
         (9, "menor", "E:maj/3", "E/G#"),
-        (9, "menor", "G#:dim7", "G#dim7"),  # sensible de La menor
+        (9, "menor", "G#:dim7", "G#dim7"),  # leading tone of A minor
         (0, "mayor", "A:maj/3", "A/C#"),
-        (7, "mayor", "A#:maj", "B♭"),  # ♭III prestado en Sol mayor
-        (7, "mayor", "D#:maj", "E♭"),  # ♭VI prestado
+        (7, "mayor", "A#:maj", "B♭"),  # borrowed ♭III in G major
+        (7, "mayor", "D#:maj", "E♭"),  # borrowed ♭VI
         (2, "mayor", "A#:maj", "B♭"),
         (5, "mayor", "A#:maj", "B♭"),
         (5, "mayor", "C:7", "C7"),
@@ -106,11 +106,11 @@ def test_chords_without_third_are_not_shown_as_major():
 @pytest.mark.parametrize(
     ("tonic", "mode", "label", "expected"),
     [
-        (8, "menor", "C:min", "Cm"),  # antes salía "B#m"
+        (8, "menor", "C:min", "Cm"),  # used to come out as "B#m"
         (8, "menor", "C:min/5", "Cm/G"),
         (8, "menor", "C:maj", "C"),
-        (1, "menor", "C:dim", "B#dim"),  # sensible de Do# menor: se escribe alterada
-        (6, "mayor", "F:dim", "E#dim"),  # diatónica en Fa# mayor: se respeta la armadura
+        (1, "menor", "C:dim", "B#dim"),  # leading tone of C# minor: keeps its accidental
+        (6, "mayor", "F:dim", "E#dim"),  # diatonic in F# major: follows the key signature
         (10, "mayor", "E:maj", "E"),
     ],
 )

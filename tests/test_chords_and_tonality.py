@@ -6,12 +6,12 @@ from orfeo.analysis import chords, tonality
 def test_chunks_cover_the_end_without_padding():
     assert chords._chunk_starts(15.0) == [0.0]
     assert chords._chunk_starts(40.0) == [0.0, 20.0]
-    # 49 s: el último trozo arranca en 29 s (20 s completos hasta el final), no en 40 s
+    # 49 s: the last chunk starts at 29 s (a full 20 s up to the end), not at 40 s
     assert chords._chunk_starts(49.0) == [0.0, 20.0, 29.0]
 
 
 def test_one_beat_chord_is_kept():
-    beat = 60 / 140  # 0,43 s
+    beat = 60 / 140  # 0.43 s
     beats = np.arange(0, 20, beat)
     raw_segments = [(0.0, 4 * beat, "C:maj"), (4 * beat, 5 * beat, "G:maj"), (5 * beat, 20.0, "F:maj")]
     output = chords._merge_equal(chords.group_by_beats(raw_segments, beats, 20.0))

@@ -11,7 +11,7 @@ def _beats(bpm, n):
 
 def test_beats_per_bar():
     beats = _beats(120, 33)
-    downbeats = beats[1::4]  # anacrusa de un pulso, después compases de 4
+    downbeats = beats[1::4]  # one-beat pickup, then bars of 4
     assert rhythm.beats_per_bar(beats, downbeats) == [4] * 7
 
 
@@ -74,7 +74,7 @@ def test_tempo_from_beats():
 
 @pytest.mark.parametrize("bpm", [123, 128, 133, 140, 170, 174, 180, 193.5])
 def test_tempo_has_no_20_ms_grid_error(bpm):
-    # Beat This! devuelve los pulsos redondeados a cuadros de 20 ms
+    # Beat This! returns beats rounded to 20 ms frames
     beats = np.round(_beats(bpm, 200) * 50) / 50
     t = rhythm.analyze_tempo(beats, np.zeros(4000), 22050)
     assert abs(t["bpm"] - bpm) < 0.5
@@ -82,7 +82,7 @@ def test_tempo_has_no_20_ms_grid_error(bpm):
 
 
 def test_unify_double_time_section():
-    # 105 BPM, con un tramo en el medio donde el detector marcó el doble de pulsos
+    # 105 BPM, with a stretch in the middle where the detector marked twice as many beats
     normal = _beats(105, 40)
     double = normal[-1] + np.arange(1, 41) * (60 / 210)
     final = double[-1] + np.arange(1, 21) * (60 / 105)
@@ -96,7 +96,7 @@ def test_unify_double_time_section():
 
 
 def test_unify_fills_missed_beats():
-    beats = np.delete(_beats(120, 40), [10, 20, 21])  # uno y dos pulsos perdidos
+    beats = np.delete(_beats(120, 40), [10, 20, 21])  # one and two missed beats
     unified, _, info = rhythm.unify_beats(beats, np.array([]))
     assert info["agregados"] == 3
     assert np.allclose(unified, _beats(120, 40))
@@ -110,7 +110,7 @@ def test_unify_keeps_a_real_tempo_change():
 
 
 def test_unify_evens_a_mis_tracked_fill():
-    # Como en Resident Evil (compás 9): 4 pulsos marcados 0,42 / 0,40 / 0,72 / 0,68 s
+    # As in Resident Evil (bar 9): 4 beats marked 0.42 / 0.40 / 0.72 / 0.68 s
     beat = 2.22 / 4
     beats = list(np.arange(20) * beat)
     t = beats[-1]
@@ -133,7 +133,7 @@ def test_unify_evens_fill_with_regular_beat():
 
 
 def test_unify_keeps_a_real_shift():
-    # Un intervalo de 1,46 pulsos (un calderón o un corrimiento de medio pulso) no se toca
+    # An interval of 1.46 beats (a fermata or a half-beat shift) is left alone
     beats = np.concatenate([np.arange(20) * 0.56, 19 * 0.56 + 0.82 + np.arange(20) * 0.56])
     unified, _, info = rhythm.unify_beats(beats, np.array([]))
     assert np.array_equal(unified, beats)
@@ -141,7 +141,7 @@ def test_unify_keeps_a_real_shift():
 
 
 def test_unify_fills_gap_next_to_short_bar():
-    # Un intervalo de 1,5 pulsos (compás de 7/8, real) seguido de un pulso perdido (2,0)
+    # An interval of 1.5 beats (a real 7/8 bar) followed by a missed beat (2.0)
     beat = 0.56
     intervals = [1.0] * 15 + [1.5, 2.0] + [1.0] * 15
     beats = np.concatenate([[0.0], np.cumsum(np.array(intervals) * beat)])
@@ -158,11 +158,11 @@ def _from_intervals(intervals, beat=0.5):
 @pytest.mark.parametrize(
     ("name", "intervals"),
     [
-        ("ritardando de un compás", [1.0] * 16 + [1.2] * 4 + [1.0] * 16),
-        ("dos pulsos más lentos", [1.0] * 16 + [1.4] * 2 + [1.0] * 16),
-        ("accelerando de un compás", [1.0] * 16 + [0.8] * 4 + [1.0] * 16),
-        ("intro libre", [1.3, 1.4, 1.2] + [1.0] * 30),
-        ("ritardando final", [1.0] * 30 + [1.2, 1.4, 1.6, 1.8]),
+        ("one-bar ritardando", [1.0] * 16 + [1.2] * 4 + [1.0] * 16),
+        ("two slower beats", [1.0] * 16 + [1.4] * 2 + [1.0] * 16),
+        ("one-bar accelerando", [1.0] * 16 + [0.8] * 4 + [1.0] * 16),
+        ("free-time intro", [1.3, 1.4, 1.2] + [1.0] * 30),
+        ("final ritardando", [1.0] * 30 + [1.2, 1.4, 1.6, 1.8]),
     ],
 )
 def test_unify_respects_real_tempo_changes(name, intervals):
@@ -181,7 +181,7 @@ def test_unify_fills_gaps_when_band_returns_late(gap):
 
 @pytest.mark.parametrize("eighth", [0.6, 0.64, 0.67, 0.75])
 def test_unify_double_time_swing_keeps_the_grid(eighth):
-    # Tramo donde el detector marca también la corchea del swing
+    # Stretch where the detector also marks the swung eighth note
     quarter_notes = np.arange(64) * 0.5
     swing = quarter_notes[16:32] + eighth * 0.5
     beats = np.sort(np.concatenate([quarter_notes, swing]))
@@ -191,7 +191,7 @@ def test_unify_double_time_swing_keeps_the_grid(eighth):
 
 
 def _bars(*lengths, start=0):
-    """Pulsos cada 0,5 s y primeros tiempos que dejan compases de esos largos."""
+    """Beats every 0.5 s and downbeats that make bars of those lengths."""
     total = start + sum(lengths) + 4
     beats = np.arange(total) * 0.5
     indices = np.cumsum((start, *lengths))
@@ -203,15 +203,15 @@ def _bars(*lengths, start=0):
     [
         ((4, 4, 3, 1, 4, 4), [4, 4, 4, 4, 4]),  # Resident Evil: 3 + 1
         ((4, 1, 3, 4), [4, 4, 4]),  # 1 + 3
-        ((4, 3, 5, 4), [4, 4, 4, 4]),  # primer tiempo corrido: 3 + 5
-        ((4, 8, 4), [4, 4, 4, 4]),  # primer tiempo perdido
+        ((4, 3, 5, 4), [4, 4, 4, 4]),  # shifted downbeat: 3 + 5
+        ((4, 8, 4), [4, 4, 4, 4]),  # missed downbeat
         ((4, 2, 2, 4), [4, 4, 4]),
-        ((4, 4, 3, 4, 4), [4, 4, 3, 4, 4]),  # un compás de 3 aislado puede ser real
-        ((4, 3, 3, 4), [4, 3, 3, 4]),  # 6 no es múltiplo de 4: no se toca
-        ((4, 3, 3, 2, 4), [4, 4, 4, 4]),  # 3+3+2 con un compás de 2: error
-        ((4, 4, 3, 3, 3, 3, 4), [4, 4, 3, 3, 3, 3, 4]),  # puente real en 3/4
-        ((4, 5, 5, 5, 5, 4), [4, 5, 5, 5, 5, 4]),  # sección real en 5/4
-        ((4, 5, 7, 4), [4, 5, 7, 4]),  # suman 12: más de dos compases
+        ((4, 4, 3, 4, 4), [4, 4, 3, 4, 4]),  # a single bar of 3 may be real
+        ((4, 3, 3, 4), [4, 3, 3, 4]),  # 6 is not a multiple of 4: left alone
+        ((4, 3, 3, 2, 4), [4, 4, 4, 4]),  # 3+3+2 with a bar of 2: an error
+        ((4, 4, 3, 3, 3, 3, 4), [4, 4, 3, 3, 3, 3, 4]),  # a real bridge in 3/4
+        ((4, 5, 5, 5, 5, 4), [4, 5, 5, 5, 5, 4]),  # a real section in 5/4
+        ((4, 5, 7, 4), [4, 5, 7, 4]),  # adds up to 12: more than two bars
     ],
 )
 def test_regularize_bars(lengths, expected_lengths):
@@ -246,7 +246,7 @@ def test_bar_grid_with_pickup():
 
 
 def test_intro_without_beats_appears_in_grid():
-    beats = 20 + _beats(120, 40)  # la batería entra a los 20 s
+    beats = 20 + _beats(120, 40)  # the drums come in at 20 s
     bar_cells = rhythm.bar_grid(beats, beats[::4], duration=40.0)
     assert bar_cells[0] == {"numero": 0, "etiqueta": "intro", "inicio": 0.0, "fin": 20.0}
 
@@ -270,7 +270,7 @@ def test_meter_is_not_more_confident_than_beats():
 
 
 def test_unclear_subdivision_without_onsets():
-    # Envolvente sin ataques entre pulsos (acordes sostenidos): no debe inventar subdivisión
+    # Envelope without onsets between beats (sustained chords): must not invent a subdivision
     rng = np.random.default_rng(3)
     envelope = 1 + 0.05 * rng.random(int(60 * 22050 / rhythm.HOP_LENGTH))
     beats = _beats(60, 55)

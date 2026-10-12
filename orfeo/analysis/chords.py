@@ -1,11 +1,11 @@
-"""Acordes con Consonance-ACE (Poltronieri, Serra y Rocamora, ISMIR 2025; código MIT).
+"""Chords with Consonance-ACE (Poltronieri, Serra and Rocamora, ISMIR 2025; MIT code).
 
-Sigue `ACE.inference.run_inference`, con tres cambios:
-- devuelve los acordes en memoria y usa los pulsos que ya calculó Beat This!;
-- el último trozo de 20 s se toma hacia atrás desde el final (en vez de rellenarlo con
-  silencio, que hace que el modelo conteste "sin acorde" aunque haya música);
-- un acorde por pulso solo donde hay pulsos: en una intro libre o en una pausa se
-  conservan los acordes tal como los detectó el modelo.
+Follows `ACE.inference.run_inference`, with three changes:
+- returns the chords in memory and reuses the beats Beat This! already found;
+- the last 20 s chunk is taken backwards from the end (instead of padding it with silence,
+  which makes the model answer "no chord" even when there is music);
+- one chord per beat only where there are beats: in a free-time intro or in a pause the
+  chords are kept as the model detected them.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ import numpy as np
 
 SAMPLE_RATE = 22050
 HOP_LENGTH = 512
-CHUNK_SECONDS = 20.0  # segundos: el modelo se entrenó con trozos de 20 s y no admite otro largo
-MIN_SECONDS_WITHOUT_BEATS = 0.5  # duración mínima de un acorde donde no hay pulsos para agrupar
+CHUNK_SECONDS = 20.0  # the model was trained on 20 s chunks and accepts no other length
+MIN_SECONDS_WITHOUT_BEATS = 0.5  # shortest chord kept where there are no beats to group by
 
 Segment = tuple[float, float, str]
 
@@ -45,7 +45,7 @@ def _chunk_starts(duration: float) -> list[float]:
         return [0.0]
     starts = [i * CHUNK_SECONDS for i in range(int(duration // CHUNK_SECONDS))]
     if duration - (starts[-1] + CHUNK_SECONDS) > 0.05:
-        starts.append(duration - CHUNK_SECONDS)  # último trozo completo, superpuesto con el anterior
+        starts.append(duration - CHUNK_SECONDS)  # a full last chunk, overlapping the previous one
     return starts
 
 
@@ -55,7 +55,7 @@ def detect_chords(
     beats: np.ndarray,
     progress: Callable[[float], None] | None = None,
 ) -> list[Segment]:
-    """Devuelve [(inicio, fin, etiqueta_harte), ...] ordenados y sin repetidos consecutivos."""
+    """Returns [(start, end, harte_label), ...], sorted and without consecutive repeats."""
     from ACE.inference import predict
     from ACE.mir_evaluation import convert_predictions_decomposed
     from ACE.preprocess.audio_processor import AudioChunkProcessor
@@ -73,7 +73,7 @@ def detect_chords(
     )
     length = int(CHUNK_SECONDS * SAMPLE_RATE)
     if chunker.base_signal.shape[1] < length:
-        # Canción más corta que un trozo: se repite en lugar de rellenar con silencio
+        # Song shorter than one chunk: loop it instead of padding with silence
         count = int(np.ceil(length / chunker.base_signal.shape[1]))
         chunker.base_signal = chunker.base_signal.repeat(1, count)[:, :length]
 
@@ -93,9 +93,9 @@ def detect_chords(
             chord_predictions=pred["chord"],
             segment_duration=CHUNK_SECONDS,
             threshold=0.5,
-            # Solo se quita el parpadeo (< 0,1 s). Más que eso borraría acordes de un pulso
-            # en tempos rápidos (a 125 BPM un pulso dura 0,48 s); el agrupado por pulsos
-            # de abajo ya suaviza.
+            # Only flicker (< 0.1 s) is removed. More than that would delete one-beat chords
+            # at fast tempos (at 125 BPM a beat lasts 0.48 s); grouping by beats below
+            # already smooths the result.
             remove_short_min_duration=0.1,
         )
         for (a, b), label in zip(np.asarray(stretch, dtype=float) + start, names):
@@ -110,7 +110,7 @@ def detect_chords(
 
 
 def _majority_label(raw_segments: list[Segment], a: float, b: float, start: int = 0) -> str | None:
-    """El acorde que más suena dentro de [a, b). `crudos` tiene que estar ordenado."""
+    """The chord that sounds the longest within [a, b). `raw_segments` must be sorted."""
     times: dict[str, float] = {}
     for s, e, label in raw_segments[start:]:
         if s >= b:
@@ -122,9 +122,9 @@ def _majority_label(raw_segments: list[Segment], a: float, b: float, start: int 
 
 
 def _absorb_short(segments: list[Segment], minimum: float) -> list[Segment]:
-    """Absorbe los segmentos de menos de `minimo` segundos en el anterior (o el siguiente)."""
+    """Merges segments shorter than `minimum` seconds into the previous (or next) one."""
     output: list[Segment] = []
-    pending = None  # inicio de un segmento corto al principio, que se pasa al siguiente
+    pending = None  # start of a short leading segment, handed over to the next one
     for a, b, label in segments:
         if pending is not None:
             a, pending = pending, None
@@ -141,10 +141,10 @@ def _absorb_short(segments: list[Segment], minimum: float) -> list[Segment]:
 
 
 def group_by_beats(raw_segments: list[Segment], beats: np.ndarray, duration: float) -> list[Segment]:
-    """Un acorde por pulso (el que más suena en ese pulso) donde los pulsos son regulares.
+    """One chord per beat (the one that sounds the longest in it) where the beats are regular.
 
-    Donde no hay pulsos (antes del primero, después del último, o en huecos de más de dos
-    pulsos) se dejan los segmentos del modelo, quitando solo los de menos de medio segundo.
+    Where there are no beats (before the first, after the last, or in gaps longer than two
+    beats) the model's segments are kept, removing only those shorter than half a second.
     """
     beats = np.asarray([p for p in beats if 0 < p < duration], dtype=float)
     if len(beats) < 4:
@@ -155,7 +155,7 @@ def group_by_beats(raw_segments: list[Segment], beats: np.ndarray, duration: flo
     cells.append((float(beats[-1]), duration))
 
     output: list[Segment] = []
-    start = 0  # primer segmento que todavía puede tocar la celda actual
+    start = 0  # first segment that can still overlap the current cell
     for a, b in cells:
         if b - a <= 0:
             continue

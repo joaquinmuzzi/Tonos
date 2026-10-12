@@ -1,9 +1,9 @@
-"""Analizador musical.
+"""orfeo command line.
 
-python -m orfeo                 abre la app en el navegador
-python -m orfeo cancion.mp4     analiza un archivo y muestra el resultado en la terminal
-python -m orfeo cancion.mp4 --json
-python -m orfeo --precargar     descarga y prueba los modelos (lo usa instalar.ps1)
+python -m orfeo                 opens the app in the browser
+python -m orfeo song.mp4        analyzes a file and prints the result in the terminal
+python -m orfeo song.mp4 --json
+python -m orfeo --precargar     downloads and tests the models (used by instalar.ps1)
 """
 
 from __future__ import annotations
@@ -149,7 +149,7 @@ def main() -> None:
 
     url = f"http://127.0.0.1:{a.puerto}"
     if _port_in_use(a.puerto):
-        # Ya hay una ventana abierta: no se arranca otra (borraría los archivos en cola)
+        # The app is already running: do not start another one (it would delete the queued files)
         print(f"El analizador ya está abierto en {url}")
         if not a.no_abrir:
             webbrowser.open(url)

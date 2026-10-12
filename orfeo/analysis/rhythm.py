@@ -1,11 +1,11 @@
-"""Pulsos, primeros tiempos, tempo y compás.
+"""Beats, downbeats, tempo and meter.
 
-- Pulsos y primeros tiempos: Beat This! (CPJKU, ISMIR 2024; MIT).
-- Tempo: se calcula a partir de los pulsos (promedio de los intervalos válidos) y se
-  compara con un segundo método independiente (librosa).
-- Compás: ninguna herramienta abierta lo da directamente. Se cuenta cuántos pulsos hay
-  entre primeros tiempos consecutivos, se contrasta con cada cuántos pulsos se repite la
-  armonía (periodicity.py) y se mira si cada pulso se divide en 2 o en 3.
+- Beats and downbeats: Beat This! (CPJKU, ISMIR 2024; MIT).
+- Tempo: computed from the beats (mean of the valid intervals) and compared with a second,
+  independent method (librosa).
+- Meter: no open tool gives it directly. We count the beats between consecutive downbeats,
+  check that against how often the harmony repeats (periodicity.py) and look at whether
+  each beat is divided in 2 or in 3.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from functools import lru_cache
 import librosa
 import numpy as np
 
-HOP_LENGTH = 256  # muestras por cuadro de la envolvente de ataques (~11.6 ms a 22050 Hz)
+HOP_LENGTH = 256  # samples per frame of the onset envelope (~11.6 ms at 22050 Hz)
 
 
 @lru_cache(maxsize=1)
@@ -41,29 +41,29 @@ def onset_envelope(signal: np.ndarray, sr: int) -> np.ndarray:
 
 
 def unify_beats(beats: np.ndarray, downbeats: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict]:
-    """Deja una sola grilla de pulsos, al tempo que domina la canción.
+    """Leaves a single beat grid, at the tempo that dominates the song.
 
-    El detector a veces marca el doble de pulsos en un tramo (210 BPM en una canción a 105), se
-    saltea alguno o los pone corridos en un redoble. Con la grilla despareja no se pueden contar
-    compases, así que se corrigen solo esos errores:
-    1. Pulso de más (a menos de 0,7 pulsos del anterior): de los dos queda el que sigue la
-       grilla que venía. En un tramo al doble queda un pulso de cada dos, sin correrse a la
-       corchea del swing. (No se mira si alguno es primer tiempo: en esos tramos el detector
-       también marca primeros tiempos sobre los contratiempos.)
-    2. Redoble mal marcado: un tramo corto (hasta 8 pulsos) que mezcla intervalos cortos y
-       largos (0,42 / 0,40 / 0,72 / 0,68 s donde van 4 de 0,555) y dura lo mismo que esa
-       cantidad de pulsos se reparte parejo.
-    3. Pulsos perdidos: un hueco de 2 a 8 pulsos se rellena.
-    No se tocan los cambios de tempo reales (ritardando, accelerando, rubato, una sección a
-    otro tempo: sus intervalos son todos lentos o todos rápidos) ni los corrimientos que no son
-    un número entero de pulsos (un calderón, un compás medio pulso más corto).
+    The detector sometimes marks twice as many beats in a stretch (210 BPM in a song at 105),
+    skips a beat, or misplaces them during a drum fill. Bars cannot be counted on an uneven
+    grid, so only those errors are corrected:
+    1. Extra beat (less than 0.7 beats after the previous one): of the two, keep the one that
+       follows the grid so far. In a double-time stretch one beat out of two is kept, without
+       drifting to the swung eighth. (Downbeat marks are ignored here: in those stretches the
+       detector also puts downbeats on the off-beats.)
+    2. Mis-tracked fill: a short stretch (up to 8 beats) that mixes short and long intervals
+       (0.42 / 0.40 / 0.72 / 0.68 s where 4 of 0.555 belong) and lasts as long as that many
+       beats is evened out.
+    3. Missed beats: a gap of 2 to 8 beats is filled in.
+    Real tempo changes are left alone (ritardando, accelerando, rubato, a section at another
+    tempo: their intervals are all slow or all fast), and so are shifts that are not a whole
+    number of beats (a fermata, a bar that is half a beat shorter).
     """
     if len(beats) < 8:
         return beats, downbeats, {"quitados": 0, "agregados": 0}
     typical = float(np.median(np.diff(beats)))
     downbeats = np.asarray(downbeats, dtype=float)
 
-    # 1. Pulsos de más
+    # 1. Extra beats
     deduped = [float(beats[0])]
     removed = added = 0
     for t in (float(x) for x in beats[1:]):
@@ -81,16 +81,16 @@ def unify_beats(beats: np.ndarray, downbeats: np.ndarray) -> tuple[np.ndarray, n
         return 0.85 * typical <= d <= 1.15 * typical
 
     output = [float(grid[0])]
-    moved: dict[float, float] = {}  # pulso que se corrió -> su nueva posición
+    moved: dict[float, float] = {}  # beat that was moved -> its new position
     i = 0
     while i < len(grid) - 1:
         if regular(grid[i + 1] - grid[i]):
             output.append(float(grid[i + 1]))
             i += 1
             continue
-        # Tramo irregular: de grilla[i] hasta el pulso desde el que la grilla vuelve a ser regular.
-        # Un único intervalo normal entre dos irregulares queda dentro del mismo tramo
-        # (0,44 / 0,56 / 0,68 s es un solo redoble mal marcado).
+        # Irregular stretch: from grid[i] to the beat from which the grid is regular again.
+        # A single regular interval between two irregular ones stays in the same stretch
+        # (0.44 / 0.56 / 0.68 s is one mis-tracked fill).
         j = i + 1
         while j < len(grid) - 1:
             if not regular(grid[j + 1] - grid[j]):
@@ -107,13 +107,13 @@ def unify_beats(beats: np.ndarray, downbeats: np.ndarray) -> tuple[np.ndarray, n
             and bool(np.any(intervals > 1.15 * typical))
             and abs(duration / len(intervals) - typical) <= 0.15 * typical
         )
-        if is_fill:  # 2. misma cantidad de pulsos, repartidos parejo
+        if is_fill:  # 2. same number of beats, evenly spaced
             even = grid[i] + duration * np.arange(1, len(intervals)) / len(intervals)
             moved.update(zip(grid[i + 1 : j].tolist(), even.tolist()))
             output.extend(even.tolist())
-        else:  # 3. solo se rellenan los huecos de pulsos perdidos
-            # Un hueco aislado se acepta aunque la banda vuelva un poco tarde; dentro de una serie
-            # de pulsos lentos (un ritardando) tiene que ser casi exacto, o es parte del ritardando
+        else:  # 3. only fill the gaps left by missed beats
+            # An isolated gap is accepted even if the band comes back a little late; inside a run
+            # of slow beats (a ritardando) it must be almost exact, or it is part of the ritardando
             tolerance = 0.15 if len(intervals) == 1 else 0.06
             for a, b in zip(grid[i:j], grid[i + 1 : j + 1]):
                 gap = float(b - a)
@@ -126,18 +126,18 @@ def unify_beats(beats: np.ndarray, downbeats: np.ndarray) -> tuple[np.ndarray, n
         output.append(float(grid[j]))
         i = j
     new = np.asarray(output)
-    # Los primeros tiempos siguen a su pulso (si se corrió) y quedan en el pulso más cercano
+    # Downbeats follow their beat (if it moved) and snap to the nearest beat
     target = [moved.get(float(p), float(p)) for p in downbeats]
     nearest = [float(new[np.argmin(np.abs(new - p))]) for p in target]
     new_downbeats = np.unique([c for c, p in zip(nearest, target) if abs(c - p) <= 0.25 * typical])
     return new, new_downbeats, {"quitados": removed, "agregados": added}
 
 
-# --- Tempo -------------------------------------------------------------------
+# --- Tempo --------------------------------------------------------------------
 
 
 def _period(intervals: np.ndarray) -> float:
-    """Promedio de los intervalos a ±10 % de la mediana (ignora pulsos salteados o de más)."""
+    """Mean of the intervals within ±10 % of the median (ignores skipped or extra beats)."""
     median = float(np.median(intervals))
     valid = intervals[np.abs(intervals - median) <= 0.10 * median]
     return float(np.mean(valid)) if len(valid) else median
@@ -149,22 +149,22 @@ def analyze_tempo(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dict:
 
     intervals = np.diff(beats)
     median = float(np.median(intervals))
-    # Beat This! entrega los pulsos en una grilla de 20 ms, así que cada intervalo viene
-    # redondeado y la mediana también (170 BPM saldría 166,7). El promedio de los intervalos
-    # válidos no arrastra ese redondeo: los errores de cada pulso se compensan.
+    # Beat This! returns beats on a 20 ms grid, so every interval is rounded and so is the
+    # median (170 BPM would come out as 166.7). The mean of the valid intervals does not
+    # carry that rounding: the errors of the individual beats cancel out.
     bpm = 60.0 / _period(intervals)
 
-    # Tempo local: misma cuenta sobre ventanas de 8 intervalos
+    # Local tempo: same computation over windows of 8 intervals
     local_bpms = np.array([60.0 / _period(intervals[max(0, i - 4) : i + 4]) for i in range(len(intervals))])
     p10, p90 = (float(x) for x in np.percentile(local_bpms, [10, 90]))
     variation = (p90 - p10) / bpm
-    # Regularidad: proporción de pulsos a ±10 % del intervalo típico
+    # Regularity: share of beats within ±10 % of the typical interval
     regularity = float(np.mean(np.abs(intervals - median) <= 0.10 * median))
 
     step = max(1, len(local_bpms) // 150)
     curve = [[round(float(t), 2), round(float(b), 1)] for t, b in zip(beats[1::step], local_bpms[::step])]
 
-    # Segundo método independiente (autocorrelación de la envolvente de ataques)
+    # Second, independent method (autocorrelation of the onset envelope)
     librosa_bpm = float(librosa.feature.tempo(onset_envelope=envelope, sr=sr, hop_length=HOP_LENGTH)[0])
     relation = None
     for factor, name in ((1, "igual"), (2, "doble"), (0.5, "mitad"), (3, "triple"), (1 / 3, "tercio")):
@@ -172,7 +172,7 @@ def analyze_tempo(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dict:
             relation = name
             break
 
-    # Fuera del rango habitual, lo más probable es que se sienta al doble o a la mitad
+    # Outside the usual range, it is most likely felt at double or half the tempo
     suggestion = "doble" if bpm < 55 else "mitad" if bpm > 200 else None
 
     if regularity >= 0.85 and relation in ("igual", "doble", "mitad"):
@@ -195,11 +195,11 @@ def analyze_tempo(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dict:
     }
 
 
-# --- Compás ------------------------------------------------------------------
+# --- Meter --------------------------------------------------------------------
 
 
 def beats_per_bar(beats: np.ndarray, downbeats: np.ndarray) -> list[int]:
-    """Cantidad de pulsos de cada compás completo (entre dos primeros tiempos)."""
+    """Number of beats in each complete bar (between two downbeats)."""
     if len(downbeats) < 2:
         return []
     indices = np.searchsorted(beats, downbeats)
@@ -208,14 +208,14 @@ def beats_per_bar(beats: np.ndarray, downbeats: np.ndarray) -> list[int]:
 
 
 def regularize_bars(beats: np.ndarray, downbeats: np.ndarray, n: int | None) -> tuple[np.ndarray, int]:
-    """Arregla compases cortados por un primer tiempo de más, de menos o corrido.
+    """Fixes bars split by an extra, missing or misplaced downbeat.
 
-    Solo se rearman (en compases parejos de n pulsos) los grupos de compases seguidos que
-    suman un múltiplo de n y que son un error evidente del detector, no un cambio de compás:
-    un compás del doble (8), un par desparejo (3+1, 1+3, 3+5) o uno con compases de 1 o 2
-    pulsos (2+2, 3+3+2), siempre que no sumen más de dos compases. Un compás distinto aislado
-    (un 3 entre compases de 4) o una serie de compases iguales (un puente en 3/4: 3+3+3+3) se
-    dejan como están. Devuelve (primeros tiempos, grupos rearmados).
+    Only groups of consecutive bars that add up to a multiple of n and are an obvious detector
+    error, not a change of meter, are regrouped (into even bars of n beats): a double bar (8),
+    an uneven pair (3+1, 1+3, 3+5) or a group with bars of 1 or 2 beats (2+2, 3+3+2), as long
+    as they add up to at most two bars. A single different bar (a 3 among bars of 4) or a run
+    of equal bars (a bridge in 3/4: 3+3+3+3) is left as it is.
+    Returns (downbeats, number of regrouped groups).
     """
     if not n or n < 2 or len(downbeats) < 3:
         return downbeats, 0
@@ -247,17 +247,17 @@ def regularize_bars(beats: np.ndarray, downbeats: np.ndarray, n: int | None) -> 
 
 
 def _onset_peak(envelope: np.ndarray, t: float, sr: int) -> float:
-    """Máximo de la envolvente en ±2 cuadros (±23 ms) alrededor del instante t."""
+    """Maximum of the envelope within ±2 frames (±23 ms) around time t."""
     center = round(t * sr / HOP_LENGTH)
     begin, end = max(0, center - 2), min(len(envelope), center + 3)
     return float(envelope[begin:end].max()) if end > begin else 0.0
 
 
 def analyze_subdivision(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dict:
-    """¿Cada pulso se divide en 2 (binaria) o en 3 (ternaria)?
+    """Is each beat divided in 2 (binary) or in 3 (ternary)?
 
-    Compara la energía de ataques a 1/2 del pulso contra la de 1/3 y 2/3.
-    Es una pista, no un veredicto: el swing y el shuffle también suenan ternarios.
+    Compares the onset energy at 1/2 of the beat with the energy at 1/3 and 2/3.
+    It is a hint, not a verdict: swing and shuffle also sound ternary.
     """
     binary, ternary, off_grid = [], [], []
     for b0, b1 in itertools.pairwise(beats):
@@ -268,7 +268,7 @@ def analyze_subdivision(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dic
         ternary.append(
             (_onset_peak(envelope, b0 + d / 3, sr) + _onset_peak(envelope, b0 + 2 * d / 3, sr)) / 2
         )
-        # Referencia: puntos que no caen en ninguna de las dos grillas (ni 1/3, 1/2, 2/3, ni 1/4, 3/4)
+        # Reference: points that fall on neither grid (not 1/3, 1/2, 2/3, nor 1/4, 3/4)
         off_grid.append(
             (_onset_peak(envelope, b0 + 0.42 * d, sr) + _onset_peak(envelope, b0 + 0.58 * d, sr)) / 2
         )
@@ -276,7 +276,7 @@ def analyze_subdivision(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dic
         return {"tipo": "no clara", "razon": None}
 
     b, t = float(np.median(binary)), float(np.median(ternary))
-    background = float(np.median(off_grid)) + 1e-6  # mismo estadístico (máximo en ±2 cuadros) que b y t
+    background = float(np.median(off_grid)) + 1e-6  # same statistic (max over ±2 frames) as b and t
     ratio = (t + 1e-6) / (b + 1e-6)
     if max(b, t) < 1.15 * background:
         kind = "no clara"
@@ -292,7 +292,7 @@ def analyze_subdivision(beats: np.ndarray, envelope: np.ndarray, sr: int) -> dic
 _READINGS = {
     (4, "binaria"): ("4/4", None),
     (4, "no clara"): ("4/4", None),
-    # (4, "ternaria") depende del tempo: ver _lectura()
+    # (4, "ternaria") depends on the tempo: see _reading()
     (2, "binaria"): ("2/4", "o 4/4 contado más rápido"),
     (2, "no clara"): ("2/4", "o 6/8"),
     (2, "ternaria"): ("6/8", "o 2/4 con tresillos"),
@@ -313,7 +313,7 @@ TERNARY_WARNING = (
 
 def _reading(n: int, subdivision: str, bpm: float | None) -> tuple[str, str | None]:
     if n == 4 and subdivision == "ternaria":
-        # Rápido con pulso en tres = swing/shuffle (se escribe 4/4); lento = balada en 12/8
+        # Fast with beats in three = swing/shuffle (written in 4/4); slow = a 12/8 ballad
         if bpm is not None and bpm < 80:
             return "12/8", "o 4/4 con tresillos"
         return "4/4 con swing", "o shuffle; también se puede escribir en 12/8"
@@ -339,17 +339,17 @@ def _no_meter(subdivision: dict, reason: str, second_method: dict | None = None)
 
 
 _LEVELS = ["baja", "media", "alta"]
-# Compases que el método de periodicidad no distingue entre sí (2 y 4 se repiten igual cada 4)
+# Meters the periodicity method cannot tell apart (2 and 4 both repeat every 4 beats)
 _FAMILY = {2: 4, 4: 4, 8: 4, 3: 3, 6: 3, 9: 3, 5: 5, 10: 5, 7: 7}
 
 
 def compare_with_periodicity(n: int | None, periodicity: dict | None) -> dict | None:
-    """¿El segundo método (repetición de la armonía) confirma, contradice o completa el conteo?
+    """Does the second method (repetition of the harmony) confirm, contradict or complete the count?
 
-    El detector de primeros tiempos distingue bien 3/4 de 4/4, pero casi no vio compases de
-    5 ni de 7 al entrenarse y los fuerza a 4. Por eso el segundo método solo se impone cuando
-    encuentra 5 o 7 (o cuando el conteo no sirvió), y con evidencia clara: que gane por
-    bastante y que la armonía también esté de su lado. Entre 3 y 4 solo puede avisar.
+    The downbeat detector tells 3/4 from 4/4 well, but it saw almost no bars of 5 or 7 during
+    training and forces them into 4. So the second method only takes over when it finds 5 or 7
+    (or when the count was unusable), and only with clear evidence: it must win by a wide
+    margin and the harmony must be on its side too. Between 3 and 4 it can only warn.
     """
     if periodicity is None:
         return None
@@ -366,7 +366,7 @@ def compare_with_periodicity(n: int | None, periodicity: dict | None) -> dict | 
     if family == winner:
         output["confirma"] = periodicity["margen"] >= 0.5
         return output
-    if family is None:  # el conteo no sirvió (o dio un compás raro): alcanza con que gane claro
+    if family is None:  # the count was unusable (or gave an odd meter): a clear win is enough
         advantage = periodicity["margen"]
         clear = scores[winner] >= 0.3 and advantage >= 0.3
     else:
@@ -412,7 +412,7 @@ def analyze_meter(
 
     warnings = []
     if replaces:
-        # El conteo de primeros tiempos se descarta: manda la repetición de la armonía
+        # The downbeat count is discarded: the repetition of the harmony decides
         g = second["pulsos"]
         reading, alternative = _reading(g, subdivision["tipo"], bpm)
         confidence = "media" if second["fuerte"] else "baja"
@@ -437,7 +437,7 @@ def analyze_meter(
         else:
             confidence = "baja"
         if second and second["confirma"] and confidence != "alta":
-            confidence = _LEVELS[_LEVELS.index(confidence) + 1]  # dos métodos independientes coinciden
+            confidence = _LEVELS[_LEVELS.index(confidence) + 1]  # two independent methods agree
         if second and second["contradice"]:
             confidence = _LEVELS[max(_LEVELS.index(confidence) - 1, 0)]
             warnings.append(
@@ -450,7 +450,7 @@ def analyze_meter(
                 "durante la canción o que los primeros tiempos estén mal ubicados."
             )
         number, source = n, "primeros tiempos"
-    # Si los pulsos mismos son dudosos, el compás (que se cuenta con ellos) no puede ser más seguro
+    # If the beats themselves are doubtful, the meter (counted from them) cannot be more certain
     confidence = cap_confidence(confidence, tempo_confidence)
     if number in (2, 3, 6):
         warnings.insert(0, TERNARY_WARNING)
@@ -472,12 +472,12 @@ def analyze_meter(
 
 
 def bar_grid(beats: np.ndarray, downbeats: np.ndarray, duration: float) -> list[dict]:
-    """Celdas [inicio, fin) para mostrar los acordes compás por compás.
+    """Cells [start, end) to show the chords bar by bar.
 
-    - Con primeros tiempos: un compás entre cada par. Lo que suena antes del primero es la
-      anacrusa (si dura menos de un compás) o la intro (compás 0).
-    - Sin primeros tiempos: tramos de 4 pulsos, o de 4 segundos si tampoco hay pulsos, para
-      que los acordes se puedan ver igual.
+    - With downbeats: one bar between each pair. What sounds before the first one is the
+      pickup (if it is shorter than a bar) or the intro (bar 0).
+    - Without downbeats: stretches of 4 beats, or of 4 seconds if there are no beats either,
+      so that the chords can still be shown.
     """
     if len(downbeats):
         edges = [float(x) for x in downbeats]

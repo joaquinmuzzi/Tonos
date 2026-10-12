@@ -1,4 +1,4 @@
-"""Extracción de audio con ffmpeg (sirve para MP4, M4A, MP3, WAV, FLAC, OGG, MKV, MOV...)."""
+"""Audio extraction with ffmpeg (works for MP4, M4A, MP3, WAV, FLAC, OGG, MKV, MOV...)."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-SAMPLE_RATE = 22050  # Hz: la que usan internamente Beat This!, S-KEY y Consonance-ACE
-MAX_DURATION = 20 * 60  # segundos
+SAMPLE_RATE = 22050  # Hz: the rate Beat This!, S-KEY and Consonance-ACE use internally
+MAX_DURATION = 20 * 60  # seconds
 
 
 class AudioError(Exception):
-    """Error con un mensaje pensado para mostrarle al usuario."""
+    """Error whose message is meant to be shown to the user."""
 
 
 class SilentAudioError(AudioError):
@@ -31,7 +31,7 @@ def find_ffmpeg(program: str = "ffmpeg") -> str:
 
 
 def count_audio_tracks(input_path: Path) -> int:
-    """Cantidad de pistas de audio del archivo (1 si no se puede averiguar)."""
+    """Number of audio tracks in the file (1 if it cannot be determined)."""
     try:
         result = subprocess.run(
             [
@@ -57,10 +57,10 @@ def count_audio_tracks(input_path: Path) -> int:
 
 
 def extract_audio(input_path: Path, wav_path: Path, track: int = 0) -> None:
-    """Convierte cualquier archivo con audio en un WAV mono a 22050 Hz.
+    """Converts any file with audio into a mono 22050 Hz WAV.
 
-    Corta en DURACION_MAXIMA + 1 s, así un archivo de horas no llena el disco ni la memoria
-    antes de poder avisar que es demasiado largo.
+    The output is cut at MAX_DURATION + 1 s, so an hours-long file cannot fill the disk or
+    the memory before we get to say that it is too long.
     """
     command = [
         find_ffmpeg(),
@@ -72,7 +72,7 @@ def extract_audio(input_path: Path, wav_path: Path, track: int = 0) -> None:
         "-i",
         str(input_path),
         "-map",
-        f"0:a:{track}",  # algunos MP4 traen varias pistas de audio
+        f"0:a:{track}",  # some MP4 files carry several audio tracks
         "-vn",
         "-ac",
         "1",
@@ -97,7 +97,7 @@ def extract_audio(input_path: Path, wav_path: Path, track: int = 0) -> None:
 
 
 def load_wav(path: Path) -> tuple[np.ndarray, int]:
-    """Carga el WAV generado y valida duración y silencio."""
+    """Loads the generated WAV and checks its duration and that it is not silent."""
     duration = sf.info(str(path)).duration
     if duration < 5:
         raise AudioError("El audio dura menos de 5 segundos: es muy corto para analizarlo.")
@@ -115,9 +115,9 @@ def load_wav(path: Path) -> tuple[np.ndarray, int]:
 
 
 def read_audio(input_path: Path, wav_path: Path) -> tuple[np.ndarray, int, int]:
-    """Extrae y carga la primera pista de audio que no esté en silencio.
+    """Extracts and loads the first audio track that is not silent.
 
-    Devuelve (señal, frecuencia, número de pista usada).
+    Returns (signal, sample rate, index of the track used).
     """
     tracks = count_audio_tracks(input_path)
     for track in range(tracks):

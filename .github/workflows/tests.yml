@@ -74,7 +74,7 @@ jobs:
           key: beat-this-final0
 
       - name: Fast tests
-        run: python -m pytest -q -m "not lento"
+        run: python -m pytest -q -m "not slow"
 
       - name: End-to-end tests (real models)
-        run: python -m pytest -q -m lento
+        run: python -m pytest -q -m slow

@@ -1,4 +1,4 @@
-"""Servidor web local (solo escucha en 127.0.0.1: nada sale de tu PC)."""
+"""Local web server (it only listens on 127.0.0.1: nothing leaves your computer)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ log = logging.getLogger("analizador")
 
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
-_executor = ThreadPoolExecutor(max_workers=1)  # un análisis por vez: los modelos usan todo el CPU
+_executor = ThreadPoolExecutor(max_workers=1)  # one analysis at a time: the models use the whole CPU
 _models_ready = threading.Event()
 
 
@@ -48,7 +48,7 @@ def _preload() -> None:
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(UPLOAD_DIR, ignore_errors=True)  # restos de una sesión anterior
+    shutil.rmtree(UPLOAD_DIR, ignore_errors=True)  # leftovers from a previous session
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     _executor.submit(_preload)
     yield
@@ -63,13 +63,13 @@ TOO_LARGE_MESSAGE = "El archivo es demasiado grande (máximo 1 GB)."
 
 @app.middleware("http")
 async def _limit_body_size(request: Request, call_next):
-    # Se rechaza antes de recibir el cuerpo: si no, el archivo entero se escribe en disco igual.
+    # Reject before receiving the body: otherwise the whole file is written to disk anyway.
     length = request.headers.get("content-length", "")
     if request.method == "POST" and length.isdigit() and int(length) > MAX_UPLOAD_BYTES + (1 << 20):
         return JSONResponse({"detail": TOO_LARGE_MESSAGE}, status_code=413)
     response = await call_next(request)
-    # Que el navegador siempre pregunte si hay una versión nueva de la página (si no, después
-    # de actualizar la app puede seguir usando el app.js viejo que tenía guardado)
+    # Make the browser always check for a newer version of the page (otherwise, after an
+    # update, it may keep using the old app.js it had cached)
     response.headers["Cache-Control"] = "no-cache"
     return response
 
@@ -82,14 +82,14 @@ def index():
 def _register_job(id_: str, **fields) -> None:
     with _lock:
         _jobs[id_] = {"estado": "en_cola", "paso": "En espera", "progreso": 0.0, **fields}
-        # Se descartan los más viejos, pero nunca uno que todavía está en cola o analizándose
+        # Drop the oldest jobs, but never one that is still queued or being analyzed
         finished = [k for k, t in _jobs.items() if t["estado"] in ("listo", "error")]
         while len(_jobs) > MAX_JOBS and finished:
             _jobs.pop(finished.pop(0))
 
 
 def _safe_extension(name: str) -> str:
-    """'.MP4' -> '.mp4'; descarta caracteres que Windows no acepta (ffmpeg igual mira el contenido)."""
+    """'.MP4' -> '.mp4'; drops characters Windows rejects (ffmpeg looks at the content anyway)."""
     return re.sub(r"[^a-z0-9.]", "", Path(name).suffix.lower())[:10]
 
 
@@ -112,10 +112,10 @@ async def upload(archivo: UploadFile):
     name = Path(archivo.filename or "cancion").name or "cancion"
     id_ = uuid.uuid4().hex[:12]
     folder = UPLOAD_DIR / id_
-    # Nombre neutro en disco: evita problemas de ffmpeg con caracteres raros
+    # Neutral file name on disk: avoids ffmpeg problems with unusual characters
     target = folder / ("entrada" + _safe_extension(name))
 
-    digest, total = hashlib.sha256(), 0
+    hasher, total = hashlib.sha256(), 0
     try:
         folder.mkdir(parents=True, exist_ok=True)
         with open(target, "wb") as f:
@@ -123,7 +123,7 @@ async def upload(archivo: UploadFile):
                 total += len(block)
                 if total > MAX_UPLOAD_BYTES:
                     break
-                digest.update(block)
+                hasher.update(block)
                 f.write(block)
     except OSError as e:
         shutil.rmtree(folder, ignore_errors=True)
@@ -136,7 +136,7 @@ async def upload(archivo: UploadFile):
         shutil.rmtree(folder, ignore_errors=True)
         raise HTTPException(400, "El archivo está vacío.")
 
-    cache_path = CACHE_DIR / f"{digest.hexdigest()}.json"
+    cache_path = CACHE_DIR / f"{hasher.hexdigest()}.json"
     cached = _read_cache(cache_path)
     if cached is not None:
         shutil.rmtree(folder, ignore_errors=True)

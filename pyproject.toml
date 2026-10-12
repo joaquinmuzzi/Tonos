@@ -20,7 +20,7 @@ dev = ["pytest", "ruff==0.17.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["lento: usa los modelos reales (tarda alrededor de un minuto)"]
+markers = ["slow: uses the real models (takes about a minute)"]
 filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
 
 [tool.ruff]
