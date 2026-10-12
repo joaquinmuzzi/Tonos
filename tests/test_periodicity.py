@@ -76,19 +76,20 @@ def test_anticipated_chords_marked_on_the_beat_before(L):
     assert np.all(np.searchsorted(beats, downbeats) % L == 0)
 
 
-def test_accented_downbeat_beats_a_bass_move_on_beat_two():
-    """A 5/4 vamp like Machinarium's "The Castle": a chord struck on beat 1 and a bass line
-    A-E-E-A-A, so the biggest change of the bar (A -> E) is on beat 2. The bar starts on the
-    accented beat 1, not on the change."""
+def test_bass_on_beat_one_beats_a_melodic_accent():
+    """A 5/4 vamp like Machinarium's "The Castle": the bass lands hardest on beat 1 (E, already
+    played on beat 5 of the previous bar, then A on beats 2-4), while the loudest pitched attack is
+    a melody note on beat 4. The bar starts on the bass, not on the melodic accent."""
     L, bpm, bars = 5, 120, 30
     beat = 60.0 / bpm
     y = np.zeros(int((bars * L * beat + 1) * FS))
     for b in range(bars):
         start = b * L * beat
-        for note in (62, 65, 69):  # D minor chord, struck on beat 1 and held for the bar
-            _mix_in(y, _tone(_midi_to_hz(note), L * beat, 0.08), start)
-        for k, note in enumerate((45, 40, 40, 45, 45)):  # bass A E E A A
-            _mix_in(y, _tone(_midi_to_hz(note), beat, 0.12), start + k * beat)
+        for note in (62, 65, 69):  # D minor pad, soft and held for the bar
+            _mix_in(y, _tone(_midi_to_hz(note), L * beat, 0.03), start)
+        for k, note in enumerate((40, 45, 45, 45, 40)):  # bass E A A A E, strongest on beat 1
+            _mix_in(y, _tone(_midi_to_hz(note), beat, 0.2 if k == 0 else 0.08), start + k * beat)
+        _mix_in(y, _tone(_midi_to_hz(74), beat, 0.15), start + 3 * beat)  # melody accent on beat 4
     y = librosa.resample((0.9 * y / np.abs(y).max()).astype(np.float32), orig_sr=FS, target_sr=22050)
     beats = np.arange(bars * L) * beat
     envelope = rhythm.onset_envelope(y, 22050)

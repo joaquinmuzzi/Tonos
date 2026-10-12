@@ -17,7 +17,7 @@ from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 8  # version of the report format; bumping it invalidates the cached analyses
+VERSION = 9  # version of the report format; bumping it invalidates the cached analyses
 
 ProgressCallback = Callable[[str, float], None]  # (step code, fraction done)
 

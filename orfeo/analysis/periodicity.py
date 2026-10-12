@@ -31,7 +31,8 @@ CQT_HOP = 512
 # as approximate: with random cues the gap between the two best positions is often above 1.
 PHASE_CLARITY_THRESHOLD = 2.0
 ATTACK_RADIUS = 0.035  # s: an attack is "on" a beat within +-35 ms (beat-tracker jitter + 1 frame)
-LOG_GAIN = 100  # log compression of the harmonic CQT for attacks: a ~40 dB range
+LOG_GAIN = 100  # log compression of the CQT for attacks and bass energy: a ~40 dB range
+BASS_BINS = 36  # lowest 3 octaves of the CQT (C1-B3, up to ~250 Hz): bass notes and kick drum
 ACTIVATION_FPS = 50  # frame rate of Beat This!'s activations
 
 # A lag shared by two families (12 = 3 and 4) counts half for each of them
@@ -197,7 +198,8 @@ def _phase_cues(
     # Harmonic change, with half-beat windows on each side: chroma plus bass chroma (lowest 3 octaves)
     width = max(2, round(0.5 * typical * fps))
     change = _box_novelty(_fold(harmonic), width) + 0.5 * _box_novelty(_fold(harmonic[:36]), width)
-    # Attacks of pitched notes: positive flux of the log-compressed harmonic part (~40 dB range)
+    # Attacks of pitched notes (positive flux of the log-compressed harmonic part), used to time
+    # the chord changes
     log_harmonic = np.log1p(LOG_GAIN * harmonic / (harmonic.max() + 1e-12))
     flux = np.maximum(np.diff(log_harmonic, axis=1, prepend=log_harmonic[:, :1]), 0).sum(0)
 
@@ -207,11 +209,12 @@ def _phase_cues(
     change_off = change[np.clip(np.round(offbeats * fps).astype(int), 0, len(change) - 1)]
 
     cues = {}
-    # 1. The attack on the beat, or the one on the off-beat before it when it is an anticipation:
-    #    it counts for the next beat in the share of its harmonic change that is held through that
-    #    beat (not renewed by a new change on the beat, as an arpeggio or a melody would).
-    held = np.clip(change_off - np.append(change_on[1:], 0.0), 0.0, None) / (change_off + 1e-12)
-    cues["attack"] = np.maximum(attack_on, _previous(attack_off * held))
+    # 1. Bass: low-frequency energy (bass notes and kick drum, up to ~250 Hz) at the start of each
+    #    beat. The bass usually lands on the downbeat. The attack of pitched notes is not used as a
+    #    cue: melodic accents fall on any beat (in songs checked by ear it pointed to beat 4 or 6).
+    log_spectrum = np.log1p(LOG_GAIN * spectrum[:BASS_BINS] / (spectrum.max() + 1e-12))
+    frames = librosa.time_to_frames(beats, sr=sr, hop_length=CQT_HOP)
+    cues["bass"] = _per_beat(log_spectrum, frames, 0.0, 0.3).sum(0)
     # 2. Chord changes, retimed. The recognizer works beat by beat, so a change marked on beat i
     #    happened at the off-beat before it, on the beat or at the off-beat after it. The mark is
     #    split by the attacked change at those three points; the share of the off-beat after the
@@ -261,12 +264,11 @@ def locate_bars(
 ) -> tuple[np.ndarray, float]:
     """Downbeats for bars of `beats_per_bar` beats.
 
-    Up to three cues vote for where each bar starts (see _phase_cues): the attack of pitched
-    notes, the chord changes (both aware of chords anticipated by half a beat) and, if given, the
+    Up to three cues vote for where each bar starts (see _phase_cues): the bass at the start of
+    each beat, the chord changes (aware of chords anticipated by half a beat) and, if given, the
     beat tracker's downbeat activation (frames at 50 per second). Each cue votes with how
     consistently it marks one beat of the bar (_votes), so the cue that is clearest in this song
-    decides: in a vamp whose bass moves on beat 2, the accent on beat 1; in a song with clear
-    chord changes, the chords.
+    decides: in a vamp over one chord, the bass; in a song with clear chord changes, the chords.
 
     If the beats have jumps, each stretch is located separately; a stretch shorter than two bars
     continues the previous count, and short stretches at the start are counted backwards from the
