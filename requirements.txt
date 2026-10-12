@@ -7,7 +7,7 @@ beat-this==1.1.0
 # Tonalidad (Deezer, ICASSP 2025)
 skey @ git+https://github.com/deezer/s-key@918b83d273568d5041569bb8068843d19a335726
 # Dependencias que Consonance-ACE necesita para inferencia
-librosa==0.11.0
+librosa==1.0.0
 mir_eval==0.8.2
 harte-library==0.4.5
 jams==0.3.5
