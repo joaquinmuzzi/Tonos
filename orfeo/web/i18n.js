@@ -233,8 +233,8 @@ const MESSAGES = {
     uploading: "Subiendo el archivo…",
     uploading_percent: "Subiendo el archivo… {percent}",
     server_error: "El servidor respondió con un error ({status}).",
-    connection_failed: "No me pude conectar con el analizador. ¿Sigue abierta su ventana?",
-    connection_lost: "Perdí la conexión con el analizador: {detail}",
+    connection_failed: "No me pude conectar con orfeo. ¿Sigue abierta su ventana?",
+    connection_lost: "Perdí la conexión con orfeo: {detail}",
 
     // Tempo card
     tempo_title: "Tempo",

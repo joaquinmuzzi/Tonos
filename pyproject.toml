@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [{ name = "Joaquín Muzzi" }]
-# The application is installed from requirements.txt (see instalar.ps1 and CONTRIBUTING);
+# The application is installed from requirements.txt (see install.ps1 and CONTRIBUTING);
 # this file holds the project metadata and the tool configuration.
 requires-python = ">=3.12,<3.13"
 

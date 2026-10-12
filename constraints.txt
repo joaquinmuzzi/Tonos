@@ -1,3 +1,3 @@
-# Evita que pip reemplace el PyTorch CPU ya instalado.
+# Keeps pip from replacing the CPU build of PyTorch that is already installed.
 torch==2.7.1
 torchaudio==2.7.1

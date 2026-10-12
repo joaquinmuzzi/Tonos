@@ -3,7 +3,7 @@
 python -m orfeo                 opens the app in the browser
 python -m orfeo song.mp4        analyzes a file and prints the result in the terminal
 python -m orfeo song.mp4 --json
-python -m orfeo --preload       downloads and tests the models (used by instalar.ps1)
+python -m orfeo --preload       downloads and tests the models (used by install.ps1)
 """
 
 from __future__ import annotations

@@ -11,7 +11,7 @@ summarises them so you can check them before reusing or redistributing anything.
 ## Machine-learning models
 
 This repository does **not** include any model weights. They are installed from their original
-sources when you run `instalar.ps1` (or the equivalent `pip` commands): the S-KEY and
+sources when you run `install.ps1` (or the equivalent `pip` commands): the S-KEY and
 Consonance-ACE checkpoints come inside their Python packages, and the Beat This! checkpoint is
 downloaded from its authors' server on first use.
 

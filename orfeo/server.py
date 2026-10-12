@@ -23,9 +23,13 @@ from .analysis.audio import AudioError
 from .messages import message
 
 WEB = Path(__file__).parent / "web"
-DATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "analizador-musical"
+# %LOCALAPPDATA%\orfeo on Windows (next to the installer's venv), ~/.cache/orfeo elsewhere
+DATA_DIR = (
+    Path(os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    / "orfeo"
+)
 CACHE_DIR = DATA_DIR / "cache"
-UPLOAD_DIR = DATA_DIR / "subidas"
+UPLOAD_DIR = DATA_DIR / "uploads"
 MAX_UPLOAD_BYTES = 1024**3  # 1 GB
 MAX_JOBS = 30
 

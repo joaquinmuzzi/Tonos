@@ -17,21 +17,21 @@ Todo se procesa en tu computadora. No usa internet salvo para descargar los mode
 
 ## Instalación (una sola vez)
 
-Necesitás Python 3.12, ffmpeg y git (si falta alguno, `instalar.ps1` te dice cómo instalarlo).
+Necesitás Python 3.12, ffmpeg y git (si falta alguno, `install.ps1` te dice cómo instalarlo).
 Después, en una terminal dentro de esta carpeta, ejecutá:
 
 ```powershell
-.\instalar.ps1
+.\install.ps1
 ```
 
-Tarda unos minutos y ocupa ~1,5 GB en `%LOCALAPPDATA%\analizador-musical\venv`.
+Tarda unos minutos y ocupa ~1,5 GB en `%LOCALAPPDATA%\orfeo\venv`.
 
 ## Uso
 
-- **App web:** doble clic en `iniciar.bat`. Se abre el navegador en http://127.0.0.1:8765.
+- **App web:** doble clic en `orfeo.bat`. Se abre el navegador en http://127.0.0.1:8765.
   Para apagarla, cerrá la ventana negra. Si ya estaba abierta, solo te abre el navegador.
   Podés soltar un archivo en cualquier parte de la página, incluso con un reporte abierto.
-- **Terminal:** `iniciar.bat "C:\ruta\a\cancion.mp4"` muestra el reporte en texto.
+- **Terminal:** `orfeo.bat "C:\ruta\a\cancion.mp4"` muestra el reporte en texto.
   Con `--json` muestra todos los datos.
 
 Un análisis tarda entre 10 y 30 segundos por canción. Si volvés a subir el mismo archivo,
@@ -60,8 +60,8 @@ Advertencias:
 ## Pruebas
 
 ```powershell
-& "$env:LOCALAPPDATA\analizador-musical\venv\Scripts\python.exe" -m pytest            # todas (~1 min)
-& "$env:LOCALAPPDATA\analizador-musical\venv\Scripts\python.exe" -m pytest -m "not slow"  # solo las rápidas
+& "$env:LOCALAPPDATA\orfeo\venv\Scripts\python.exe" -m pytest            # todas (~1 min)
+& "$env:LOCALAPPDATA\orfeo\venv\Scripts\python.exe" -m pytest -m "not slow"  # solo las rápidas
 ```
 
 Las pruebas lentas generan canciones sintéticas (pop en Sol a 120 BPM, vals en Re a 150 BPM),
@@ -72,8 +72,8 @@ En GitHub se corren solas en cada PR y en cada cambio a `main`
 
 ## Dónde guarda cosas
 
-- `%LOCALAPPDATA%\analizador-musical\venv`: el entorno de Python.
-- `%LOCALAPPDATA%\analizador-musical\cache`: los análisis ya hechos (JSON chicos).
+- `%LOCALAPPDATA%\orfeo\venv`: el entorno de Python.
+- `%LOCALAPPDATA%\orfeo\cache`: los análisis ya hechos (JSON chicos).
 - `%USERPROFILE%\.cache\torch\hub\checkpoints\beat_this-final0.ckpt`: el modelo de pulsos (77 MB).
 
 Para desinstalar, borrá esas tres cosas y esta carpeta.
