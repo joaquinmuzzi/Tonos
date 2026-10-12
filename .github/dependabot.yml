@@ -1,0 +1,33 @@
+# Keeps GitHub Actions and Python dependencies up to date with monthly, grouped PRs.
+# Commit prefixes produce Conventional Commit PR titles such as "ci(deps): bump ...".
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+      include: scope
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      # PyTorch comes from its CPU-only index and is pinned in constraints.txt: bump it by hand
+      - dependency-name: torch
+      - dependency-name: torchaudio
+    groups:
+      python:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: build
+      include: scope
