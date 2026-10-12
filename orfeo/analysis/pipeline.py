@@ -11,12 +11,13 @@ from pathlib import Path
 
 import numpy as np
 
+from .. import __version__
 from ..messages import message
 from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 6  # bumping it invalidates the cached analyses
+VERSION = 7  # version of the report format; bumping it invalidates the cached analyses
 
 ProgressCallback = Callable[[str, float], None]  # (step code, fraction done)
 
@@ -94,6 +95,7 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
 
     return {
         "version": VERSION,
+        "orfeo_version": __version__,
         "file": {"name": path.name, "duration": round(duration, 2), "audio_track": track + 1},
         "analysis_seconds": round(time.perf_counter() - start, 1),
         "tempo": tempo,

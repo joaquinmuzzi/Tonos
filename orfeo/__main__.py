@@ -17,6 +17,7 @@ import threading
 import webbrowser
 from pathlib import Path
 
+from . import __version__
 from .messages import english, message
 
 INDENT = " " * 8
@@ -117,7 +118,7 @@ def _text_report(r: dict) -> str:
     lines += _meter_lines(r["meter"])
     lines += _key_lines(r["key"], r["tuning"])
     lines += ["", *_chord_lines(r)]
-    lines += ["", f"(analyzed in {r['analysis_seconds']:.0f} s)"]
+    lines += ["", f"(analyzed in {r['analysis_seconds']:.0f} s by orfeo {r['orfeo_version']})"]
     return "\n".join(lines)
 
 
@@ -145,6 +146,7 @@ def main() -> None:
     p.add_argument("--port", type=int, default=8765, help="port of the local web app (default: 8765)")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
     p.add_argument("--preload", action="store_true", help="download and test the models")
+    p.add_argument("--version", action="version", version=f"orfeo {__version__}")
     args = p.parse_args()
 
     if args.preload:
