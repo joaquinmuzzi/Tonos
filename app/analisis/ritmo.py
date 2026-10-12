@@ -1,10 +1,11 @@
 """Pulsos, primeros tiempos, tempo y compás.
 
 - Pulsos y primeros tiempos: Beat This! (CPJKU, ISMIR 2024; MIT).
-- Tempo: se calcula a partir de los pulsos (mediana de los intervalos) y se compara
-  con un segundo método independiente (librosa).
+- Tempo: se calcula a partir de los pulsos (promedio de los intervalos válidos) y se
+  compara con un segundo método independiente (librosa).
 - Compás: ninguna herramienta abierta lo da directamente. Se cuenta cuántos pulsos hay
-  entre primeros tiempos consecutivos y se mira si cada pulso se divide en 2 o en 3.
+  entre primeros tiempos consecutivos, se contrasta con cada cuántos pulsos se repite la
+  armonía (periodicidad.py) y se mira si cada pulso se divide en 2 o en 3.
 """
 
 from __future__ import annotations
@@ -184,62 +185,132 @@ def _lectura(n: int, subdivision: str, bpm: float | None) -> tuple[str, str | No
     if (n, subdivision) in _LECTURAS:
         return _LECTURAS[(n, subdivision)]
     if n in (5, 7):
-        return f"{n}/4", f"o {n}/8; compás poco común: tomalo con pinzas"
+        return f"{n}/4", f"o {n}/8 (compás irregular)"
     return f"{n} pulsos por compás", "compás poco común: tomalo con pinzas"
 
 
-def _sin_compas(subdivision: dict, motivo: str) -> dict:
+def _sin_compas(subdivision: dict, motivo: str, segundo_metodo: dict | None = None) -> dict:
     return {"pulsos_por_compas": None, "lectura": None, "alternativa": None, "confianza": "baja",
-            "motivo": motivo, "subdivision": subdivision, "avisos": []}
+            "motivo": motivo, "subdivision": subdivision, "avisos": [], "fuente": None,
+            "segundo_metodo": segundo_metodo}
 
 
 _NIVELES = ["baja", "media", "alta"]
+# Compases que el método de periodicidad no distingue entre sí (2 y 4 se repiten igual cada 4)
+_FAMILIA = {2: 4, 4: 4, 8: 4, 3: 3, 6: 3, 9: 3, 5: 5, 10: 5, 7: 7}
+
+
+def comparar_con_periodicidad(n: int | None, periodicidad: dict | None) -> dict | None:
+    """¿El segundo método (repetición de la armonía) confirma, contradice o completa el conteo?
+
+    El detector de primeros tiempos distingue bien 3/4 de 4/4, pero casi no vio compases de
+    5 ni de 7 al entrenarse y los fuerza a 4. Por eso el segundo método solo se impone cuando
+    encuentra 5 o 7 (o cuando el conteo no sirvió), y con evidencia clara: que gane por
+    bastante y que la armonía también esté de su lado. Entre 3 y 4 solo puede avisar.
+    """
+    if periodicidad is None:
+        return None
+    puntajes, armonia, ganador = periodicidad["puntajes"], periodicidad["armonia"], periodicidad["ganador"]
+    familia = _FAMILIA.get(n) if n else None
+    salida = {"pulsos": ganador, "puntajes": puntajes, "confirma": False, "reemplaza": False,
+              "contradice": False, "fuerte": False}
+    if familia == ganador:
+        salida["confirma"] = periodicidad["margen"] >= 0.5
+        return salida
+    if familia is None:  # el conteo no sirvió (o dio un compás raro): alcanza con que gane claro
+        ventaja = periodicidad["margen"]
+        clara = puntajes[ganador] >= 0.3 and ventaja >= 0.3
+    else:
+        ventaja = puntajes[ganador] - puntajes[familia]
+        clara = puntajes[ganador] >= 0.3 and ventaja >= 0.6 and armonia[ganador] > armonia[familia]
+    salida["reemplaza"] = clara and (familia is None or ganador in (5, 7))
+    salida["contradice"] = clara and not salida["reemplaza"]
+    salida["fuerte"] = ventaja >= 1.0 and armonia[ganador] >= 0.8
+    return salida
+
+
+def limitar_confianza(confianza: str, tope: str | None) -> str:
+    if tope in _NIVELES:
+        return _NIVELES[min(_NIVELES.index(confianza), _NIVELES.index(tope))]
+    return confianza
 
 
 def analizar_compas(pulsos: np.ndarray, primeros: np.ndarray, subdivision: dict,
-                    bpm: float | None = None, confianza_tempo: str | None = None) -> dict:
+                    bpm: float | None = None, confianza_tempo: str | None = None,
+                    periodicidad: dict | None = None) -> dict:
     cuentas = pulsos_por_compas(pulsos, primeros)
-    if len(cuentas) < 4:
-        return _sin_compas(subdivision, "No se detectaron suficientes primeros tiempos para estimar el compás.")
-
     conteo = Counter(cuentas)
-    n, veces = conteo.most_common(1)[0]
-    acuerdo = veces / len(cuentas)
-    if n < 2:
-        return _sin_compas(
-            subdivision,
-            "Casi todos los pulsos detectados quedaron marcados como primer tiempo, así que no se "
-            "pudo contar el compás. Pasa con música muy libre o con mucho rubato.",
-        )
-    lectura, alternativa = _lectura(n, subdivision["tipo"], bpm)
-    if acuerdo >= 0.85:
-        confianza = "alta"
-    elif acuerdo >= 0.6:
-        confianza = "media"
-    else:
-        confianza = "baja"
-    # Si los pulsos mismos son dudosos, el compás (que se cuenta con ellos) no puede ser más seguro
-    if confianza_tempo in _NIVELES:
-        confianza = _NIVELES[min(_NIVELES.index(confianza), _NIVELES.index(confianza_tempo))]
+    n, veces = conteo.most_common(1)[0] if cuentas else (None, 0)
+    acuerdo = veces / len(cuentas) if cuentas else 0.0
+    conteo_valido = len(cuentas) >= 4 and n is not None and n >= 2
+    segundo = comparar_con_periodicidad(n if conteo_valido else None, periodicidad)
+    reemplaza = bool(segundo and segundo["reemplaza"])
+
+    if not conteo_valido and not reemplaza:
+        if len(cuentas) < 4:
+            motivo = "No se detectaron suficientes primeros tiempos para estimar el compás."
+        else:
+            motivo = ("Casi todos los pulsos detectados quedaron marcados como primer tiempo, así que "
+                      "no se pudo contar el compás. Pasa con música muy libre o con mucho rubato.")
+        return _sin_compas(subdivision, motivo, segundo)
 
     avisos = []
-    if n in (2, 3, 6):
-        avisos.append(AVISO_TERNARIO)
-    if acuerdo < 0.6:
-        avisos.append(
-            "Los compases detectados no cuentan siempre lo mismo: puede que el compás cambie "
-            "durante la canción o que los primeros tiempos estén mal ubicados."
-        )
+    if reemplaza:
+        # El conteo de primeros tiempos se descarta: manda la repetición de la armonía
+        g = segundo["pulsos"]
+        lectura, alternativa = _lectura(g, subdivision["tipo"], bpm)
+        confianza = "media" if segundo["fuerte"] else "baja"
+        if conteo_valido:
+            avisos.append(
+                f"El detector de primeros tiempos marcó compases de {n} pulsos, pero la armonía y el "
+                f"bajo se repiten cada {g} pulsos: lo más probable es que el compás sea de {g}. Los "
+                "detectores automáticos se entrenaron casi solo con música en 4/4 y tienden a forzarlo."
+            )
+        else:
+            avisos.append(
+                f"Los primeros tiempos detectados no alcanzaron para contar el compás, pero la armonía "
+                f"y el bajo se repiten cada {g} pulsos."
+            )
+        numero, fuente = g, "periodicidad"
+    else:
+        lectura, alternativa = _lectura(n, subdivision["tipo"], bpm)
+        if acuerdo >= 0.85:
+            confianza = "alta"
+        elif acuerdo >= 0.6:
+            confianza = "media"
+        else:
+            confianza = "baja"
+        if segundo and segundo["confirma"] and confianza != "alta":
+            confianza = _NIVELES[_NIVELES.index(confianza) + 1]  # dos métodos independientes coinciden
+        if segundo and segundo["contradice"]:
+            confianza = _NIVELES[max(_NIVELES.index(confianza) - 1, 0)]
+            avisos.append(
+                f"Un segundo método (cada cuántos pulsos se repite la armonía) sugiere compases de "
+                f"{segundo['pulsos']} pulsos: escuchalo con el clic activado para decidir."
+            )
+        if acuerdo < 0.6:
+            avisos.append(
+                "Los compases detectados no cuentan siempre lo mismo: puede que el compás cambie "
+                "durante la canción o que los primeros tiempos estén mal ubicados."
+            )
+        numero, fuente = n, "primeros tiempos"
+    # Si los pulsos mismos son dudosos, el compás (que se cuenta con ellos) no puede ser más seguro
+    confianza = limitar_confianza(confianza, confianza_tempo)
+    if numero in (2, 3, 6):
+        avisos.insert(0, AVISO_TERNARIO)
 
     return {
-        "pulsos_por_compas": n,
+        "pulsos_por_compas": numero,
         "lectura": lectura,
         "alternativa": alternativa,
+        "fuente": fuente,
         "acuerdo": round(acuerdo, 2),
         "confianza": confianza,
         "compases_contados": len(cuentas),
+        "conteo_primeros_tiempos": n,
         "distribucion": {str(k): round(v / len(cuentas), 2) for k, v in sorted(conteo.items())},
         "subdivision": subdivision,
+        "segundo_metodo": segundo,
         "avisos": avisos,
     }
 

@@ -340,11 +340,22 @@ function dibujarCompas(c) {
     anexar(tarjeta, el("p", { class: "grande" }, "—"), insignia("baja"), el("p", {}, c.motivo));
     return;
   }
-  anexar(tarjeta, 
+  const segundo = c.segundo_metodo;
+  let origen;
+  if (c.fuente === "periodicidad") {
+    origen = `Cuenta en ${c.pulsos_por_compas}: la armonía y el bajo se repiten cada ${c.pulsos_por_compas} pulsos (o múltiplos).`;
+  } else {
+    origen = `Cuenta en ${c.pulsos_por_compas}: así cuentan el ${porcentaje(c.acuerdo)} de los ${c.compases_contados} compases detectados.`;
+  }
+  anexar(
+    tarjeta,
     el("p", { class: "grande" }, c.lectura),
     c.alternativa ? el("p", { class: "tenue" }, c.alternativa) : null,
     insignia(c.confianza),
-    el("p", {}, `Cuenta en ${c.pulsos_por_compas}: así cuentan el ${porcentaje(c.acuerdo)} de los ${c.compases_contados} compases detectados.`),
+    el("p", {}, origen),
+    segundo && segundo.confirma
+      ? el("p", { class: "tenue" }, "Un segundo método (cada cuántos pulsos se repite la armonía) confirma el compás.")
+      : null,
     el("p", {}, SUBDIVISION[c.subdivision.tipo]),
     ...c.avisos.map((a) => el("p", { class: "aviso" }, a))
   );
@@ -404,6 +415,9 @@ function nombresDelCompas(compas) {
 function dibujarAcordes() {
   const acordes = estado.resultado.acordes;
   const resumen = estado.detalle === "simple" ? acordes.resumen_simple : acordes.resumen;
+  $("nota-grilla").textContent = estado.resultado.compas.grilla_aproximada
+    ? "Grilla aproximada: no se sabe con seguridad en qué pulso empieza cada compás. Hacé clic en un compás para escucharlo desde ahí."
+    : "Hacé clic en un compás para escucharlo desde ahí.";
   $("nota-acordes").textContent =
     estado.detalle === "simple"
       ? "Modo simple: solo mayor y menor, que es lo más confiable. Pasá a “Completos” para ver séptimas, bajos e inversiones."

@@ -67,7 +67,11 @@ async def _limitar_tamano(request: Request, call_next):
     largo = request.headers.get("content-length", "")
     if request.method == "POST" and largo.isdigit() and int(largo) > TAMANO_MAXIMO + (1 << 20):
         return JSONResponse({"detail": MENSAJE_GRANDE}, status_code=413)
-    return await call_next(request)
+    respuesta = await call_next(request)
+    # Que el navegador siempre pregunte si hay una versión nueva de la página (si no, después
+    # de actualizar la app puede seguir usando el app.js viejo que tenía guardado)
+    respuesta.headers["Cache-Control"] = "no-cache"
+    return respuesta
 
 
 @app.get("/")

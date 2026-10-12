@@ -34,7 +34,7 @@ el resultado sale al instante porque queda guardado.
 | Qué | Confiabilidad | Cómo se calcula |
 |---|---|---|
 | Tempo y pulsos | Alta en música con batería; el error típico es dar el doble o la mitad | Beat This! (CPJKU, 2024) más un segundo método de control (librosa) |
-| Compás | Baja a media: es lo más difícil | Se cuentan los pulsos entre primeros tiempos y se mira si cada pulso se divide en 2 o en 3 |
+| Compás | Media en 3/4 y 4/4; detecta 5/4 y 7/4 cuando la armonía se repite con claridad | Se cuentan los pulsos entre primeros tiempos y se contrasta con cada cuántos pulsos se repiten la armonía y el bajo; además se mira si cada pulso se divide en 2 o en 3 |
 | Tonalidad | Media: exacta en 7 u 8 de cada 10 canciones; si falla, suele ser la relativa o una quinta | S-KEY (Deezer, 2025) más un segundo método a partir de los acordes |
 | Acordes | Media: ~78 % del tiempo en mayor/menor, menos con séptimas | Consonance-ACE (2025), un acorde por pulso |
 
@@ -42,6 +42,9 @@ Advertencias:
 
 - **El 3/4 y el 6/8 no se pueden distinguir de forma automática.** En folklore (chacarera, zamba)
   se alternan a propósito.
+- **Compases de 5 y 7:** el detector de primeros tiempos casi no los vio al entrenarse y los fuerza
+  a 4. Por eso un segundo método mide cada cuántos pulsos se repite la armonía. Cuando no queda
+  claro en qué pulso empieza cada compás, la grilla se marca como aproximada.
 - **Los modelos se entrenaron sobre todo con pop y rock en inglés.** Folklore, tango y otros géneros
   latinos pueden dar peores resultados.
 - **Se da una sola tonalidad por canción,** aunque la app avisa si detecta un tramo largo en otra.

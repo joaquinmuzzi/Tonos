@@ -11,11 +11,11 @@ from typing import Callable
 
 import numpy as np
 
-from . import acordes, ritmo, tonalidad
+from . import acordes, periodicidad, ritmo, tonalidad
 from .audio import obtener_audio
 from .notacion import Ortografia, describir_acorde
 
-VERSION = 2  # subirla invalida los análisis guardados en caché
+VERSION = 3  # subirla invalida los análisis guardados en caché
 
 Progreso = Callable[[str, float], None]
 
@@ -46,9 +46,22 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
         avisar("Calculando el tempo y el compás", 0.25)
         tempo = ritmo.analizar_tempo(pulsos, envolvente, fs)
         subdivision = ritmo.analizar_subdivision(pulsos, envolvente, fs)
+        repeticion, espectro = periodicidad.analizar(senal, fs, pulsos, envolvente, ritmo.SALTO)
         compas = ritmo.analizar_compas(pulsos, primeros, subdivision, tempo.get("bpm"),
-                                       tempo.get("confianza", "baja"))
-        del envolvente
+                                       tempo.get("confianza", "baja"), repeticion)
+        if compas["fuente"] == "periodicidad":
+            # Los primeros tiempos del detector no sirven: se rearman con el compás nuevo
+            primeros, contraste = periodicidad.ubicar_compases(pulsos, compas["pulsos_por_compas"], espectro, fs)
+            compas["grilla_aproximada"] = contraste < periodicidad.CONTRASTE_FASE_CLARA
+            if contraste >= 2 * periodicidad.CONTRASTE_FASE_CLARA and compas["confianza"] == "baja":
+                # Los acordes cambian siempre en el mismo pulso del compás: la estructura es clara
+                compas["confianza"] = ritmo.limitar_confianza("media", tempo.get("confianza", "baja"))
+            if compas["grilla_aproximada"]:
+                compas["avisos"].append(
+                    "No se pudo determinar con seguridad en qué pulso empieza cada compás: la grilla "
+                    "de compases es aproximada (puede estar corrida algunos pulsos)."
+                )
+        del envolvente, espectro
 
         avisar("Buscando la tonalidad", 0.32)
         ton = tonalidad.detectar_tonalidad(senal, fs)

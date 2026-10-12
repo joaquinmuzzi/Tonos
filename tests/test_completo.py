@@ -3,6 +3,7 @@
 import subprocess
 from collections import Counter
 
+import numpy as np
 import pytest
 import soundfile as sf
 
@@ -67,6 +68,28 @@ def test_vals_tempo(vals_en_re):
 
 def test_vals_compas(vals_en_re):
     assert vals_en_re["compas"]["pulsos_por_compas"] in (3, 6)
+
+
+def test_pop_y_vals_confirmados_por_la_armonia(pop_en_sol, vals_en_re):
+    assert pop_en_sol["compas"]["fuente"] == "primeros tiempos"
+    assert vals_en_re["compas"]["fuente"] == "primeros tiempos"
+
+
+@pytest.mark.parametrize("pulsos_por_compas, progresion", [
+    (5, [("A", True), ("F", False), ("C", False), ("G", False)]),
+    (7, [("E", True), ("C", False), ("D", False)]),
+])
+def test_compas_irregular_de_punta_a_punta(tmp_path, pulsos_por_compas, progresion):
+    """El detector de primeros tiempos falla con 5/4 y 7/4; la repetición de la armonía no."""
+    y = cancion(130, pulsos_por_compas, progresion, compases=32)
+    resultado = pipeline.analizar(guardar_mp4(y, tmp_path / f"en {pulsos_por_compas}.mp4"))
+    compas = resultado["compas"]
+    assert compas["lectura"] == f"{pulsos_por_compas}/4"
+    assert compas["fuente"] == "periodicidad"
+    assert not compas["grilla_aproximada"]
+    primeros = resultado["primeros_tiempos"]
+    assert primeros[0] == pytest.approx(0.0, abs=0.05)
+    assert np.median(np.diff(primeros)) == pytest.approx(pulsos_por_compas * 60 / 130, rel=0.03)
 
 
 def test_vals_tonalidad(vals_en_re):
