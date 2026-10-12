@@ -1,0 +1,49 @@
+name: Pruebas
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Si se sube otro commit al mismo PR, se cancela la corrida anterior
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            constraints.txt
+
+      - name: Instalar ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Instalar PyTorch (versión para procesador)
+        run: pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt -c constraints.txt
+          pip install --no-deps "consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71"
+
+      - name: Caché del modelo de pulsos (Beat This!, 77 MB)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/torch/hub
+          key: beat-this-final0
+
+      - name: Pruebas rápidas
+        run: python -m pytest -q -m "not lento"
+
+      - name: Pruebas de punta a punta (con los modelos reales)
+        run: python -m pytest -q -m lento
