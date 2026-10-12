@@ -1,0 +1,55 @@
+name: Bug report
+description: Something does not work (a crash, a file that does not load, a broken page...).
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the error message, if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the web app
+        2. Drop an MKV file with two audio tracks
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: dropdown
+    id: interface
+    attributes:
+      label: How do you run orfeo?
+      options:
+        - Web app (orfeo.bat or python -m orfeo)
+        - Command line (python -m orfeo file)
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: orfeo version
+      description: The output of `python -m orfeo --version` (or the commit, `git log -1 --oneline`).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output
+      description: Anything printed in the black window or the terminal.
+      render: shell

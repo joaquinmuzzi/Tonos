@@ -1,0 +1,58 @@
+name: Wrong analysis result
+description: orfeo got the tempo, meter, key or chords of a song wrong.
+labels: ["wrong result"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Wrong results are the most useful feedback for orfeo.
+        **Please do not attach copyrighted audio.** A link to a public recording (YouTube, Bandcamp...) is enough.
+  - type: checkboxes
+    id: what
+    attributes:
+      label: What is wrong?
+      options:
+        - label: Tempo
+        - label: Meter (time signature)
+        - label: Where the bars start (bar grid, downbeats)
+        - label: Key
+        - label: Chords
+  - type: input
+    id: song
+    attributes:
+      label: Song
+      description: Title, artist and, if possible, a link to a public recording.
+      placeholder: "Take Five, The Dave Brubeck Quartet, https://..."
+    validations:
+      required: true
+  - type: textarea
+    id: orfeo-says
+    attributes:
+      label: What orfeo says
+      placeholder: "Meter: 4/4, high confidence"
+    validations:
+      required: true
+  - type: textarea
+    id: should-be
+    attributes:
+      label: What it should be
+      description: The right answer, and how you know it (sheet music, counting along, a musician's transcription...).
+      placeholder: "5/4: the piano vamp repeats every 5 beats"
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where in the song
+      description: Timestamps or bar numbers where it goes wrong, if it is not the whole song.
+      placeholder: "From 1:12 (bar 33) the bars are shifted by one beat"
+  - type: textarea
+    id: json
+    attributes:
+      label: Analysis JSON
+      description: Use the "Download data (JSON)" button on the report and drag the file here. It helps a lot.
+  - type: input
+    id: version
+    attributes:
+      label: orfeo version
+      description: The output of `python -m orfeo --version` (or the commit, `git log -1 --oneline`).
