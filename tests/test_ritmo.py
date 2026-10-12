@@ -122,6 +122,15 @@ def test_unificar_reparte_un_tramo_desparejo():
     assert np.allclose(np.diff(unificados), pulso, atol=0.01)
 
 
+def test_unificar_reparte_un_redoble_con_un_pulso_normal_en_medio():
+    pulso = 0.556
+    intervalos = [1.0] * 20 + [0.79, 1.0, 1.22] + [1.0] * 20
+    pulsos = _desde_intervalos(intervalos, pulso)
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, np.array([]))
+    assert len(unificados) == len(pulsos)
+    assert np.allclose(np.diff(unificados), pulso, rtol=0.02)
+
+
 def test_unificar_no_reparte_un_corrimiento_real():
     # Un intervalo de 1,46 pulsos (un calderón o un corrimiento de medio pulso) no se toca
     pulsos = np.concatenate([np.arange(20) * 0.56, 19 * 0.56 + 0.82 + np.arange(20) * 0.56])
@@ -141,6 +150,42 @@ def test_unificar_rellena_un_hueco_junto_a_un_compas_mas_corto():
     assert info["agregados"] == 1
 
 
+def _desde_intervalos(intervalos, pulso=0.5):
+    return np.concatenate([[0.0], np.cumsum(np.array(intervalos, dtype=float) * pulso)])
+
+
+@pytest.mark.parametrize("nombre, intervalos", [
+    ("ritardando de un compás", [1.0] * 16 + [1.2] * 4 + [1.0] * 16),
+    ("dos pulsos más lentos", [1.0] * 16 + [1.4] * 2 + [1.0] * 16),
+    ("accelerando de un compás", [1.0] * 16 + [0.8] * 4 + [1.0] * 16),
+    ("intro libre", [1.3, 1.4, 1.2] + [1.0] * 30),
+    ("ritardando final", [1.0] * 30 + [1.2, 1.4, 1.6, 1.8]),
+])
+def test_unificar_respeta_los_cambios_de_tempo_reales(nombre, intervalos):
+    pulsos = _desde_intervalos(intervalos)
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, pulsos[::4])
+    assert np.allclose(unificados, pulsos), nombre
+    assert info == {"quitados": 0, "agregados": 0}
+
+
+@pytest.mark.parametrize("hueco", [2.28, 3.35, 4.4, 6.4, 8.35])
+def test_unificar_rellena_huecos_con_la_banda_un_poco_tarde(hueco):
+    pulsos = _desde_intervalos([1.0] * 16 + [hueco] + [1.0] * 16)
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, np.array([]))
+    assert info["agregados"] == round(hueco) - 1
+
+
+@pytest.mark.parametrize("corchea", [0.6, 0.64, 0.67, 0.75])
+def test_unificar_con_swing_al_doble_no_corre_la_grilla(corchea):
+    # Tramo donde el detector marca también la corchea del swing
+    negras = np.arange(64) * 0.5
+    swing = (negras[16:32] + corchea * 0.5)
+    pulsos = np.sort(np.concatenate([negras, swing]))
+    unificados, primeros, _ = ritmo.unificar_pulsos(pulsos, negras[::4])
+    assert np.allclose(unificados, negras)
+    assert np.allclose(primeros, negras[::4])
+
+
 def _compases(*largos, inicio=0):
     """Pulsos cada 0,5 s y primeros tiempos que dejan compases de esos largos."""
     total = inicio + sum(largos) + 4
@@ -157,11 +202,22 @@ def _compases(*largos, inicio=0):
     ((4, 2, 2, 4), [4, 4, 4]),
     ((4, 4, 3, 4, 4), [4, 4, 3, 4, 4]),            # un compás de 3 aislado puede ser real
     ((4, 3, 3, 4), [4, 3, 3, 4]),                  # 6 no es múltiplo de 4: no se toca
+    ((4, 3, 3, 2, 4), [4, 4, 4, 4]),               # 3+3+2 con un compás de 2: error
+    ((4, 4, 3, 3, 3, 3, 4), [4, 4, 3, 3, 3, 3, 4]),  # puente real en 3/4
+    ((4, 5, 5, 5, 5, 4), [4, 5, 5, 5, 5, 4]),     # sección real en 5/4
+    ((4, 5, 7, 4), [4, 5, 7, 4]),                  # suman 12: más de dos compases
 ])
 def test_regularizar_compases(largos, esperados):
     pulsos, primeros = _compases(*largos)
     nuevos, _ = ritmo.regularizar_compases(pulsos, primeros, 4)
     assert np.diff(np.searchsorted(pulsos, nuevos)).tolist() == esperados
+
+
+def test_regularizar_respeta_compases_de_4_en_un_vals():
+    pulsos, primeros = _compases(3, 3, 4, 4, 4, 3, 3)
+    nuevos, rearmados = ritmo.regularizar_compases(pulsos, primeros, 3)
+    assert np.diff(np.searchsorted(pulsos, nuevos)).tolist() == [3, 3, 4, 4, 4, 3, 3]
+    assert rearmados == 0
 
 
 def test_regularizar_no_hace_nada_sin_compas():
