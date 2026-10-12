@@ -67,7 +67,7 @@ python -m orfeo --preload
   text report; add `--json` for all the data. `python -m orfeo --help` lists every option.
 
 An analysis takes 10 to 30 seconds per song. Uploading the same file again gives the result
-instantly, because it is cached.
+instantly, because it is cached. What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## How reliable it is
 
