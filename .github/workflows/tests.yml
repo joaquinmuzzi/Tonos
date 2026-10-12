@@ -1,23 +1,30 @@
-name: Pruebas
+name: Tests
 
 on:
   pull_request:
   push:
     branches: [main]
 
-# Si se sube otro commit al mismo PR, se cancela la corrida anterior
+# The workflow only needs to read the repository
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the previous run
 concurrency:
-  group: pruebas-${{ github.ref }}
+  group: tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  pruebas:
+  tests:
+    name: tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -25,25 +32,25 @@ jobs:
             requirements.txt
             constraints.txt
 
-      - name: Instalar ffmpeg
+      - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
-      - name: Instalar PyTorch (versión para procesador)
+      - name: Install PyTorch (CPU build)
         run: pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: |
           pip install -r requirements.txt -c constraints.txt
           pip install --no-deps "consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71"
 
-      - name: Caché del modelo de pulsos (Beat This!, 77 MB)
-        uses: actions/cache@v4
+      - name: Cache the beat-tracking model (Beat This!, 77 MB)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/torch/hub
           key: beat-this-final0
 
-      - name: Pruebas rápidas
+      - name: Fast tests
         run: python -m pytest -q -m "not lento"
 
-      - name: Pruebas de punta a punta (con los modelos reales)
+      - name: End-to-end tests (real models)
         run: python -m pytest -q -m lento
