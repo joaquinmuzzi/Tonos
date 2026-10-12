@@ -6,7 +6,7 @@ import pytest
 
 from orfeo.analysis import periodicity, rhythm
 from orfeo.messages import message
-from tests.synthetic import FS, song
+from tests.synthetic import FS, _midi_to_hz, _mix_in, _tone, song
 
 PROGRESSIONS = {
     3: [("D", False), ("G", False), ("A", False), ("D", False)],
@@ -58,6 +58,54 @@ def test_anticipated_chords_do_not_shift_the_downbeat():
     changes[0] = 0.0
     downbeats, _ = periodicity.locate_bars(beats, L, spectrum, 22050, changes)
     assert downbeats[0] == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize("L", [5, 7])
+def test_anticipated_chords_marked_on_the_beat_before(L):
+    """The real chord recognizer marks a chord that comes in half a beat early on the beat
+    BEFORE the downbeat; it must still count for the downbeat it anticipates."""
+    bpm = 105
+    y = song(bpm, L, PROGRESSIONS[L], bars=36, anticipation=0.5)
+    y = librosa.resample(y, orig_sr=FS, target_sr=22050)
+    beats = np.arange(36 * L) * 60.0 / bpm
+    envelope = rhythm.onset_envelope(y, 22050)
+    _, spectrum = periodicity.analyze(y, 22050, beats, envelope, rhythm.HOP_LENGTH)
+    changes = np.zeros(len(beats))
+    changes[L - 1 :: L] = 1.0  # one beat early, as the recognizer marks them
+    downbeats, _ = periodicity.locate_bars(beats, L, spectrum, 22050, changes)
+    assert np.all(np.searchsorted(beats, downbeats) % L == 0)
+
+
+def test_accented_downbeat_beats_a_bass_move_on_beat_two():
+    """A 5/4 vamp like Machinarium's "The Castle": a chord struck on beat 1 and a bass line
+    A-E-E-A-A, so the biggest change of the bar (A -> E) is on beat 2. The bar starts on the
+    accented beat 1, not on the change."""
+    L, bpm, bars = 5, 120, 30
+    beat = 60.0 / bpm
+    y = np.zeros(int((bars * L * beat + 1) * FS))
+    for b in range(bars):
+        start = b * L * beat
+        for note in (62, 65, 69):  # D minor chord, struck on beat 1 and held for the bar
+            _mix_in(y, _tone(_midi_to_hz(note), L * beat, 0.08), start)
+        for k, note in enumerate((45, 40, 40, 45, 45)):  # bass A E E A A
+            _mix_in(y, _tone(_midi_to_hz(note), beat, 0.12), start + k * beat)
+    y = librosa.resample((0.9 * y / np.abs(y).max()).astype(np.float32), orig_sr=FS, target_sr=22050)
+    beats = np.arange(bars * L) * beat
+    envelope = rhythm.onset_envelope(y, 22050)
+    _, spectrum = periodicity.analyze(y, 22050, beats, envelope, rhythm.HOP_LENGTH)
+    downbeats, _ = periodicity.locate_bars(beats, L, spectrum, 22050)
+    assert np.all(np.searchsorted(beats, downbeats) % L == 0)
+
+
+def test_perfectly_regular_chord_marks_decide_on_silence():
+    """A cue with no variation between bars must not get a zero (or huge) vote."""
+    L = 5
+    beats = np.arange(100) * 0.5
+    changes = np.zeros(len(beats))
+    changes[::L] = 1.0
+    spectrum = np.zeros((84, 2500), dtype=np.float32)
+    downbeats, _ = periodicity.locate_bars(beats, L, spectrum, 22050, changes)
+    assert np.all(np.searchsorted(beats, downbeats) % L == 0)
 
 
 def test_short_stretch_continues_the_count():

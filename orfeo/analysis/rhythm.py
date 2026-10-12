@@ -33,9 +33,16 @@ def preload() -> None:
     _model()
 
 
-def detect_beats(signal: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray]:
-    beats, downbeats = _model()(signal, sr)
-    return np.asarray(beats, dtype=float), np.asarray(downbeats, dtype=float)
+def detect_beats(signal: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Beats and downbeats (seconds), and the downbeat activation per frame (logits, 50 per second)."""
+    from beat_this.inference import Audio2Frames
+
+    model = _model()
+    # Same as calling the model, but keeping the activations it computes on the way
+    beat_logits, downbeat_logits = Audio2Frames.__call__(model, signal, sr)
+    beats, downbeats = model.frames2beats(beat_logits, downbeat_logits)
+    activation = downbeat_logits.detach().cpu().numpy().astype(np.float32)
+    return np.asarray(beats, dtype=float), np.asarray(downbeats, dtype=float), activation
 
 
 def onset_envelope(signal: np.ndarray, sr: int) -> np.ndarray:

@@ -17,7 +17,7 @@ from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 7  # version of the report format; bumping it invalidates the cached analyses
+VERSION = 8  # version of the report format; bumping it invalidates the cached analyses
 
 ProgressCallback = Callable[[str, float], None]  # (step code, fraction done)
 
@@ -42,7 +42,7 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
         duration = len(signal) / sr
 
         notify("finding_beats", 0.08)
-        beats, downbeats = rhythm.detect_beats(signal, sr)
+        beats, downbeats, downbeat_activation = rhythm.detect_beats(signal, sr)
         beats, downbeats, unified = rhythm.unify_beats(beats, downbeats)
         envelope = rhythm.onset_envelope(signal, sr)
 
@@ -79,7 +79,9 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
             # the chords and the harmony change
             notify("locating_bars", 0.96)
             changes = periodicity.chord_changes_per_beat(beats, raw_segments)
-            downbeats, clarity = periodicity.locate_bars(beats, meter["beats_per_bar"], spectrum, sr, changes)
+            downbeats, clarity = periodicity.locate_bars(
+                beats, meter["beats_per_bar"], spectrum, sr, changes, downbeat_activation
+            )
             _finish_grid(meter, clarity, tempo)
         del spectrum
 
