@@ -39,6 +39,8 @@ select = [
     "PT",             # pytest style
     "RUF",            # Ruff-specific
 ]
+# zip() mostly walks arrays that are aligned by construction; strict= would only add noise
+ignore = ["B905"]
 
 [tool.ruff.format]
 docstring-code-format = true
