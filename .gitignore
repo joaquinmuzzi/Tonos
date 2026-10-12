@@ -1,12 +1,42 @@
+# Python
 __pycache__/
 *.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tool caches and reports
 .pytest_cache/
-# Configuración local (rutas de esta PC)
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local editor and assistant settings (machine-specific paths)
 .claude/
-# Análisis exportados y audios de prueba
+.vscode/
+.idea/
+
+# Model weights: never commit them, they are downloaded from their original sources
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
+checkpoints/
+models/
+
+# Exported analyses and audio/video files (copyrighted material, test inputs)
 *.analisis.json
 *.mp3
 *.mp4
 *.wav
 *.flac
 *.m4a
+*.ogg
+*.opus
+*.mkv
+*.mov
+*.webm

@@ -7,6 +7,14 @@ para comprobar de oído si el análisis está bien.
 
 Todo se procesa en tu computadora. No usa internet salvo para descargar los modelos la primera vez.
 
+> [!IMPORTANT]
+> **Model licensing.** The code in this repository is MIT-licensed, but the analysis relies on
+> third-party model weights with their own terms: the S-KEY weights have no stated licence, and
+> the Consonance-ACE weights were trained on third-party annotation datasets that may restrict
+> commercial use. This project is intended for personal, local use. Commercial use of the models
+> is not confirmed and may require review. See [License](#license) and
+> [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## Instalación (una sola vez)
 
 Necesitás Python 3.12, ffmpeg y git (si falta alguno, `instalar.ps1` te dice cómo instalarlo).
@@ -70,11 +78,22 @@ En GitHub se corren solas en cada PR y en cada cambio a `main`
 
 Para desinstalar, borrá esas tres cosas y esta carpeta.
 
-## Licencias
+## License
 
-Uso personal. El código de los tres modelos es MIT, pero los pesos de Consonance-ACE se entrenaron
-con anotaciones de uso no comercial, y la licencia de los pesos de S-KEY no está declarada.
-Antes de usar esto en un producto comercial, revisalo.
+The source code of this project is released under the [MIT License](LICENSE).
+
+The machine-learning models it uses are separate works with their own terms, and this repository
+does not include their weights; they are installed from their original sources:
+
+- **Beat This!** (beats and downbeats): code and weights released under MIT by their authors.
+- **S-KEY** (key): MIT code; **no licence is stated for the weights**.
+- **Consonance-ACE** (chords): MIT code; the weights were trained on third-party chord annotation
+  datasets whose terms **may restrict commercial use**.
+
+Because of this, orfeo is intended for **personal, local use**. Commercial use of the model
+weights is not confirmed: if you plan to use this project commercially, review each model's
+licence and training-data terms first. Details, library licences and citations are in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This is not legal advice.
 
 ## Ideas para seguir
 
