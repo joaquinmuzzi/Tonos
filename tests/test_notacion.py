@@ -101,6 +101,21 @@ def test_acordes_sin_tercera_no_se_muestran_como_mayores():
     assert sus["americano"] == "Dsus4" and sus["americano_simple"] == "Dsus4"
 
 
+@pytest.mark.parametrize(
+    "tonica, modo, etiqueta, esperado",
+    [
+        (8, "menor", "C:min", "Cm"),  # antes salía "B#m"
+        (8, "menor", "C:min/5", "Cm/G"),
+        (8, "menor", "C:maj", "C"),
+        (1, "menor", "C:dim", "B#dim"),  # sensible de Do# menor: se escribe alterada
+        (6, "mayor", "F:dim", "E#dim"),  # diatónica en Fa# mayor: se respeta la armadura
+        (10, "mayor", "E:maj", "E"),
+    ],
+)
+def test_notas_cromaticas_de_tecla_blanca(tonica, modo, etiqueta, esperado):
+    assert describir_acorde(etiqueta, Ortografia(tonica, modo))["americano"] == esperado
+
+
 def test_sin_acorde():
     d = describir_acorde("N", Ortografia())
     assert not d["es_acorde"]
