@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torchaudio
 
-from .notacion import nombre_tonalidad, parsear_tonalidad_skey, relativa
+from .notation import nombre_tonalidad, parsear_tonalidad_skey, relativa
 
 VENTANA = 30.0  # segundos, para ver si la tonalidad cambia a lo largo de la canción
 SALTO_VENTANA = 15.0

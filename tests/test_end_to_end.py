@@ -7,9 +7,9 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from app.analisis import pipeline
-from app.analisis.audio import ErrorDeAudio
-from tests.sintetico import FS, cancion, guardar_mp4
+from orfeo.analysis import pipeline
+from orfeo.analysis.audio import ErrorDeAudio
+from tests.synthetic import FS, cancion, guardar_mp4
 
 pytestmark = pytest.mark.lento
 

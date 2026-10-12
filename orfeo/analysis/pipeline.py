@@ -11,9 +11,9 @@ from pathlib import Path
 
 import numpy as np
 
-from . import acordes, periodicidad, ritmo, tonalidad
+from . import chords, periodicity, rhythm, tonality
 from .audio import obtener_audio
-from .notacion import Ortografia, describir_acorde
+from .notation import Ortografia, describir_acorde
 
 VERSION = 5  # subirla invalida los análisis guardados en caché
 
@@ -22,9 +22,9 @@ Progreso = Callable[[str, float], None]
 
 def precargar() -> None:
     """Carga los tres modelos en memoria (la primera vez descarga el de pulsos, ~77 MB)."""
-    ritmo.precargar()
-    tonalidad.precargar()
-    acordes.precargar()
+    rhythm.precargar()
+    tonality.precargar()
+    chords.precargar()
     # Algunas librerías configuran el log en modo INFO al importarse: lo bajamos a avisos.
     logging.getLogger().setLevel(logging.WARNING)
 
@@ -40,12 +40,12 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
         duracion = len(senal) / fs
 
         avisar("Buscando los pulsos y los primeros tiempos", 0.08)
-        pulsos, primeros = ritmo.detectar_pulsos(senal, fs)
-        pulsos, primeros, unificados = ritmo.unificar_pulsos(pulsos, primeros)
-        envolvente = ritmo.envolvente_de_ataques(senal, fs)
+        pulsos, primeros = rhythm.detectar_pulsos(senal, fs)
+        pulsos, primeros, unificados = rhythm.unificar_pulsos(pulsos, primeros)
+        envolvente = rhythm.envolvente_de_ataques(senal, fs)
 
         avisar("Calculando el tempo y el compás", 0.25)
-        tempo = ritmo.analizar_tempo(pulsos, envolvente, fs)
+        tempo = rhythm.analizar_tempo(pulsos, envolvente, fs)
         tempo["pulsos_unificados"] = unificados
         corregidos = unificados["quitados"] + unificados["agregados"]
         if corregidos >= 8:
@@ -54,19 +54,19 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
                 f"corrigieron {corregidos} pulsos para que la grilla quede pareja y se puedan "
                 "contar los compases."
             )
-        subdivision = ritmo.analizar_subdivision(pulsos, envolvente, fs)
-        repeticion, espectro = periodicidad.analizar(senal, fs, pulsos, envolvente, ritmo.SALTO)
-        compas = ritmo.analizar_compas(
+        subdivision = rhythm.analizar_subdivision(pulsos, envolvente, fs)
+        repeticion, espectro = periodicity.analizar(senal, fs, pulsos, envolvente, rhythm.SALTO)
+        compas = rhythm.analizar_compas(
             pulsos, primeros, subdivision, tempo.get("bpm"), tempo.get("confianza", "baja"), repeticion
         )
         del envolvente
 
         avisar("Buscando la tonalidad", 0.32)
-        ton = tonalidad.detectar_tonalidad(senal, fs)
-        afinacion = tonalidad.estimar_afinacion(senal, fs)
+        ton = tonality.detectar_tonalidad(senal, fs)
+        afinacion = tonality.estimar_afinacion(senal, fs)
 
         avisar("Reconociendo los acordes", 0.45)
-        crudos = acordes.detectar_acordes(
+        crudos = chords.detectar_acordes(
             wav,
             duracion,
             pulsos,
@@ -75,28 +75,28 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
 
         if compas["fuente"] == "primeros tiempos":
             # Compases mal cortados por un primer tiempo de más o de menos (3+1, 3+5...)
-            primeros, rearmados = ritmo.regularizar_compases(pulsos, primeros, compas["pulsos_por_compas"])
+            primeros, rearmados = rhythm.regularizar_compases(pulsos, primeros, compas["pulsos_por_compas"])
             compas["compases_rearmados"] = rearmados
         elif compas["fuente"] == "periodicidad":
             # Los primeros tiempos del detector no sirven: se rearman con el compás nuevo,
             # donde cambian los acordes y la armonía
             avisar("Ubicando los compases", 0.96)
-            cambios = periodicidad.cambios_de_acorde_por_pulso(pulsos, crudos)
-            primeros, claridad = periodicidad.ubicar_compases(
+            cambios = periodicity.cambios_de_acorde_por_pulso(pulsos, crudos)
+            primeros, claridad = periodicity.ubicar_compases(
                 pulsos, compas["pulsos_por_compas"], espectro, fs, cambios
             )
             _completar_grilla(compas, claridad, tempo)
         del espectro
 
     avisar("Armando el reporte", 0.97)
-    tonalidad.evaluar_confianza(ton, tonalidad.tonalidad_desde_acordes(crudos))
+    tonality.evaluar_confianza(ton, tonality.tonalidad_desde_acordes(crudos))
     principal = ton["principal"]
     orto = Ortografia(principal["tonica_pc"], principal["modo"])
     segmentos = [
         {"inicio": round(a, 3), "fin": round(b, 3), "etiqueta": e, **describir_acorde(e, orto)}
         for a, b, e in crudos
     ]
-    lista_compases = ritmo.compases(pulsos, primeros, duracion)
+    lista_compases = rhythm.compases(pulsos, primeros, duracion)
 
     return {
         "version": VERSION,
@@ -119,10 +119,10 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
 
 def _completar_grilla(compas: dict, claridad: float, tempo: dict) -> None:
     """Confianza y avisos de la grilla de compases rearmada por periodicidad."""
-    compas["grilla_aproximada"] = claridad < periodicidad.CLARIDAD_FASE
-    if claridad >= 2 * periodicidad.CLARIDAD_FASE and compas["confianza"] == "baja":
+    compas["grilla_aproximada"] = claridad < periodicity.CLARIDAD_FASE
+    if claridad >= 2 * periodicity.CLARIDAD_FASE and compas["confianza"] == "baja":
         # Los acordes cambian siempre en el mismo pulso del compás: la estructura es clara
-        compas["confianza"] = ritmo.limitar_confianza("media", tempo.get("confianza", "baja"))
+        compas["confianza"] = rhythm.limitar_confianza("media", tempo.get("confianza", "baja"))
     if compas["grilla_aproximada"]:
         compas["avisos"].append(
             "No se pudo determinar con seguridad en qué pulso empieza cada compás: la grilla "

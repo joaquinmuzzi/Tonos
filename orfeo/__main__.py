@@ -1,9 +1,9 @@
 """Analizador musical.
 
-python -m app                 abre la app en el navegador
-python -m app cancion.mp4     analiza un archivo y muestra el resultado en la terminal
-python -m app cancion.mp4 --json
-python -m app --precargar     descarga y prueba los modelos (lo usa instalar.ps1)
+python -m orfeo                 abre la app en el navegador
+python -m orfeo cancion.mp4     analiza un archivo y muestra el resultado en la terminal
+python -m orfeo cancion.mp4 --json
+python -m orfeo --precargar     descarga y prueba los modelos (lo usa instalar.ps1)
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ def main() -> None:
     with contextlib.suppress(AttributeError):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    p = argparse.ArgumentParser(prog="python -m app", description="Analizador musical")
+    p = argparse.ArgumentParser(prog="python -m orfeo", description="Analizador musical")
     p.add_argument("archivo", nargs="?", help="archivo a analizar en la terminal")
     p.add_argument("--json", action="store_true", help="mostrar el resultado completo en JSON")
     p.add_argument("--puerto", type=int, default=8765)
@@ -119,7 +119,7 @@ def main() -> None:
 
     if a.precargar:
         _silenciar_logs()
-        from .analisis import pipeline
+        from .analysis import pipeline
 
         pipeline.precargar()
         print("Modelos listos.")
@@ -127,8 +127,8 @@ def main() -> None:
 
     if a.archivo:
         _silenciar_logs()
-        from .analisis import pipeline
-        from .analisis.audio import ErrorDeAudio
+        from .analysis import pipeline
+        from .analysis.audio import ErrorDeAudio
 
         ruta = Path(a.archivo)
         if not ruta.is_file():
@@ -155,7 +155,7 @@ def main() -> None:
 
     import uvicorn
 
-    from .servidor import app
+    from .server import app
 
     if not a.no_abrir:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()

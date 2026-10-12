@@ -5,7 +5,7 @@
   compara con un segundo método independiente (librosa).
 - Compás: ninguna herramienta abierta lo da directamente. Se cuenta cuántos pulsos hay
   entre primeros tiempos consecutivos, se contrasta con cada cuántos pulsos se repite la
-  armonía (periodicidad.py) y se mira si cada pulso se divide en 2 o en 3.
+  armonía (periodicity.py) y se mira si cada pulso se divide en 2 o en 3.
 """
 
 from __future__ import annotations

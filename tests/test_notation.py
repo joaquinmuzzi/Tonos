@@ -1,6 +1,6 @@
 import pytest
 
-from app.analisis.notacion import (
+from orfeo.analysis.notation import (
     Ortografia,
     describir_acorde,
     nombre_tonalidad,

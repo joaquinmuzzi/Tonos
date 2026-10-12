@@ -18,8 +18,8 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .analisis import pipeline
-from .analisis.audio import ErrorDeAudio
+from .analysis import pipeline
+from .analysis.audio import ErrorDeAudio
 
 WEB = Path(__file__).parent / "web"
 DATOS = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "analizador-musical"

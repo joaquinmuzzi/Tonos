@@ -42,6 +42,6 @@ Correr $py @("-m", "pip", "install", "--no-deps",
     "consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71")
 
 Paso "Descargando y probando los modelos (la primera vez baja ~77 MB)"
-Correr $py @("-m", "app", "--precargar")
+Correr $py @("-m", "orfeo", "--precargar")
 
 Write-Host "`nListo. Para usarlo, hacé doble clic en iniciar.bat" -ForegroundColor Green

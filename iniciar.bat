@@ -7,5 +7,5 @@ if not exist "%PY%" (
   pause
   exit /b 1
 )
-"%PY%" -m app %*
+"%PY%" -m orfeo %*
 if errorlevel 1 pause
