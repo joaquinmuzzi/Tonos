@@ -23,7 +23,7 @@ let audioContext = null;
 
 function readPreference(key, fallback) {
   try {
-    return localStorage.getItem("orfeo-" + key) || fallback;
+    return localStorage.getItem("tonos-" + key) || fallback;
   } catch {
     return fallback;
   }
@@ -31,7 +31,7 @@ function readPreference(key, fallback) {
 
 function savePreference(key, value) {
   try {
-    localStorage.setItem("orfeo-" + key, value);
+    localStorage.setItem("tonos-" + key, value);
   } catch {
     /* no storage: nothing to do */
   }
@@ -215,7 +215,7 @@ $("another").addEventListener("click", () => {
 $("download").addEventListener("click", () => {
   if (!state.result) return;
   const blob = new Blob([JSON.stringify(state.result, null, 2)], { type: "application/json" });
-  const link = el("a", { href: URL.createObjectURL(blob), download: `${state.result.file.name}.orfeo.json` });
+  const link = el("a", { href: URL.createObjectURL(blob), download: `${state.result.file.name}.tonos.json` });
   document.body.append(link);
   link.click();
   link.remove();

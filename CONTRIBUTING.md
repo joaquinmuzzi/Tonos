@@ -1,6 +1,6 @@
-# Contributing to orfeo
+# Contributing to Tonos
 
-Thanks for your interest in orfeo! This guide explains how to report problems, set up a
+Thanks for your interest in Tonos! This guide explains how to report problems, set up a
 development environment and send changes. By taking part you agree to follow the
 [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -8,14 +8,14 @@ development environment and send changes. By taking part you agree to follow the
 
 - **Report a wrong result.** This is the most useful feedback: automatic music analysis fails
   in ways that are hard to predict. Open a
-  [Wrong analysis result](https://github.com/joaquinmuzzi/orfeo/issues/new?template=wrong_result.yml)
-  issue with what orfeo said, what the right answer is, and where in the song it goes wrong.
+  [Wrong analysis result](https://github.com/joaquinmuzzi/tonos/issues/new?template=wrong_result.yml)
+  issue with what Tonos said, what the right answer is, and where in the song it goes wrong.
   Attach the JSON from the *Download data (JSON)* button if you can. **Do not attach copyrighted
   audio**; a link to a public recording is enough.
 - **Report a bug** (the app crashes, a file does not load, the page looks broken) with the
-  [Bug report](https://github.com/joaquinmuzzi/orfeo/issues/new?template=bug_report.yml) form.
+  [Bug report](https://github.com/joaquinmuzzi/tonos/issues/new?template=bug_report.yml) form.
 - **Suggest a feature** with the
-  [Feature request](https://github.com/joaquinmuzzi/orfeo/issues/new?template=feature_request.yml) form.
+  [Feature request](https://github.com/joaquinmuzzi/tonos/issues/new?template=feature_request.yml) form.
 - **Send a pull request.** For anything bigger than a small fix, open an issue first so we can
   agree on the approach before you spend time on it.
 - **Translate the interface** into another language (see [Translations](#translations)).
@@ -26,11 +26,11 @@ Security problems should not be reported in public issues: see [SECURITY.md](SEC
 
 You need Python 3.12, ffmpeg and git.
 
-**Windows:** run `.\install.ps1`. It creates the environment in `%LOCALAPPDATA%\orfeo\venv`; use
+**Windows:** run `.\install.ps1`. It creates the environment in `%LOCALAPPDATA%\tonos\venv`; use
 that Python for everything below:
 
 ```powershell
-$py = "$env:LOCALAPPDATA\orfeo\venv\Scripts\python.exe"
+$py = "$env:LOCALAPPDATA\tonos\venv\Scripts\python.exe"
 & $py -m pip install --group dev
 ```
 
@@ -43,7 +43,7 @@ pip install --group dev
 `--group dev` (pip 25.1 or later) installs the development tools listed in `pyproject.toml`:
 pytest and Ruff.
 
-Run the app from the repository with `python -m orfeo` (web app) or `python -m orfeo song.mp4`
+Run the app from the repository with `python -m tonos` (web app) or `python -m tonos song.mp4`
 (command line).
 
 ## Tests
@@ -77,8 +77,8 @@ behind a threshold or a rule.
 ## Project layout
 
 ```
-orfeo/
-  __main__.py        command line (python -m orfeo)
+tonos/
+  __main__.py        command line (python -m tonos)
   server.py          local web server (FastAPI)
   messages.py        message codes and their English texts
   analysis/
@@ -98,18 +98,18 @@ tests/               pytest tests and the synthetic song generator
 The JSON report is a public interface: people download it and may parse it.
 
 - If you change its structure, or change results enough that old cached analyses would be
-  wrong, bump `VERSION` in `orfeo/analysis/pipeline.py`. Cached analyses with another version
+  wrong, bump `VERSION` in `tonos/analysis/pipeline.py`. Cached analyses with another version
   are recomputed.
 - The analysis never returns finished sentences. A warning or an error is a message code with
   parameters, for example `{"code": "too_long", "params": {"minutes": 20}}`. To add one, add its
-  English text to `orfeo/messages.py` and its translations to `orfeo/web/i18n.js`. The tests
+  English text to `tonos/messages.py` and its translations to `tonos/web/i18n.js`. The tests
   check that every code is translated, with the same `{placeholders}`.
 
 ## Translations
 
-The texts of the web page are in `orfeo/web/i18n.js`, one block per language. To add a language,
+The texts of the web page are in `tonos/web/i18n.js`, one block per language. To add a language,
 copy the `en` block, translate every value (keep the keys and the `{placeholders}`) and add a
-button with its `data-language` to the header of `orfeo/web/index.html`. Then add the language
+button with its `data-language` to the header of `tonos/web/index.html`. Then add the language
 to the test in `tests/test_messages.py`.
 
 ## Commits

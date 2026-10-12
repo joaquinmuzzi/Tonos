@@ -1,6 +1,6 @@
 import pytest
 
-from orfeo.analysis.notation import (
+from tonos.analysis.notation import (
     Speller,
     describe_chord,
     key_name,

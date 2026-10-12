@@ -23,17 +23,17 @@ from .analysis.audio import AudioError
 from .messages import message
 
 WEB = Path(__file__).parent / "web"
-# %LOCALAPPDATA%\orfeo on Windows (next to the installer's venv), ~/.cache/orfeo elsewhere
+# %LOCALAPPDATA%\tonos on Windows (next to the installer's venv), ~/.cache/tonos elsewhere
 DATA_DIR = (
     Path(os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
-    / "orfeo"
+    / "tonos"
 )
 CACHE_DIR = DATA_DIR / "cache"
 UPLOAD_DIR = DATA_DIR / "uploads"
 MAX_UPLOAD_BYTES = 1024**3  # 1 GB
 MAX_JOBS = 30
 
-log = logging.getLogger("orfeo")
+log = logging.getLogger("tonos")
 
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
@@ -60,7 +60,7 @@ async def _lifespan(_app: FastAPI):
     _executor.shutdown(wait=False, cancel_futures=True)
 
 
-app = FastAPI(title="orfeo", docs_url=None, redoc_url=None, lifespan=_lifespan)
+app = FastAPI(title="tonos", docs_url=None, redoc_url=None, lifespan=_lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 TOO_LARGE = message("too_large", gigabytes=MAX_UPLOAD_BYTES // 1024**3)

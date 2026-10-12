@@ -1,11 +1,11 @@
 name: Wrong analysis result
-description: orfeo got the tempo, meter, key or chords of a song wrong.
+description: Tonos got the tempo, meter, key or chords of a song wrong.
 labels: ["wrong result"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks! Wrong results are the most useful feedback for orfeo.
+        Thanks! Wrong results are the most useful feedback for Tonos.
         **Please do not attach copyrighted audio.** A link to a public recording (YouTube, Bandcamp...) is enough.
   - type: checkboxes
     id: what
@@ -26,9 +26,9 @@ body:
     validations:
       required: true
   - type: textarea
-    id: orfeo-says
+    id: tonos-says
     attributes:
-      label: What orfeo says
+      label: What Tonos says
       placeholder: "Meter: 4/4, high confidence"
     validations:
       required: true
@@ -54,5 +54,5 @@ body:
   - type: input
     id: version
     attributes:
-      label: orfeo version
-      description: The output of `python -m orfeo --version` (or the commit, `git log -1 --oneline`).
+      label: Tonos version
+      description: The output of `python -m tonos --version` (or the commit, `git log -1 --oneline`).

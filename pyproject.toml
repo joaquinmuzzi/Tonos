@@ -1,5 +1,5 @@
 [project]
-name = "orfeo"
+name = "tonos"
 version = "0.1.0"
 description = "Local, offline music analysis: tempo, meter, key and chords, bar by bar."
 readme = "README.md"
@@ -11,8 +11,8 @@ authors = [{ name = "Joaquín Muzzi" }]
 requires-python = ">=3.12,<3.13"
 
 [project.urls]
-Repository = "https://github.com/joaquinmuzzi/orfeo"
-Issues = "https://github.com/joaquinmuzzi/orfeo/issues"
+Repository = "https://github.com/joaquinmuzzi/tonos"
+Issues = "https://github.com/joaquinmuzzi/tonos/issues"
 
 [dependency-groups]
 # Development tools: pip install --group dev

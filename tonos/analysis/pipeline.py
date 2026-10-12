@@ -17,7 +17,7 @@ from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 9  # version of the report format; bumping it invalidates the cached analyses
+VERSION = 10  # version of the report format; bumping it invalidates the cached analyses
 
 ProgressCallback = Callable[[str, float], None]  # (step code, fraction done)
 
@@ -35,7 +35,7 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
     notify = progress or (lambda step, fraction: None)
     start = time.perf_counter()
 
-    with tempfile.TemporaryDirectory(prefix="orfeo-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="tonos-") as tmp:
         wav = Path(tmp) / "audio.wav"
         notify("extracting_audio", 0.02)
         signal, sr, track = read_audio(path, wav)
@@ -97,7 +97,7 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
 
     return {
         "version": VERSION,
-        "orfeo_version": __version__,
+        "tonos_version": __version__,
         "file": {"name": path.name, "duration": round(duration, 2), "audio_track": track + 1},
         "analysis_seconds": round(time.perf_counter() - start, 1),
         "tempo": tempo,

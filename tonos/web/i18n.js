@@ -2,7 +2,7 @@
 
 /*
  * Texts of the interface, by language. The analysis does not return finished sentences but
- * message codes with parameters (see orfeo/messages.py); their translations live here too.
+ * message codes with parameters (see tonos/messages.py); their translations live here too.
  * "{name}" is replaced by the parameter with that name. To add a language, add a block with
  * every key of `en` and a button with its data-language in index.html.
  */
@@ -61,8 +61,8 @@ const MESSAGES = {
     uploading: "Uploading the file…",
     uploading_percent: "Uploading the file… {percent}",
     server_error: "The server answered with an error ({status}).",
-    connection_failed: "Could not connect to orfeo. Is its window still open?",
-    connection_lost: "Lost the connection to orfeo: {detail}",
+    connection_failed: "Could not connect to Tonos. Is its window still open?",
+    connection_lost: "Lost the connection to Tonos: {detail}",
 
     // Tempo card
     tempo_title: "Tempo",
@@ -122,7 +122,7 @@ const MESSAGES = {
     pickup: "pickup",
     intro: "intro",
 
-    // Messages from the analysis (codes in orfeo/messages.py)
+    // Messages from the analysis (codes in tonos/messages.py)
     ffmpeg_missing:
       "ffmpeg was not found. Install it (on Windows: winget install Gyan.FFmpeg) and open the terminal again.",
     no_audio_track: "The file has no audio track.",
@@ -233,8 +233,8 @@ const MESSAGES = {
     uploading: "Subiendo el archivo…",
     uploading_percent: "Subiendo el archivo… {percent}",
     server_error: "El servidor respondió con un error ({status}).",
-    connection_failed: "No me pude conectar con orfeo. ¿Sigue abierta su ventana?",
-    connection_lost: "Perdí la conexión con orfeo: {detail}",
+    connection_failed: "No me pude conectar con Tonos. ¿Sigue abierta su ventana?",
+    connection_lost: "Perdí la conexión con Tonos: {detail}",
 
     // Tempo card
     tempo_title: "Tempo",
@@ -293,7 +293,7 @@ const MESSAGES = {
     pickup: "anacrusa",
     intro: "intro",
 
-    // Messages from the analysis (codes in orfeo/messages.py)
+    // Messages from the analysis (codes in tonos/messages.py)
     ffmpeg_missing:
       "No encontré ffmpeg. Instalalo con:  winget install Gyan.FFmpeg  y volvé a abrir la terminal.",
     no_audio_track: "El archivo no tiene ninguna pista de audio.",
@@ -357,7 +357,7 @@ const LANGUAGES = Object.keys(MESSAGES);
 /** The saved choice, or the first language of the browser that we have, or English. */
 function detectLanguage() {
   try {
-    const saved = localStorage.getItem("orfeo-language");
+    const saved = localStorage.getItem("tonos-language");
     if (LANGUAGES.includes(saved)) return saved;
   } catch {
     /* no storage */

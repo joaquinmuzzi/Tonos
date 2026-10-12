@@ -26,10 +26,10 @@ body:
   - type: dropdown
     id: interface
     attributes:
-      label: How do you run orfeo?
+      label: How do you run Tonos?
       options:
-        - Web app (orfeo.bat or python -m orfeo)
-        - Command line (python -m orfeo file)
+        - Web app (tonos.bat or python -m tonos)
+        - Command line (python -m tonos file)
     validations:
       required: true
   - type: dropdown
@@ -45,8 +45,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: orfeo version
-      description: The output of `python -m orfeo --version` (or the commit, `git log -1 --oneline`).
+      label: Tonos version
+      description: The output of `python -m tonos --version` (or the commit, `git log -1 --oneline`).
   - type: textarea
     id: logs
     attributes:

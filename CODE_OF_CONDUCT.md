@@ -1,8 +1,8 @@
 # Code of Conduct
 
-orfeo follows the [Contributor Covenant, version 3.0](https://www.contributor-covenant.org/version/3/0/code_of_conduct/).
+Tonos follows the [Contributor Covenant, version 3.0](https://www.contributor-covenant.org/version/3/0/code_of_conduct/).
 It applies to everyone who takes part in the project: in issues, pull requests, reviews,
-discussions and any other space related to orfeo.
+discussions and any other space related to Tonos.
 
 In short: be respectful and kind, assume good intent, welcome people of every background and
 level of experience, and focus on what is best for the project and its community. Harassment,

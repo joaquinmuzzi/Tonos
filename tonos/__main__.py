@@ -1,9 +1,9 @@
-"""orfeo command line.
+"""Tonos command line.
 
-python -m orfeo                 opens the app in the browser
-python -m orfeo song.mp4        analyzes a file and prints the result in the terminal
-python -m orfeo song.mp4 --json
-python -m orfeo --preload       downloads and tests the models (used by install.ps1)
+python -m tonos                 opens the app in the browser
+python -m tonos song.mp4        analyzes a file and prints the result in the terminal
+python -m tonos song.mp4 --json
+python -m tonos --preload       downloads and tests the models (used by install.ps1)
 """
 
 from __future__ import annotations
@@ -118,7 +118,7 @@ def _text_report(r: dict) -> str:
     lines += _meter_lines(r["meter"])
     lines += _key_lines(r["key"], r["tuning"])
     lines += ["", *_chord_lines(r)]
-    lines += ["", f"(analyzed in {r['analysis_seconds']:.0f} s by orfeo {r['orfeo_version']})"]
+    lines += ["", f"(analyzed in {r['analysis_seconds']:.0f} s by Tonos {r['tonos_version']})"]
     return "\n".join(lines)
 
 
@@ -139,14 +139,14 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     p = argparse.ArgumentParser(
-        prog="python -m orfeo", description="Find the tempo, meter, key and chords of a song."
+        prog="python -m tonos", description="Find the tempo, meter, key and chords of a song."
     )
     p.add_argument("file", nargs="?", help="file to analyze in the terminal (without it, opens the app)")
     p.add_argument("--json", action="store_true", help="print the full result as JSON")
     p.add_argument("--port", type=int, default=8765, help="port of the local web app (default: 8765)")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
     p.add_argument("--preload", action="store_true", help="download and test the models")
-    p.add_argument("--version", action="version", version=f"orfeo {__version__}")
+    p.add_argument("--version", action="version", version=f"Tonos {__version__}")
     args = p.parse_args()
 
     if args.preload:
@@ -181,7 +181,7 @@ def main() -> None:
     url = f"http://127.0.0.1:{args.port}"
     if _port_in_use(args.port):
         # The app is already running: do not start another one (it would delete the queued files)
-        print(f"orfeo is already running at {url}")
+        print(f"Tonos is already running at {url}")
         if not args.no_browser:
             webbrowser.open(url)
         return
@@ -192,7 +192,7 @@ def main() -> None:
 
     if not args.no_browser:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
-    print(f"orfeo is running at {url}  (close this window or press Ctrl+C to quit)")
+    print(f"Tonos is running at {url}  (close this window or press Ctrl+C to quit)")
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
 
 

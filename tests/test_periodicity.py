@@ -4,9 +4,9 @@ import librosa
 import numpy as np
 import pytest
 
-from orfeo.analysis import periodicity, rhythm
-from orfeo.messages import message
 from tests.synthetic import FS, _midi_to_hz, _mix_in, _tone, song
+from tonos.analysis import periodicity, rhythm
+from tonos.messages import message
 
 PROGRESSIONS = {
     3: [("D", False), ("G", False), ("A", False), ("D", False)],

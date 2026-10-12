@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from orfeo.messages import ENGLISH, english, message
+from tonos.messages import ENGLISH, english, message
 
-WEB = Path(__file__).parents[1] / "orfeo" / "web"
+WEB = Path(__file__).parents[1] / "tonos" / "web"
 I18N = WEB / "i18n.js"
 
 

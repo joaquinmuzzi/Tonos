@@ -51,7 +51,7 @@ separately (`winget install Gyan.FFmpeg`); it is not distributed with this proje
 
 ## Citations
 
-If you use orfeo in research, please cite the models it builds on:
+If you use Tonos in research, please cite the models it builds on:
 
 - Foscarin, F., Schlüter, J., & Widmer, G. (2024). *Beat this! Accurate beat tracking without
   DBN postprocessing.* ISMIR. [arXiv:2407.21658](https://arxiv.org/abs/2407.21658)

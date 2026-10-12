@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for orfeo.
+description: Suggest an idea for Tonos.
 labels: ["enhancement"]
 body:
   - type: textarea
@@ -13,7 +13,7 @@ body:
   - type: textarea
     id: solution
     attributes:
-      label: How could orfeo help?
+      label: How could Tonos help?
   - type: textarea
     id: alternatives
     attributes:

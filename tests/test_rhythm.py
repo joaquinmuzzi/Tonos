@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from orfeo.analysis import rhythm
-from orfeo.messages import message
 from tests.synthetic import FS, song
+from tonos.analysis import rhythm
+from tonos.messages import message
 
 
 def _beats(bpm, n):

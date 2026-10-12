@@ -3,7 +3,7 @@
 import tomllib
 from pathlib import Path
 
-from orfeo import __version__
+from tonos import __version__
 
 
 def test_version_matches_pyproject():

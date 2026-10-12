@@ -7,9 +7,9 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-from orfeo.analysis import pipeline
-from orfeo.analysis.audio import AudioError
 from tests.synthetic import FS, save_mp4, song
+from tonos.analysis import pipeline
+from tonos.analysis.audio import AudioError
 
 pytestmark = pytest.mark.slow
 
@@ -152,7 +152,7 @@ def test_silent_first_track_uses_the_second(tmp_path):
 
 
 def test_text_report(pop_in_g):
-    from orfeo.__main__ import _text_report
+    from tonos.__main__ import _text_report
 
     text = _text_report(pop_in_g)
     for heading in ("File:", "Tempo:", "Meter:", "Key:", "Most used chords:", "First 16 bars:"):

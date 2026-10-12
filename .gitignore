@@ -30,7 +30,7 @@ models/
 
 # Exported analyses and audio/video files (copyrighted material, test inputs)
 *.analisis.json
-*.orfeo.json
+*.tonos.json
 *.mp3
 *.mp4
 *.wav

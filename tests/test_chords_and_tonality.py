@@ -1,6 +1,6 @@
 import numpy as np
 
-from orfeo.analysis import chords, tonality
+from tonos.analysis import chords, tonality
 
 
 def test_chunks_cover_the_end_without_padding():

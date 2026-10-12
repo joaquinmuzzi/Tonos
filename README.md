@@ -1,9 +1,9 @@
-# orfeo
+# Tonos
 
-[![Tests](https://github.com/joaquinmuzzi/orfeo/actions/workflows/tests.yml/badge.svg)](https://github.com/joaquinmuzzi/orfeo/actions/workflows/tests.yml)
+[![Tests](https://github.com/joaquinmuzzi/tonos/actions/workflows/tests.yml/badge.svg)](https://github.com/joaquinmuzzi/tonos/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-orfeo listens to a song and tells you its **tempo**, **meter**, **key** and **chords**, bar by
+Tonos listens to a song and tells you its **tempo**, **meter**, **key** and **chords**, bar by
 bar. Drop in an audio or video file (MP4, MP3, M4A, WAV, FLAC, MKV…) and you get a report with
 a player that shows the chord being played and an optional click on every beat, so you can check
 the analysis by ear.
@@ -42,7 +42,7 @@ tells you the `winget` command to install it. Then, in a terminal inside this fo
 .\install.ps1
 ```
 
-It takes a few minutes and uses about 1.5 GB in `%LOCALAPPDATA%\orfeo\venv`.
+It takes a few minutes and uses about 1.5 GB in `%LOCALAPPDATA%\tonos\venv`.
 
 ### macOS and Linux
 
@@ -55,16 +55,16 @@ source .venv/bin/activate
 pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt -c constraints.txt
 pip install --no-deps "consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71"
-python -m orfeo --preload
+python -m tonos --preload
 ```
 
 ## Usage
 
-- **Web app:** double-click `orfeo.bat` (or run `python -m orfeo`). The browser opens at
+- **Web app:** double-click `tonos.bat` (or run `python -m tonos`). The browser opens at
   http://127.0.0.1:8765. Close the black window to stop it; if it is already running, only the
   browser opens. You can drop a file anywhere on the page, even over a report.
-- **Command line:** `orfeo.bat "C:\path\to\song.mp4"` (or `python -m orfeo song.mp4`) prints a
-  text report; add `--json` for all the data. `python -m orfeo --help` lists every option.
+- **Command line:** `tonos.bat "C:\path\to\song.mp4"` (or `python -m tonos song.mp4`) prints a
+  text report; add `--json` for all the data. `python -m tonos --help` lists every option.
 
 An analysis takes 10 to 30 seconds per song. Uploading the same file again gives the result
 instantly, because it is cached. What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
@@ -92,7 +92,7 @@ Things to keep in mind:
 ## How it works
 
 1. **Audio:** ffmpeg extracts the first non-silent audio track as a mono 22.05 kHz WAV.
-2. **Beats and downbeats:** Beat This! marks them; orfeo then evens out the grid (double-time
+2. **Beats and downbeats:** Beat This! marks them; Tonos then evens out the grid (double-time
    stretches, missed beats, mis-tracked fills) without touching real tempo changes.
 3. **Tempo** comes from the mean beat interval, and is compared with librosa's estimate.
 4. **Meter:** the beats between downbeats are counted, and a second method measures how
@@ -102,17 +102,18 @@ Things to keep in mind:
 6. **Chords:** Consonance-ACE on 20-second chunks, reduced to one chord per beat and spelled
    according to the key (B♭ in F major, not A♯; D/F♯, not D/G♭).
 
-The code is in [`orfeo/analysis`](orfeo/analysis), one module per step.
+The code is in [`tonos/analysis`](tonos/analysis), one module per step.
 
 ## Where it stores things
 
-- `%LOCALAPPDATA%\orfeo\venv`: the Python environment (Windows installer).
-- `%LOCALAPPDATA%\orfeo\cache` (`~/.cache/orfeo/cache` on macOS and Linux): finished analyses,
+- `%LOCALAPPDATA%\tonos\venv`: the Python environment (Windows installer).
+- `%LOCALAPPDATA%\tonos\cache` (`~/.cache/tonos/cache` on macOS and Linux): finished analyses,
   small JSON files.
 - `~/.cache/torch/hub/checkpoints/beat_this-final0.ckpt`: the beat model (77 MB).
 
 To uninstall, delete those and this folder. Versions before 0.1.0 used
-`%LOCALAPPDATA%\analizador-musical`, which can be deleted too.
+`%LOCALAPPDATA%\analizador-musical`, which can be deleted too; version 0.1.0, called orfeo, used
+`%LOCALAPPDATA%\orfeo`, which `install.ps1` renames.
 
 ## Contributing
 
@@ -139,7 +140,7 @@ does not include their weights; they are installed from their original sources:
 - **Consonance-ACE** (chords): MIT code; the weights were trained on third-party chord annotation
   datasets whose terms **may restrict commercial use**.
 
-Because of this, orfeo is intended for **personal, local use**. Commercial use of the model
+Because of this, Tonos is intended for **personal, local use**. Commercial use of the model
 weights is not confirmed: if you plan to use this project commercially, review each model's
 licence and training-data terms first. Details, library licences and citations are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This is not legal advice.
