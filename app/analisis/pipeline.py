@@ -15,7 +15,7 @@ from . import acordes, periodicidad, ritmo, tonalidad
 from .audio import obtener_audio
 from .notacion import Ortografia, describir_acorde
 
-VERSION = 4  # subirla invalida los análisis guardados en caché
+VERSION = 5  # subirla invalida los análisis guardados en caché
 
 Progreso = Callable[[str, float], None]
 
@@ -50,8 +50,9 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
         corregidos = unificados["quitados"] + unificados["agregados"]
         if corregidos >= 8:
             tempo["aviso"] = (
-                f"En algunos tramos el detector marcó el doble de pulsos (o se salteó algunos): se "
-                f"unificaron {corregidos} pulsos al tempo principal para poder contar los compases."
+                f"En algunos tramos el detector marcó pulsos de más (el doble) o de menos: se "
+                f"corrigieron {corregidos} pulsos para que la grilla quede pareja y se puedan "
+                "contar los compases."
             )
         subdivision = ritmo.analizar_subdivision(pulsos, envolvente, fs)
         repeticion, espectro = periodicidad.analizar(senal, fs, pulsos, envolvente, ritmo.SALTO)
@@ -69,7 +70,11 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
             progreso=lambda f: avisar("Reconociendo los acordes", 0.45 + 0.5 * f),
         )
 
-        if compas["fuente"] == "periodicidad":
+        if compas["fuente"] == "primeros tiempos":
+            # Compases mal cortados por un primer tiempo de más o de menos (3+1, 3+5...)
+            primeros, rearmados = ritmo.regularizar_compases(pulsos, primeros, compas["pulsos_por_compas"])
+            compas["compases_rearmados"] = rearmados
+        elif compas["fuente"] == "periodicidad":
             # Los primeros tiempos del detector no sirven: se rearman con el compás nuevo,
             # donde cambian los acordes y la armonía
             avisar("Ubicando los compases", 0.96)

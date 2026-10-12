@@ -108,6 +108,68 @@ def test_unificar_no_toca_un_cambio_de_tempo_real():
     assert np.array_equal(unificados, pulsos)
 
 
+def test_unificar_reparte_un_tramo_desparejo():
+    # Como en Resident Evil (compás 9): 4 pulsos marcados 0,42 / 0,40 / 0,72 / 0,68 s
+    pulso = 2.22 / 4
+    pulsos = list(np.arange(20) * pulso)
+    t = pulsos[-1]
+    for d in (0.42, 0.40, 0.72, 0.68):
+        t += d
+        pulsos.append(t)
+    pulsos += list(t + np.arange(1, 21) * pulso)
+    unificados, _, _ = ritmo.unificar_pulsos(np.array(pulsos), np.array([]))
+    assert len(unificados) == len(pulsos)
+    assert np.allclose(np.diff(unificados), pulso, atol=0.01)
+
+
+def test_unificar_no_reparte_un_corrimiento_real():
+    # Un intervalo de 1,46 pulsos (un calderón o un corrimiento de medio pulso) no se toca
+    pulsos = np.concatenate([np.arange(20) * 0.56, 19 * 0.56 + 0.82 + np.arange(20) * 0.56])
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, np.array([]))
+    assert np.array_equal(unificados, pulsos)
+    assert info == {"quitados": 0, "agregados": 0}
+
+
+def test_unificar_rellena_un_hueco_junto_a_un_compas_mas_corto():
+    # Un intervalo de 1,5 pulsos (compás de 7/8, real) seguido de un pulso perdido (2,0)
+    pulso = 0.56
+    intervalos = [1.0] * 15 + [1.5, 2.0] + [1.0] * 15
+    pulsos = np.concatenate([[0.0], np.cumsum(np.array(intervalos) * pulso)])
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, np.array([]))
+    relativos = np.round(np.diff(unificados) / pulso, 2).tolist()
+    assert relativos == [1.0] * 15 + [1.5, 1.0, 1.0] + [1.0] * 15
+    assert info["agregados"] == 1
+
+
+def _compases(*largos, inicio=0):
+    """Pulsos cada 0,5 s y primeros tiempos que dejan compases de esos largos."""
+    total = inicio + sum(largos) + 4
+    pulsos = np.arange(total) * 0.5
+    indices = np.cumsum((inicio,) + largos)
+    return pulsos, pulsos[indices]
+
+
+@pytest.mark.parametrize("largos, esperados", [
+    ((4, 4, 3, 1, 4, 4), [4, 4, 4, 4, 4]),       # Resident Evil: 3 + 1
+    ((4, 1, 3, 4), [4, 4, 4]),                     # 1 + 3
+    ((4, 3, 5, 4), [4, 4, 4, 4]),                  # primer tiempo corrido: 3 + 5
+    ((4, 8, 4), [4, 4, 4, 4]),                     # primer tiempo perdido
+    ((4, 2, 2, 4), [4, 4, 4]),
+    ((4, 4, 3, 4, 4), [4, 4, 3, 4, 4]),            # un compás de 3 aislado puede ser real
+    ((4, 3, 3, 4), [4, 3, 3, 4]),                  # 6 no es múltiplo de 4: no se toca
+])
+def test_regularizar_compases(largos, esperados):
+    pulsos, primeros = _compases(*largos)
+    nuevos, _ = ritmo.regularizar_compases(pulsos, primeros, 4)
+    assert np.diff(np.searchsorted(pulsos, nuevos)).tolist() == esperados
+
+
+def test_regularizar_no_hace_nada_sin_compas():
+    pulsos, primeros = _compases(3, 1, 4)
+    nuevos, rearmados = ritmo.regularizar_compases(pulsos, primeros, None)
+    assert np.array_equal(nuevos, primeros) and rearmados == 0
+
+
 def test_compases_con_anacrusa():
     pulsos = _pulsos(120, 17)
     lista = ritmo.compases(pulsos, pulsos[1::4], duracion=9.0)

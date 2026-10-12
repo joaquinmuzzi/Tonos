@@ -43,26 +43,63 @@ def unificar_pulsos(pulsos: np.ndarray, primeros: np.ndarray) -> tuple[np.ndarra
     """Deja una sola grilla de pulsos, al tempo que domina la canción.
 
     El detector a veces pasa a marcar el doble de pulsos en un tramo (210 BPM en una canción
-    a 105) o se saltea algunos. Con la grilla despareja no se pueden contar compases: en los
-    tramos al doble se deja un pulso de cada dos (el que sigue la cuenta que venía) y los
-    pulsos salteados se rellenan. Los cambios de tempo reales (que no son el doble ni la
-    mitad) no se tocan.
+    a 105), se saltea algunos o los pone corridos en un redoble. Con la grilla despareja no se
+    pueden contar compases, así que:
+    1. en los tramos al doble se deja un pulso de cada dos (el que sigue la cuenta que venía);
+    2. si entre dos pulsos regulares hay un tramo irregular corto (hasta 8 pulsos) que dura un
+       número entero de pulsos (por ejemplo 2,22 s = 4 pulsos de 0,555 s, marcados 0,42 / 0,40 /
+       0,72 / 0,68), esos pulsos se reparten parejos; así también se rellenan los salteados.
+    Un tramo que no dura un número entero de pulsos (un calderón, un corrimiento real) y las
+    secciones a otro tempo no se tocan.
     """
     if len(pulsos) < 8:
         return pulsos, primeros, {"quitados": 0, "agregados": 0}
     tipico = float(np.median(np.diff(pulsos)))
-    salida = [float(pulsos[0])]
+
+    sin_dobles = [float(pulsos[0])]
     quitados = agregados = 0
     for t in pulsos[1:]:
-        d = float(t) - salida[-1]
-        if d < 0.7 * tipico:  # pulso de más
+        if float(t) - sin_dobles[-1] < 0.6 * tipico:  # pulso de más
             quitados += 1
             continue
-        k = round(d / tipico)
-        if 2 <= k <= 8 and abs(d / k - tipico) <= 0.15 * tipico:  # pulsos perdidos
-            salida.extend((salida[-1] + d * np.arange(1, k) / k).tolist())
-            agregados += k - 1
-        salida.append(float(t))
+        sin_dobles.append(float(t))
+    grilla = np.asarray(sin_dobles)
+
+    def regular(d: float) -> bool:
+        return 0.85 * tipico <= d <= 1.15 * tipico
+
+    salida = [float(grilla[0])]
+    i = 0
+    while i < len(grilla) - 1:
+        if regular(grilla[i + 1] - grilla[i]):
+            salida.append(float(grilla[i + 1]))
+            i += 1
+            continue
+        # Tramo irregular: de grilla[i] hasta el pulso desde el que la grilla vuelve a ser regular
+        j = i + 1
+        while j < len(grilla) - 1 and not regular(grilla[j + 1] - grilla[j]):
+            j += 1
+        duracion = float(grilla[j] - grilla[i])
+        k = round(duracion / tipico)
+        # Solo tramos cortos: uno largo es una sección a otro tempo (y cualquier duración larga
+        # "entra" en un número entero de pulsos)
+        if 1 <= k <= 8 and abs(duracion - k * tipico) <= 0.25 * tipico:
+            salida.extend((grilla[i] + duracion * np.arange(1, k) / k).tolist())
+            agregados += max(0, (k - 1) - (j - i - 1))
+            quitados += max(0, (j - i - 1) - (k - 1))
+        else:
+            # El tramo entero no cierra (por ejemplo, un compás medio pulso más corto junto a
+            # un pulso perdido): se rellenan solo los huecos que sí son un número entero de pulsos
+            for a, b in zip(grilla[i:j], grilla[i + 1: j + 1]):
+                hueco = float(b - a)
+                m = round(hueco / tipico)
+                if 2 <= m <= 8 and abs(hueco - m * tipico) <= 0.25 * tipico:
+                    salida.extend((a + hueco * np.arange(1, m) / m).tolist())
+                    agregados += m - 1
+                if b != grilla[j]:
+                    salida.append(float(b))
+        salida.append(float(grilla[j]))
+        i = j
     nuevos = np.asarray(salida)
     # Cada primer tiempo pasa al pulso más cercano de la grilla nueva
     cercanos = [float(nuevos[np.argmin(np.abs(nuevos - p))]) for p in primeros]
@@ -144,6 +181,41 @@ def pulsos_por_compas(pulsos: np.ndarray, primeros: np.ndarray) -> list[int]:
     indices = np.searchsorted(pulsos, primeros)
     cuentas = np.diff(indices)
     return [int(c) for c in cuentas if c > 0]
+
+
+def regularizar_compases(pulsos: np.ndarray, primeros: np.ndarray, n: int | None) -> tuple[np.ndarray, int]:
+    """Arregla compases cortados por un primer tiempo de más, de menos o corrido.
+
+    Si varios compases seguidos no tienen `n` pulsos pero entre todos suman un múltiplo de n
+    (3+1, 1+3, 3+5, 2+2, uno de 8...), se rearman en compases parejos de n pulsos desde el
+    primero. Un compás distinto aislado (un 3 entre compases de 4) se deja como está, porque
+    puede ser un cambio de compás real. Devuelve (primeros tiempos, tramos rearmados).
+    """
+    if not n or n < 2 or len(primeros) < 3:
+        return primeros, 0
+    indices = np.searchsorted(pulsos, primeros)
+    largos = np.diff(indices)
+    nuevos = [int(indices[0])]
+    rearmados = 0
+    k = 0
+    while k < len(largos):
+        if largos[k] == n:
+            nuevos.append(int(indices[k + 1]))
+            k += 1
+            continue
+        total, m = 0, k
+        while m < len(largos) and largos[m] != n:
+            total += int(largos[m])
+            m += 1
+            if total % n == 0:
+                break
+        if total % n == 0:
+            nuevos.extend(range(int(indices[k]) + n, int(indices[k]) + total + 1, n))
+            rearmados += 1
+        else:
+            nuevos.extend(int(i) for i in indices[k + 1: m + 1])
+        k = m
+    return pulsos[np.asarray(nuevos)], rearmados
 
 
 def _valor(envolvente: np.ndarray, t: float, fs: int) -> float:
