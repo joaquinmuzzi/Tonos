@@ -1,14 +1,15 @@
 """Analizador musical.
 
-    python -m app                 abre la app en el navegador
-    python -m app cancion.mp4     analiza un archivo y muestra el resultado en la terminal
-    python -m app cancion.mp4 --json
-    python -m app --precargar     descarga y prueba los modelos (lo usa instalar.ps1)
+python -m app                 abre la app en el navegador
+python -m app cancion.mp4     analiza un archivo y muestra el resultado en la terminal
+python -m app cancion.mp4 --json
+python -m app --precargar     descarga y prueba los modelos (lo usa instalar.ps1)
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import socket
 import sys
@@ -27,7 +28,9 @@ def _texto(r: dict) -> str:
     t = r["tempo"]
     if t.get("bpm"):
         alt = t["alternativas"]
-        lineas.append(f"Tempo:      {t['bpm']:.0f} BPM  (al doble o a la mitad: {alt['doble']:.0f} / {alt['mitad']:.0f})")
+        lineas.append(
+            f"Tempo:      {t['bpm']:.0f} BPM  (al doble o a la mitad: {alt['doble']:.0f} / {alt['mitad']:.0f})"
+        )
         if t["sugerencia"]:
             lineas.append(f"            probablemente lo sientas a {alt[t['sugerencia']]:.0f} BPM")
         if not t["estable"]:
@@ -47,7 +50,9 @@ def _texto(r: dict) -> str:
             origen = f"cuenta en {c['pulsos_por_compas']} en el {c['acuerdo'] * 100:.0f} % de los compases"
             if (c.get("segundo_metodo") or {}).get("confirma"):
                 origen += " (y la armonía lo confirma)"
-        lineas.append(f"            {origen}; subdivisión {c['subdivision']['tipo']}; confianza {c['confianza']}")
+        lineas.append(
+            f"            {origen}; subdivisión {c['subdivision']['tipo']}; confianza {c['confianza']}"
+        )
         for aviso in c.get("avisos", []):
             if aviso.startswith("El detector") or aviso.startswith("No se pudo determinar"):
                 lineas.append(f"            {aviso}")
@@ -60,8 +65,10 @@ def _texto(r: dict) -> str:
     alts = ", ".join(f"{a['latino']} ({a['motivo']})" for a in k["alternativas"])
     lineas.append(f"            alternativas: {alts}")
     for cambio in k["por_tramos"]["cambios"]:
-        lineas.append(f"            posible cambio: {cambio['latino']} entre {_mmss(cambio['inicio'])} "
-                      f"y {_mmss(cambio['fin'])}")
+        lineas.append(
+            f"            posible cambio: {cambio['latino']} entre {_mmss(cambio['inicio'])} "
+            f"y {_mmss(cambio['fin'])}"
+        )
     if r["afinacion"]["aviso"]:
         lineas.append(f"            {r['afinacion']['aviso']}")
 
@@ -81,7 +88,7 @@ def _texto(r: dict) -> str:
                     nombres.append(n)
             celdas.append(f"{comp['etiqueta']}: {' '.join(nombres) or '—'}")
         for i in range(0, len(celdas), 4):
-            lineas.append("| " + " | ".join(f"{c:<20}" for c in celdas[i:i + 4]) + " |")
+            lineas.append("| " + " | ".join(f"{c:<20}" for c in celdas[i : i + 4]) + " |")
     lineas += ["", f"(análisis en {r['segundos_de_analisis']:.0f} s)"]
     return "\n".join(lineas)
 
@@ -99,10 +106,8 @@ def _silenciar_logs() -> None:
 
 
 def main() -> None:
-    try:
+    with contextlib.suppress(AttributeError):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    except AttributeError:
-        pass
 
     p = argparse.ArgumentParser(prog="python -m app", description="Analizador musical")
     p.add_argument("archivo", nargs="?", help="archivo a analizar en la terminal")

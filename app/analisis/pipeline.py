@@ -6,8 +6,8 @@ import logging
 import tempfile
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 
@@ -56,8 +56,9 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
             )
         subdivision = ritmo.analizar_subdivision(pulsos, envolvente, fs)
         repeticion, espectro = periodicidad.analizar(senal, fs, pulsos, envolvente, ritmo.SALTO)
-        compas = ritmo.analizar_compas(pulsos, primeros, subdivision, tempo.get("bpm"),
-                                       tempo.get("confianza", "baja"), repeticion)
+        compas = ritmo.analizar_compas(
+            pulsos, primeros, subdivision, tempo.get("bpm"), tempo.get("confianza", "baja"), repeticion
+        )
         del envolvente
 
         avisar("Buscando la tonalidad", 0.32)
@@ -66,7 +67,9 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
 
         avisar("Reconociendo los acordes", 0.45)
         crudos = acordes.detectar_acordes(
-            wav, duracion, pulsos,
+            wav,
+            duracion,
+            pulsos,
             progreso=lambda f: avisar("Reconociendo los acordes", 0.45 + 0.5 * f),
         )
 
@@ -80,7 +83,8 @@ def analizar(ruta: Path, progreso: Progreso | None = None) -> dict:
             avisar("Ubicando los compases", 0.96)
             cambios = periodicidad.cambios_de_acorde_por_pulso(pulsos, crudos)
             primeros, claridad = periodicidad.ubicar_compases(
-                pulsos, compas["pulsos_por_compas"], espectro, fs, cambios)
+                pulsos, compas["pulsos_por_compas"], espectro, fs, cambios
+            )
             _completar_grilla(compas, claridad, tempo)
         del espectro
 

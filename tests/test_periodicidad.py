@@ -26,7 +26,7 @@ def _sintetica(pulsos_por_compas, bpm=130, compases=48):
 def test_detecta_el_compas_por_repeticion(pulsos_por_compas):
     y, pulsos = _sintetica(pulsos_por_compas)
     envolvente = ritmo.envolvente_de_ataques(y, 22050)
-    resumen, espectro = periodicidad.analizar(y, 22050, pulsos, envolvente, ritmo.SALTO)
+    resumen, _espectro = periodicidad.analizar(y, 22050, pulsos, envolvente, ritmo.SALTO)
     assert resumen["ganador"] == pulsos_por_compas
     if pulsos_por_compas in (5, 7):  # los únicos casos en que el método puede imponerse
         assert resumen["margen"] > 0.3
@@ -61,8 +61,13 @@ def test_acordes_anticipados_no_corren_el_primer_tiempo():
 
 def test_tramo_corto_sigue_la_cuenta():
     L = 5
-    pulsos = np.concatenate([np.arange(60) * 0.5, 30.0 + 0.8 + np.arange(6) * 0.5,  # salto y tramo corto
-                             33.8 + 0.8 + np.arange(60) * 0.5])
+    pulsos = np.concatenate(
+        [
+            np.arange(60) * 0.5,
+            30.0 + 0.8 + np.arange(6) * 0.5,  # salto y tramo corto
+            33.8 + 0.8 + np.arange(60) * 0.5,
+        ]
+    )
     espectro = np.random.default_rng(0).random((84, 4000)).astype(np.float32)
     cambios = np.zeros(len(pulsos))
     cambios[::L] = 1.0
@@ -74,13 +79,20 @@ def test_tramo_corto_sigue_la_cuenta():
 
 def test_cancion_corta_no_se_analiza():
     pulsos = np.arange(40) * 0.5
-    assert periodicidad.analizar(np.zeros(22050 * 20), 22050, pulsos, np.zeros(2000), ritmo.SALTO) == (None, None)
+    assert periodicidad.analizar(np.zeros(22050 * 20), 22050, pulsos, np.zeros(2000), ritmo.SALTO) == (
+        None,
+        None,
+    )
 
 
 def _repeticion(ganador, puntajes, armonia):
     otros = sorted((v for f, v in puntajes.items() if f != ganador), reverse=True)
-    return {"ganador": ganador, "puntajes": puntajes, "armonia": armonia,
-            "margen": round(puntajes[ganador] - otros[0], 2)}
+    return {
+        "ganador": ganador,
+        "puntajes": puntajes,
+        "armonia": armonia,
+        "margen": round(puntajes[ganador] - otros[0], 2),
+    }
 
 
 CINCO = _repeticion(5, {3: -0.4, 4: -0.66, 5: 0.36, 7: -0.47}, {3: -0.49, 4: -0.58, 5: 0.91, 7: -0.36})

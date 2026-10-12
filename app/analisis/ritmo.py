@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import itertools
 from collections import Counter
 from functools import lru_cache
 
@@ -98,22 +99,23 @@ def unificar_pulsos(pulsos: np.ndarray, primeros: np.ndarray) -> tuple[np.ndarra
                 j += 2
             else:
                 break
-        intervalos = np.diff(grilla[i: j + 1])
+        intervalos = np.diff(grilla[i : j + 1])
         duracion = float(grilla[j] - grilla[i])
         redoble = (
             len(intervalos) <= 8
-            and bool(np.any(intervalos < 0.85 * tipico)) and bool(np.any(intervalos > 1.15 * tipico))
+            and bool(np.any(intervalos < 0.85 * tipico))
+            and bool(np.any(intervalos > 1.15 * tipico))
             and abs(duracion / len(intervalos) - tipico) <= 0.15 * tipico
         )
         if redoble:  # 2. misma cantidad de pulsos, repartidos parejo
             parejos = grilla[i] + duracion * np.arange(1, len(intervalos)) / len(intervalos)
-            movidos.update(zip(grilla[i + 1: j].tolist(), parejos.tolist()))
+            movidos.update(zip(grilla[i + 1 : j].tolist(), parejos.tolist()))
             salida.extend(parejos.tolist())
         else:  # 3. solo se rellenan los huecos de pulsos perdidos
             # Un hueco aislado se acepta aunque la banda vuelva un poco tarde; dentro de una serie
             # de pulsos lentos (un ritardando) tiene que ser casi exacto, o es parte del ritardando
             tolerancia = 0.15 if len(intervalos) == 1 else 0.06
-            for a, b in zip(grilla[i:j], grilla[i + 1: j + 1]):
+            for a, b in zip(grilla[i:j], grilla[i + 1 : j + 1]):
                 hueco = float(b - a)
                 m = round(hueco / tipico)
                 if 2 <= m <= 8 and abs(hueco / m - tipico) <= tolerancia * tipico:
@@ -153,7 +155,7 @@ def analizar_tempo(pulsos: np.ndarray, envolvente: np.ndarray, fs: int) -> dict:
     bpm = 60.0 / _periodo(intervalos)
 
     # Tempo local: misma cuenta sobre ventanas de 8 intervalos
-    locales = np.array([60.0 / _periodo(intervalos[max(0, i - 4): i + 4]) for i in range(len(intervalos))])
+    locales = np.array([60.0 / _periodo(intervalos[max(0, i - 4) : i + 4]) for i in range(len(intervalos))])
     p10, p90 = (float(x) for x in np.percentile(locales, [10, 90]))
     variacion = (p90 - p10) / bpm
     # Regularidad: proporción de pulsos a ±10 % del intervalo típico
@@ -163,9 +165,7 @@ def analizar_tempo(pulsos: np.ndarray, envolvente: np.ndarray, fs: int) -> dict:
     curva = [[round(float(t), 2), round(float(b), 1)] for t, b in zip(pulsos[1::paso], locales[::paso])]
 
     # Segundo método independiente (autocorrelación de la envolvente de ataques)
-    bpm_librosa = float(
-        librosa.feature.tempo(onset_envelope=envolvente, sr=fs, hop_length=SALTO)[0]
-    )
+    bpm_librosa = float(librosa.feature.tempo(onset_envelope=envolvente, sr=fs, hop_length=SALTO)[0])
     relacion = None
     for factor, nombre in ((1, "igual"), (2, "doble"), (0.5, "mitad"), (3, "triple"), (1 / 3, "tercio")):
         if abs(bpm_librosa - bpm * factor) <= 0.04 * bpm * factor:
@@ -236,21 +236,19 @@ def regularizar_compases(pulsos: np.ndarray, primeros: np.ndarray, n: int | None
             if total % n == 0:
                 break
         grupo = [int(x) for x in largos[k:m]]
-        error_evidente = total <= 2 * n and (
-            len(grupo) == 1 or len(set(grupo)) > 1 or min(grupo) <= n // 2
-        )
+        error_evidente = total <= 2 * n and (len(grupo) == 1 or len(set(grupo)) > 1 or min(grupo) <= n // 2)
         if total % n == 0 and error_evidente:
             nuevos.extend(range(int(indices[k]) + n, int(indices[k]) + total + 1, n))
             rearmados += 1
         else:
-            nuevos.extend(int(i) for i in indices[k + 1: m + 1])
+            nuevos.extend(int(i) for i in indices[k + 1 : m + 1])
         k = m
     return pulsos[np.asarray(nuevos)], rearmados
 
 
 def _valor(envolvente: np.ndarray, t: float, fs: int) -> float:
     """Máximo de la envolvente en ±2 cuadros (±23 ms) alrededor del instante t."""
-    centro = int(round(t * fs / SALTO))
+    centro = round(t * fs / SALTO)
     ini, fin = max(0, centro - 2), min(len(envolvente), centro + 3)
     return float(envolvente[ini:fin].max()) if fin > ini else 0.0
 
@@ -262,7 +260,7 @@ def analizar_subdivision(pulsos: np.ndarray, envolvente: np.ndarray, fs: int) ->
     Es una pista, no un veredicto: el swing y el shuffle también suenan ternarios.
     """
     binaria, ternaria, entre = [], [], []
-    for b0, b1 in zip(pulsos[:-1], pulsos[1:]):
+    for b0, b1 in itertools.pairwise(pulsos):
         d = b1 - b0
         if not 0.15 < d < 2.0:
             continue
@@ -323,9 +321,17 @@ def _lectura(n: int, subdivision: str, bpm: float | None) -> tuple[str, str | No
 
 
 def _sin_compas(subdivision: dict, motivo: str, segundo_metodo: dict | None = None) -> dict:
-    return {"pulsos_por_compas": None, "lectura": None, "alternativa": None, "confianza": "baja",
-            "motivo": motivo, "subdivision": subdivision, "avisos": [], "fuente": None,
-            "segundo_metodo": segundo_metodo}
+    return {
+        "pulsos_por_compas": None,
+        "lectura": None,
+        "alternativa": None,
+        "confianza": "baja",
+        "motivo": motivo,
+        "subdivision": subdivision,
+        "avisos": [],
+        "fuente": None,
+        "segundo_metodo": segundo_metodo,
+    }
 
 
 _NIVELES = ["baja", "media", "alta"]
@@ -345,8 +351,14 @@ def comparar_con_periodicidad(n: int | None, periodicidad: dict | None) -> dict 
         return None
     puntajes, armonia, ganador = periodicidad["puntajes"], periodicidad["armonia"], periodicidad["ganador"]
     familia = _FAMILIA.get(n) if n else None
-    salida = {"pulsos": ganador, "puntajes": puntajes, "confirma": False, "reemplaza": False,
-              "contradice": False, "fuerte": False}
+    salida = {
+        "pulsos": ganador,
+        "puntajes": puntajes,
+        "confirma": False,
+        "reemplaza": False,
+        "contradice": False,
+        "fuerte": False,
+    }
     if familia == ganador:
         salida["confirma"] = periodicidad["margen"] >= 0.5
         return salida
@@ -368,9 +380,14 @@ def limitar_confianza(confianza: str, tope: str | None) -> str:
     return confianza
 
 
-def analizar_compas(pulsos: np.ndarray, primeros: np.ndarray, subdivision: dict,
-                    bpm: float | None = None, confianza_tempo: str | None = None,
-                    periodicidad: dict | None = None) -> dict:
+def analizar_compas(
+    pulsos: np.ndarray,
+    primeros: np.ndarray,
+    subdivision: dict,
+    bpm: float | None = None,
+    confianza_tempo: str | None = None,
+    periodicidad: dict | None = None,
+) -> dict:
     cuentas = pulsos_por_compas(pulsos, primeros)
     conteo = Counter(cuentas)
     n, veces = conteo.most_common(1)[0] if cuentas else (None, 0)
@@ -383,8 +400,10 @@ def analizar_compas(pulsos: np.ndarray, primeros: np.ndarray, subdivision: dict,
         if len(cuentas) < 4:
             motivo = "No se detectaron suficientes primeros tiempos para estimar el compás."
         else:
-            motivo = ("Casi todos los pulsos detectados quedaron marcados como primer tiempo, así que "
-                      "no se pudo contar el compás. Pasa con música muy libre o con mucho rubato.")
+            motivo = (
+                "Casi todos los pulsos detectados quedaron marcados como primer tiempo, así que "
+                "no se pudo contar el compás. Pasa con música muy libre o con mucho rubato."
+            )
         return _sin_compas(subdivision, motivo, segundo)
 
     avisos = []
@@ -474,7 +493,7 @@ def compases(pulsos: np.ndarray, primeros: np.ndarray, duracion: float) -> list[
         etiqueta = "anacrusa" if tipo == "compás" and bordes[0] < 1.05 * largo_tipico else "intro"
         salida.append({"numero": 0, "etiqueta": etiqueta, "inicio": 0.0, "fin": bordes[0]})
     bordes.append(duracion)
-    for i, (ini, fin) in enumerate(zip(bordes[:-1], bordes[1:]), start=1):
+    for i, (ini, fin) in enumerate(itertools.pairwise(bordes), start=1):
         if fin - ini > 0.05:
             salida.append({"numero": i, "etiqueta": f"{tipo} {i}", "inicio": ini, "fin": fin})
     return salida

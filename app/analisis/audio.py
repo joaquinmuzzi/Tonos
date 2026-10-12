@@ -26,8 +26,7 @@ def buscar_ffmpeg(programa: str = "ffmpeg") -> str:
     if ruta:
         return ruta
     raise ErrorDeAudio(
-        "No encontré ffmpeg. Instalalo con:  winget install Gyan.FFmpeg  "
-        "y volvé a abrir la terminal."
+        "No encontré ffmpeg. Instalalo con:  winget install Gyan.FFmpeg  y volvé a abrir la terminal."
     )
 
 
@@ -35,9 +34,22 @@ def contar_pistas_de_audio(entrada: Path) -> int:
     """Cantidad de pistas de audio del archivo (1 si no se puede averiguar)."""
     try:
         resultado = subprocess.run(
-            [buscar_ffmpeg("ffprobe"), "-v", "error", "-select_streams", "a",
-             "-show_entries", "stream=index", "-of", "csv=p=0", str(entrada)],
-            capture_output=True, text=True, errors="replace", timeout=60,
+            [
+                buscar_ffmpeg("ffprobe"),
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=index",
+                "-of",
+                "csv=p=0",
+                str(entrada),
+            ],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=60,
         )
     except (ErrorDeAudio, OSError, subprocess.TimeoutExpired):
         return 1
@@ -51,11 +63,25 @@ def extraer_audio(entrada: Path, salida_wav: Path, pista: int = 0) -> None:
     antes de poder avisar que es demasiado largo.
     """
     comando = [
-        buscar_ffmpeg(), "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
-        "-i", str(entrada),
-        "-map", f"0:a:{pista}",  # algunos MP4 traen varias pistas de audio
-        "-vn", "-ac", "1", "-ar", str(FRECUENCIA), "-c:a", "pcm_s16le",
-        "-t", str(DURACION_MAXIMA + 1),
+        buscar_ffmpeg(),
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(entrada),
+        "-map",
+        f"0:a:{pista}",  # algunos MP4 traen varias pistas de audio
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        str(FRECUENCIA),
+        "-c:a",
+        "pcm_s16le",
+        "-t",
+        str(DURACION_MAXIMA + 1),
         str(salida_wav),
     ]
     resultado = subprocess.run(comando, capture_output=True, text=True, errors="replace")
@@ -102,6 +128,8 @@ def obtener_audio(entrada: Path, salida_wav: Path) -> tuple[np.ndarray, int, int
         except AudioEnSilencio:
             if pista == pistas - 1:
                 if pistas > 1:
-                    raise AudioEnSilencio(f"Las {pistas} pistas de audio del archivo están en silencio.")
+                    raise AudioEnSilencio(
+                        f"Las {pistas} pistas de audio del archivo están en silencio."
+                    ) from None
                 raise
     raise ErrorDeAudio("El archivo no tiene ninguna pista de audio.")

@@ -19,8 +19,15 @@ def test_acorde_de_un_pulso_no_se_pierde():
 
 
 def test_intro_sin_pulsos_conserva_sus_acordes():
-    crudos = [(0, 5, "A:min"), (5, 10, "F:maj"), (10, 15, "C:maj"), (15, 20, "G:maj"),
-              (20, 22, "A:min"), (22, 24, "G:maj"), (24, 30, "F:maj")]
+    crudos = [
+        (0, 5, "A:min"),
+        (5, 10, "F:maj"),
+        (10, 15, "C:maj"),
+        (15, 20, "G:maj"),
+        (20, 22, "A:min"),
+        (22, 24, "G:maj"),
+        (24, 30, "F:maj"),
+    ]
     pulsos = np.arange(20, 30, 0.5)
     salida = acordes._unir_iguales(acordes.agrupar_por_pulsos(crudos, pulsos, 30.0))
     assert [e for _, _, e in salida] == ["A:min", "F:maj", "C:maj", "G:maj", "A:min", "G:maj", "F:maj"]
@@ -41,8 +48,11 @@ def test_tonalidad_desde_acordes():
 
 
 def _ton(ventaja, tonica=7, modo="mayor"):
-    return {"principal": {"tonica_pc": tonica, "modo": modo}, "ventaja": ventaja,
-            "por_tramos": {"acuerdo": None}}
+    return {
+        "principal": {"tonica_pc": tonica, "modo": modo},
+        "ventaja": ventaja,
+        "por_tramos": {"acuerdo": None},
+    }
 
 
 def test_sin_acordes_la_tonalidad_es_poco_confiable():

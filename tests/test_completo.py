@@ -75,10 +75,13 @@ def test_pop_y_vals_confirmados_por_la_armonia(pop_en_sol, vals_en_re):
     assert vals_en_re["compas"]["fuente"] == "primeros tiempos"
 
 
-@pytest.mark.parametrize("pulsos_por_compas, progresion", [
-    (5, [("A", True), ("F", False), ("C", False), ("G", False)]),
-    (7, [("E", True), ("C", False), ("D", False)]),
-])
+@pytest.mark.parametrize(
+    ("pulsos_por_compas", "progresion"),
+    [
+        (5, [("A", True), ("F", False), ("C", False), ("G", False)]),
+        (7, [("E", True), ("C", False), ("D", False)]),
+    ],
+)
 def test_compas_irregular_de_punta_a_punta(tmp_path, pulsos_por_compas, progresion):
     """El detector de primeros tiempos falla con 5/4 y 7/4; la repetición de la armonía no."""
     y = cancion(130, pulsos_por_compas, progresion, compases=32)
@@ -127,8 +130,22 @@ def test_primera_pista_muda_usa_la_segunda(tmp_path):
     musica = tmp_path / "musica.wav"
     sf.write(musica, cancion(120, 4, [("A", True), ("F", False)], compases=8), FS)
     ruta = tmp_path / "dos pistas.mp4"
-    _ffmpeg("-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-i", str(musica),
-            "-map", "0:a", "-map", "1:a", "-shortest", "-c:a", "aac", str(ruta))
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc=r=44100:cl=stereo",
+        "-i",
+        str(musica),
+        "-map",
+        "0:a",
+        "-map",
+        "1:a",
+        "-shortest",
+        "-c:a",
+        "aac",
+        str(ruta),
+    )
     resultado = pipeline.analizar(ruta)
     assert resultado["archivo"]["pista_de_audio"] == 2
     assert resultado["tempo"]["bpm"]

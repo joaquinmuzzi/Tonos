@@ -9,7 +9,20 @@ import numpy as np
 import soundfile as sf
 
 FS = 44100
-NOTAS = {"C": 0, "C#": 1, "D": 2, "Eb": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "Ab": 8, "A": 9, "Bb": 10, "B": 11}
+NOTAS = {
+    "C": 0,
+    "C#": 1,
+    "D": 2,
+    "Eb": 3,
+    "E": 4,
+    "F": 5,
+    "F#": 6,
+    "G": 7,
+    "Ab": 8,
+    "A": 9,
+    "Bb": 10,
+    "B": 11,
+}
 
 
 def _midi_a_hz(m: float) -> float:
@@ -33,14 +46,18 @@ def _bombo(dur=0.25) -> np.ndarray:
     return np.sin(2 * np.pi * (50 + 100 * np.exp(-t * 30)) * t) * np.exp(-t * 18)
 
 
-def _redoblante(dur=0.18, rng=np.random.default_rng(0)) -> np.ndarray:
-    t = np.arange(int(dur * FS)) / FS
-    return 0.5 * rng.standard_normal(len(t)) * np.exp(-t * 25)
+_RNG_REDOBLANTE = np.random.default_rng(0)
+_RNG_PLATILLO = np.random.default_rng(1)
 
 
-def _platillo(dur=0.05, rng=np.random.default_rng(1)) -> np.ndarray:
+def _redoblante(dur=0.18) -> np.ndarray:
     t = np.arange(int(dur * FS)) / FS
-    ruido = rng.standard_normal(len(t))
+    return 0.5 * _RNG_REDOBLANTE.standard_normal(len(t)) * np.exp(-t * 25)
+
+
+def _platillo(dur=0.05) -> np.ndarray:
+    t = np.arange(int(dur * FS)) / FS
+    ruido = _RNG_PLATILLO.standard_normal(len(t))
     return 0.25 * np.diff(ruido, prepend=0) * np.exp(-t * 80)
 
 
@@ -92,7 +109,20 @@ def guardar_mp4(y: np.ndarray, destino: Path) -> Path:
     wav = destino.with_suffix(".wav")
     sf.write(wav, y, FS)
     subprocess.run(
-        ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", str(wav), "-c:a", "aac", "-b:a", "160k", str(destino)],
+        [
+            "ffmpeg",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(wav),
+            "-c:a",
+            "aac",
+            "-b:a",
+            "160k",
+            str(destino),
+        ],
         check=True,
     )
     wav.unlink()

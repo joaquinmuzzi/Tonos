@@ -41,8 +41,12 @@ def _probabilidades(hcqt, chromanet, recorte, onda: torch.Tensor) -> np.ndarray:
 
 
 def _describir(tonica_pc: int, modo: str, prob: float) -> dict:
-    return {"tonica_pc": tonica_pc, "modo": modo, "probabilidad": round(float(prob), 3),
-            **nombre_tonalidad(tonica_pc, modo)}
+    return {
+        "tonica_pc": tonica_pc,
+        "modo": modo,
+        "probabilidad": round(float(prob), 3),
+        **nombre_tonalidad(tonica_pc, modo),
+    }
 
 
 def detectar_tonalidad(senal: np.ndarray, fs: int) -> dict:
@@ -154,7 +158,7 @@ def _ventanas(onda: torch.Tensor, sr: int) -> list[tuple[float, float, np.ndarra
     largo, paso = int(VENTANA * sr), int(SALTO_VENTANA * sr)
     salida = []
     for ini in range(0, max(n - largo // 2, 1), paso):
-        trozo = onda[:, ini: ini + largo]
+        trozo = onda[:, ini : ini + largo]
         if trozo.shape[1] < largo // 2 or float(trozo.abs().max()) < 1e-3:
             continue
         trozo = trozo / trozo.abs().max()
@@ -172,11 +176,16 @@ def _por_tramos(ventanas: list, duracion: float, clases: list, global_: tuple[in
     for inicio, fin, probs in ventanas:
         i = int(np.argmax(probs))
         tonica, modo = clases[i]
-        tramos.append({
-            "inicio": round(inicio, 1), "fin": round(fin, 1),
-            "tonica_pc": tonica, "modo": modo, "probabilidad": round(float(probs[i]), 3),
-            **nombre_tonalidad(tonica, modo),
-        })
+        tramos.append(
+            {
+                "inicio": round(inicio, 1),
+                "fin": round(fin, 1),
+                "tonica_pc": tonica,
+                "modo": modo,
+                "probabilidad": round(float(probs[i]), 3),
+                **nombre_tonalidad(tonica, modo),
+            }
+        )
 
     def misma(t):
         return (t["tonica_pc"], t["modo"]) in (global_, rel)
@@ -195,12 +204,17 @@ def _por_tramos(ventanas: list, duracion: float, clases: list, global_: tuple[in
         while j + 1 < len(tramos) and (tramos[j + 1]["tonica_pc"], tramos[j + 1]["modo"]) == clave:
             j += 1
         if j - i + 1 >= 3:
-            cambios.append({k: tramos[i][k] for k in ("inicio", "tonica_pc", "modo", "latino", "americano")}
-                           | {"fin": tramos[j]["fin"]})
+            cambios.append(
+                {k: tramos[i][k] for k in ("inicio", "tonica_pc", "modo", "latino", "americano")}
+                | {"fin": tramos[j]["fin"]}
+            )
         i = j + 1
 
-    return {"tramos": tramos, "acuerdo": round(acuerdo, 2) if acuerdo is not None else None,
-            "cambios": cambios}
+    return {
+        "tramos": tramos,
+        "acuerdo": round(acuerdo, 2) if acuerdo is not None else None,
+        "cambios": cambios,
+    }
 
 
 def estimar_afinacion(senal: np.ndarray, fs: int) -> dict:
@@ -210,7 +224,9 @@ def estimar_afinacion(senal: np.ndarray, fs: int) -> dict:
     aviso = None
     if abs(desvio) >= 25:
         direccion = "más aguda" if desvio > 0 else "más grave"
-        aviso = (f"La grabación está {abs(desvio):.0f} cents {direccion} que la afinación estándar "
-                 "(La = 440 Hz). Con un desvío así, la tonalidad y los acordes pueden salir "
-                 "corridos medio tono.")
+        aviso = (
+            f"La grabación está {abs(desvio):.0f} cents {direccion} que la afinación estándar "
+            "(La = 440 Hz). Con un desvío así, la tonalidad y los acordes pueden salir "
+            "corridos medio tono."
+        )
     return {"cents": round(desvio), "aviso": aviso}

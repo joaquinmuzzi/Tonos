@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import contextlib
 import io
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 
@@ -151,7 +151,7 @@ def agrupar_por_pulsos(crudos: list[Segmento], pulsos: np.ndarray, duracion: flo
         return _sin_cortos(crudos, MINIMO_SIN_PULSOS)
 
     tipico = float(np.median(np.diff(pulsos)))
-    celdas = [(0.0, float(pulsos[0]))] + list(zip(pulsos[:-1].tolist(), pulsos[1:].tolist()))
+    celdas = [(0.0, float(pulsos[0])), *list(zip(pulsos[:-1].tolist(), pulsos[1:].tolist()))]
     celdas.append((float(pulsos[-1]), duracion))
 
     salida: list[Segmento] = []

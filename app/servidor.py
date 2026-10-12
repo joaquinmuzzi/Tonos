@@ -163,7 +163,7 @@ def _analizar(id_: str, ruta: Path, nombre: str, ruta_cache: Path) -> None:
         _actualizar(id_, estado="listo", paso="Listo", progreso=1.0, resultado=resultado)
     except ErrorDeAudio as e:
         _actualizar(id_, estado="error", error=str(e))
-    except Exception as e:  # noqa: BLE001 - se informa al usuario y se deja en el log
+    except Exception as e:
         log.exception("Falló el análisis de %s", nombre)
         _actualizar(id_, estado="error", error=f"Error inesperado al analizar: {e}")
     finally:

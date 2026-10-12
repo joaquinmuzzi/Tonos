@@ -12,6 +12,7 @@ También ubica dónde empieza cada compás, a partir de los cambios de armonía 
 
 from __future__ import annotations
 
+import itertools
 from collections import Counter
 
 import librosa
@@ -42,7 +43,7 @@ def _por_pulso(x: np.ndarray, cuadros: np.ndarray, desde: float = 0.0, hasta: fl
     """Promedio de cada columna de `x` dentro de cada pulso (o de una parte de cada pulso)."""
     largo = x.shape[-1]
     columnas = []
-    for a, b in zip(cuadros[:-1], cuadros[1:]):
+    for a, b in itertools.pairwise(cuadros):
         n = max(int(b) - int(a), 1)
         i = min(int(a) + int(desde * n), largo - 1)
         j = min(max(int(a) + int(hasta * n), i + 1), largo)
@@ -85,8 +86,9 @@ def _puntajes(realce: np.ndarray) -> dict[int, float]:
     return salida
 
 
-def analizar(senal: np.ndarray, fs: int, pulsos: np.ndarray, envolvente: np.ndarray,
-             salto_envolvente: int) -> tuple[dict | None, np.ndarray | None]:
+def analizar(
+    senal: np.ndarray, fs: int, pulsos: np.ndarray, envolvente: np.ndarray, salto_envolvente: int
+) -> tuple[dict | None, np.ndarray | None]:
     """Devuelve (resumen, espectro). El espectro se reutiliza para ubicar los compases.
 
     resumen = {"puntajes": {3: z, 4: z, 5: z, 7: z}, "armonia": {...}, "ganador": f,
@@ -136,7 +138,7 @@ def _z(x: np.ndarray) -> np.ndarray:
 def cambios_de_acorde_por_pulso(pulsos: np.ndarray, segmentos: list[tuple[float, float, str]]) -> np.ndarray:
     """1 en cada pulso donde empieza un acorde distinto del anterior (los acordes ya vienen por pulso)."""
     marcas = np.zeros(len(pulsos))
-    for (_, _, anterior), (inicio, _, etiqueta) in zip(segmentos[:-1], segmentos[1:]):
+    for (_, _, anterior), (inicio, _, etiqueta) in itertools.pairwise(segmentos):
         if etiqueta in ("N", "X") or etiqueta == anterior:
             continue
         i = int(np.argmin(np.abs(pulsos - inicio)))
@@ -145,8 +147,13 @@ def cambios_de_acorde_por_pulso(pulsos: np.ndarray, segmentos: list[tuple[float,
     return marcas
 
 
-def ubicar_compases(pulsos: np.ndarray, pulsos_por_compas: int, espectro: np.ndarray, fs: int,
-                    cambios_de_acorde: np.ndarray | None = None) -> tuple[np.ndarray, float]:
+def ubicar_compases(
+    pulsos: np.ndarray,
+    pulsos_por_compas: int,
+    espectro: np.ndarray,
+    fs: int,
+    cambios_de_acorde: np.ndarray | None = None,
+) -> tuple[np.ndarray, float]:
     """Primeros tiempos para compases de `pulsos_por_compas`.
 
     Dos pistas de dónde empieza cada compás, que se suman:
@@ -171,7 +178,7 @@ def ubicar_compases(pulsos: np.ndarray, pulsos_por_compas: int, espectro: np.nda
     cortes.append(len(pulsos))
 
     primeros, claridades, pesos = [], [], []
-    for a, b in zip(cortes[:-1], cortes[1:]):
+    for a, b in itertools.pairwise(cortes):
         if b - a < 2 * L and primeros:
             # Tramo corto: se sigue contando desde el último primer tiempo
             siguiente = int(np.searchsorted(pulsos, primeros[-1])) + L
@@ -180,14 +187,14 @@ def ubicar_compases(pulsos: np.ndarray, pulsos_por_compas: int, espectro: np.nda
             primeros.extend(pulsos[siguiente:b:L])
             continue
         fases = range(min(L, b - a))
-        nov = np.array([novedad[a + f:b:L].mean() for f in fases])
-        aco = np.array([cambios_de_acorde[a + f:b:L].mean() for f in fases])
+        nov = np.array([novedad[a + f : b : L].mean() for f in fases])
+        aco = np.array([cambios_de_acorde[a + f : b : L].mean() for f in fases])
         puntaje = _z(nov) + _z(aco)
         orden = np.argsort(puntaje)[::-1]
         fase = int(orden[0])
         if len(orden) > 1:
             claridades.append(float(puntaje[orden[0]] - puntaje[orden[1]]))
             pesos.append(b - a)
-        primeros.extend(pulsos[a + fase: b: L])
+        primeros.extend(pulsos[a + fase : b : L])
     claridad = float(np.average(claridades, weights=pesos)) if pesos else 0.0
     return np.asarray(primeros, dtype=float), claridad

@@ -45,16 +45,38 @@ def _nota_simple(pc: int, bemol: bool) -> Nota:
 
 
 def _deletrear_tonica(tonica_pc: int, modo: str) -> Nota:
-    return _nota_simple(tonica_pc, tonica_pc in (_TONICA_MAYOR_BEMOL if modo == "mayor" else _TONICA_MENOR_BEMOL))
+    return _nota_simple(
+        tonica_pc, tonica_pc in (_TONICA_MAYOR_BEMOL if modo == "mayor" else _TONICA_MENOR_BEMOL)
+    )
 
 
 def escribir(nota: Nota, sistema: str = "latino") -> str:
     letra, alteracion = nota
     return LETRAS[sistema][letra] + ("#" * alteracion if alteracion > 0 else "♭" * -alteracion)
 
+
 _NOTA_A_PC = {
-    "C": 0, "B#": 0, "C#": 1, "DB": 1, "D": 2, "D#": 3, "EB": 3, "E": 4, "FB": 4, "E#": 5, "F": 5,
-    "F#": 6, "GB": 6, "G": 7, "G#": 8, "AB": 8, "A": 9, "A#": 10, "BB": 10, "B": 11, "CB": 11,
+    "C": 0,
+    "B#": 0,
+    "C#": 1,
+    "DB": 1,
+    "D": 2,
+    "D#": 3,
+    "EB": 3,
+    "E": 4,
+    "FB": 4,
+    "E#": 5,
+    "F": 5,
+    "F#": 6,
+    "GB": 6,
+    "G": 7,
+    "G#": 8,
+    "AB": 8,
+    "A": 9,
+    "A#": 10,
+    "BB": 10,
+    "B": 11,
+    "CB": 11,
 }
 
 

@@ -10,7 +10,7 @@ from app.analisis.notacion import (
 
 
 @pytest.mark.parametrize(
-    "etiqueta, esperado",
+    ("etiqueta", "esperado"),
     [
         ("Bb Major", (10, "mayor")),
         ("D# Major", (3, "mayor")),
@@ -38,7 +38,7 @@ def test_relativa():
 
 
 @pytest.mark.parametrize(
-    "etiqueta, latino, americano, simple",
+    ("etiqueta", "latino", "americano", "simple"),
     [
         ("A:min", "Lam", "Am", "Lam"),
         ("C:maj", "Do", "C", "Do"),
@@ -71,7 +71,7 @@ def test_acorde_con_sostenidos_en_tonalidad_sostenido():
 
 
 @pytest.mark.parametrize(
-    "tonica, modo, etiqueta, esperado",
+    ("tonica", "modo", "etiqueta", "esperado"),
     [
         (5, "mayor", "D:maj/3", "D/F#"),  # nunca D/G♭
         (2, "menor", "A:maj/3", "A/C#"),  # dominante de Re menor en primera inversión
@@ -95,14 +95,16 @@ def test_ortografia_de_fundamentales_y_bajos(tonica, modo, etiqueta, esperado):
 def test_acordes_sin_tercera_no_se_muestran_como_mayores():
     orto = Ortografia(0, "mayor")
     quinta = describir_acorde("C:5", orto)
-    assert quinta["americano"] == "C5" and quinta["americano_simple"] == "C5"
+    assert quinta["americano"] == "C5"
+    assert quinta["americano_simple"] == "C5"
     assert describir_acorde("C:(1)", orto)["americano"] == "C(sin 3.ª)"
     sus = describir_acorde("D:sus4", orto)
-    assert sus["americano"] == "Dsus4" and sus["americano_simple"] == "Dsus4"
+    assert sus["americano"] == "Dsus4"
+    assert sus["americano_simple"] == "Dsus4"
 
 
 @pytest.mark.parametrize(
-    "tonica, modo, etiqueta, esperado",
+    ("tonica", "modo", "etiqueta", "esperado"),
     [
         (8, "menor", "C:min", "Cm"),  # antes salía "B#m"
         (8, "menor", "C:min/5", "Cm/G"),
