@@ -1,0 +1,30 @@
+name: PR title
+
+# Pull requests are squash-merged and the PR title becomes the commit message on main,
+# so the title must follow Conventional Commits: https://www.conventionalcommits.org
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  conventional-title:
+    name: conventional title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check that the title follows Conventional Commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [^ ].{0,70}$'
+          if printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+            echo "OK: $TITLE"
+          else
+            echo "::error::The PR title must follow Conventional Commits, in English: type(scope): summary"
+            echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            echo "Examples: 'fix(rhythm): keep real tempo changes', 'docs: add a contributing guide'"
+            echo "Got: $TITLE"
+            exit 1
+          fi
