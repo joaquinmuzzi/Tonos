@@ -1,16 +1,22 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>orfeo</title>
-  <link rel="stylesheet" href="/static/styles.css?v=6">
+  <link rel="stylesheet" href="/static/styles.css?v=7">
 </head>
 <body>
+  <!-- Texts are in English here and translated by i18n.js (data-i18n = key in MESSAGES). -->
   <header class="site-header">
-    <h1>orfeo</h1>
-    <p>Subí una canción o un video y te digo el tempo, el compás, la tonalidad y los acordes.
-       Todo se procesa en tu PC: el archivo no sale de tu computadora.</p>
+    <div class="title-row">
+      <h1>orfeo</h1>
+      <div class="segmented" role="group" aria-label="Language" data-i18n-aria-label="language_label">
+        <button type="button" data-language="en" lang="en" aria-pressed="true">English</button>
+        <button type="button" data-language="es" lang="es" aria-pressed="false">Español</button>
+      </div>
+    </div>
+    <p data-i18n="tagline">Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.</p>
   </header>
 
   <main>
@@ -18,14 +24,15 @@
       <label class="dropzone" id="dropzone">
         <input type="file" id="file-input"
                accept="audio/*,video/*,.mp4,.m4a,.mp3,.wav,.flac,.ogg,.opus,.aac,.webm,.mkv,.mov">
-        <span class="dropzone-title">Arrastrá un archivo acá o hacé clic para elegirlo</span>
-        <span class="dropzone-hint">MP4, MP3, M4A, WAV, FLAC, MKV… de hasta 20 minutos (y 1 GB)</span>
+        <span class="dropzone-title" data-i18n="dropzone_title">Drag a file here or click to choose one</span>
+        <span class="dropzone-hint" data-i18n="dropzone_hint">MP4, MP3, M4A, WAV, FLAC, MKV… up to 20 minutes (and 1 GB)</span>
       </label>
     </section>
 
     <section id="progress" class="progress" hidden>
-      <div class="progress-step" id="step" aria-live="polite">Subiendo el archivo…</div>
-      <div class="progress-track" role="progressbar" aria-label="Progreso del análisis" aria-valuemin="0" aria-valuemax="100" id="progress-track">
+      <div class="progress-step" id="step" aria-live="polite"></div>
+      <div class="progress-track" role="progressbar" aria-label="Analysis progress" data-i18n-aria-label="progress_label"
+           aria-valuemin="0" aria-valuemax="100" id="progress-track">
         <div class="progress-fill" id="progress-fill"></div>
       </div>
       <div class="progress-time" id="elapsed" aria-hidden="true"></div>
@@ -33,7 +40,7 @@
 
     <section id="error" class="error-box" hidden role="alert">
       <p id="error-text"></p>
-      <button type="button" class="button" id="retry">Probar con otro archivo</button>
+      <button type="button" class="button" id="retry" data-i18n="retry">Try another file</button>
     </section>
 
     <section id="report" hidden>
@@ -41,25 +48,25 @@
         <div class="file-info">
           <strong id="file-name"></strong>
           <span id="duration" class="muted"></span>
-          <span id="cached" class="muted" hidden>· resultado guardado de un análisis anterior</span>
+          <span id="cached" class="muted" hidden data-i18n="from_cache">· result saved from a previous analysis</span>
         </div>
         <audio id="audio" controls preload="metadata"></audio>
-        <p id="audio-error" class="muted" hidden>Tu navegador no puede reproducir este formato, pero el análisis está completo.</p>
+        <p id="audio-error" class="muted" hidden data-i18n="audio_unsupported">Your browser cannot play this format, but the analysis is complete.</p>
         <div class="now-playing" aria-live="off">
-          <div><span class="muted">Ahora</span> <b id="current-chord">—</b></div>
-          <div><span class="muted">Después</span> <span id="next-chord">—</span></div>
-          <div><span class="muted">Compás</span> <span id="current-bar">—</span></div>
+          <div><span class="muted" data-i18n="now">Now</span> <b id="current-chord">—</b></div>
+          <div><span class="muted" data-i18n="next">Next</span> <span id="next-chord">—</span></div>
+          <div><span class="muted" data-i18n="current_bar">Bar</span> <span id="current-bar">—</span></div>
           <div class="beat-count" id="beat-count" aria-hidden="true"></div>
         </div>
         <div class="controls">
-          <label class="toggle"><input type="checkbox" id="click"> Clic en cada pulso</label>
-          <div class="segmented" role="group" aria-label="Notación">
-            <button type="button" data-notation="solfege" aria-pressed="true">Do Re Mi</button>
-            <button type="button" data-notation="letter" aria-pressed="false">C D E</button>
+          <label class="toggle"><input type="checkbox" id="click"> <span data-i18n="click_toggle">Click on every beat</span></label>
+          <div class="segmented" role="group" aria-label="Notation" data-i18n-aria-label="notation_label">
+            <button type="button" data-notation="letter" aria-pressed="true">C D E</button>
+            <button type="button" data-notation="solfege" aria-pressed="false">Do Re Mi</button>
           </div>
-          <div class="segmented" role="group" aria-label="Detalle de los acordes">
-            <button type="button" data-detail="simple" aria-pressed="true">Acordes simples</button>
-            <button type="button" data-detail="full" aria-pressed="false">Completos</button>
+          <div class="segmented" role="group" aria-label="Chord detail" data-i18n-aria-label="detail_label">
+            <button type="button" data-detail="simple" aria-pressed="true" data-i18n="simple_chords">Simple chords</button>
+            <button type="button" data-detail="full" aria-pressed="false" data-i18n="full_chords">Full</button>
           </div>
         </div>
       </div>
@@ -72,46 +79,36 @@
 
       <article class="card">
         <div class="title-row">
-          <h2>Acordes</h2>
-          <label class="toggle"><input type="checkbox" id="follow" checked> Seguir la reproducción</label>
+          <h2 data-i18n="chords_title">Chords</h2>
+          <label class="toggle"><input type="checkbox" id="follow" checked> <span data-i18n="follow_playback">Follow playback</span></label>
         </div>
         <p class="muted" id="chords-note"></p>
         <div class="chips" id="chord-summary"></div>
-        <h3>Compás por compás</h3>
-        <p class="muted" id="grid-note">Hacé clic en un compás para escucharlo desde ahí.</p>
+        <h3 data-i18n="bar_by_bar">Bar by bar</h3>
+        <p class="muted" id="grid-note"></p>
         <div class="bar-grid" id="bar-grid"></div>
       </article>
 
       <details class="card">
-        <summary><h2>¿Qué tan confiable es esto?</h2></summary>
+        <summary><h2 data-i18n="reliability_title">How reliable is this?</h2></summary>
         <ul class="reliability">
-          <li><b>Tempo y pulsos:</b> muy buenos en pop, rock y electrónica con batería. El error típico
-            es dar el doble o la mitad. En música sin batería, en vivo o con rubato, bastante peor.
-            Activá el <i>clic</i> para comprobarlo de oído.</li>
-          <li><b>Compás:</b> es lo más difícil. Se cuenta cuántos pulsos hay entre primeros tiempos, y
-            los primeros tiempos fallan más que los pulsos (más o menos 1 de cada 5). El 3/4 y el 6/8
-            no se pueden distinguir de forma automática.</li>
-          <li><b>Tonalidad:</b> en pruebas publicadas, el modelo acierta exacto entre 7 y 8 de cada
-            10 canciones. Cuando falla, casi siempre se confunde con la relativa (Do mayor ↔ La menor)
-            o con una quinta. Da una sola tonalidad por canción, y la música modal (dórica,
-            mixolidia…) se fuerza a mayor o menor.</li>
-          <li><b>Acordes:</b> alrededor de 78 % del tiempo correcto en mayor/menor, menos con séptimas
-            y acordes raros. Por eso arrancan en modo “simple”. Los bajos e inversiones fallan seguido.</li>
-          <li><b>Repertorio:</b> los modelos se entrenaron sobre todo con pop y rock en inglés.
-            Folklore, tango y otros géneros latinos pueden dar peores resultados.</li>
+          <li><b data-i18n="reliability_tempo_title">Tempo and beats:</b> <span data-i18n="reliability_tempo">very good for pop, rock and electronic music with drums. The typical error is giving double or half the tempo. Much worse for music without drums, live recordings or rubato. Turn on the click to check it by ear.</span></li>
+          <li><b data-i18n="reliability_meter_title">Meter:</b> <span data-i18n="reliability_meter">the hardest part. It counts the beats between downbeats, and downbeats fail more often than beats (about 1 in 5). 3/4 and 6/8 cannot be told apart automatically.</span></li>
+          <li><b data-i18n="reliability_key_title">Key:</b> <span data-i18n="reliability_key">in published tests, the model gets the exact key right for 7 to 8 songs out of 10. When it fails, it almost always confuses it with the relative key (C major ↔ A minor) or with a fifth. It gives a single key per song, and modal music (Dorian, Mixolydian…) is forced into major or minor.</span></li>
+          <li><b data-i18n="reliability_chords_title">Chords:</b> <span data-i18n="reliability_chords">correct about 78 % of the time for major/minor, less with sevenths and unusual chords. That is why they start in “simple” mode. Basses and inversions often fail.</span></li>
+          <li><b data-i18n="reliability_repertoire_title">Repertoire:</b> <span data-i18n="reliability_repertoire">the models were trained mostly on pop and rock sung in English. Folk, tango and other Latin American genres may give worse results.</span></li>
         </ul>
-        <p class="muted">Modelos: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) y Consonance-ACE
-          (Poltronieri, Serra y Rocamora, 2025), más librosa para el tempo de control y la afinación.</p>
+        <p class="muted" data-i18n="models_credit">Models: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) and Consonance-ACE (Poltronieri, Serra and Rocamora, 2025), plus librosa for the control tempo and the tuning.</p>
       </details>
 
       <div class="actions">
-        <button type="button" class="button" id="another">Analizar otra canción</button>
-        <button type="button" class="button secondary" id="download">Descargar datos (JSON)</button>
+        <button type="button" class="button" id="another" data-i18n="another_song">Analyze another song</button>
+        <button type="button" class="button secondary" id="download" data-i18n="download_json">Download data (JSON)</button>
       </div>
     </section>
   </main>
 
-  <script src="/static/i18n.js?v=6"></script>
-  <script src="/static/app.js?v=6"></script>
+  <script src="/static/i18n.js?v=7"></script>
+  <script src="/static/app.js?v=7"></script>
 </body>
 </html>

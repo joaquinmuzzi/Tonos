@@ -7,7 +7,8 @@ import pytest
 
 from orfeo.messages import ENGLISH, english, message
 
-I18N = Path(__file__).parents[1] / "orfeo" / "web" / "i18n.js"
+WEB = Path(__file__).parents[1] / "orfeo" / "web"
+I18N = WEB / "i18n.js"
 
 
 def _translations() -> dict[str, dict[str, str]]:
@@ -36,10 +37,33 @@ def test_unknown_code_is_rejected():
         message("no_such_code")
 
 
-@pytest.mark.parametrize("language", ["es"])
+@pytest.mark.parametrize("language", ["en", "es"])
 def test_every_message_is_translated_in_the_web_page(language):
     texts = _translations()[language]
     missing = sorted(set(ENGLISH) - set(texts))
     assert not missing, f"missing in i18n.js ({language}): {missing}"
     for code, text in ENGLISH.items():
         assert _placeholders(texts[code]) == _placeholders(text), code
+
+
+def test_web_page_uses_the_same_english_texts():
+    english_texts = _translations()["en"]
+    assert {code: english_texts[code] for code in ENGLISH} == ENGLISH
+
+
+def test_languages_have_the_same_keys():
+    translations = _translations()
+    assert set(translations) == {"en", "es"}
+    assert set(translations["en"]) == set(translations["es"])
+    for key, text in translations["en"].items():
+        assert _placeholders(translations["es"][key]) == _placeholders(text), key
+
+
+def test_page_and_script_only_use_known_keys():
+    keys = set(_translations()["en"])
+    page = (WEB / "index.html").read_text(encoding="utf-8")
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    used = set(re.findall(r'data-i18n(?:-aria-label)?="(\w+)"', page))
+    used |= set(re.findall(r'\b(?:t|local)\("(\w+)"', script))
+    assert used, "no keys found"
+    assert not used - keys, sorted(used - keys)

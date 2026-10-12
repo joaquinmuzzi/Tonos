@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   result: null,
   url: null, // local URL of the chosen file, to play it without uploading it again
-  notation: readPreference("notation", "solfege"),
+  notation: readPreference("notation", language === "es" ? "solfege" : "letter"),
   detail: readPreference("detail", "simple"),
   beats: [],
   beatNumbers: [], // number of each beat within its bar (1 = downbeat)
@@ -13,6 +13,7 @@ const state = {
   activeBar: -1,
   nextClick: 0,
   timer: null,
+  error: null, // message shown in the error box, kept to translate it again
 };
 
 const audio = $("audio");
@@ -55,6 +56,12 @@ function el(tag, attributes = {}, ...children) {
 function appendAll(parent, ...children) {
   parent.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
 }
+
+/** A message of the page itself, shaped like the ones the server sends. */
+const local = (code, params = {}) => ({ code, params });
+
+/** The message in an error response of the server, or a generic one. */
+const serverMessage = (detail, status) => (detail && detail.code ? detail : local("server_error", { status }));
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const percent = (x) => `${Math.round(x * 100)} %`;
@@ -119,11 +126,12 @@ function setProgress(text, fraction) {
 
 function upload(file) {
   if (file.size > MAX_UPLOAD_BYTES) {
-    showError(t("too_large_client"));
+    showError(local("too_large_client"));
     return;
   }
   stopPlayback();
   state.result = null;
+  state.error = null;
   if (state.url) URL.revokeObjectURL(state.url);
   state.url = URL.createObjectURL(file);
 
@@ -152,9 +160,9 @@ function upload(file) {
       /* empty response */
     }
     if (request.status === 200 && body.id) poll(body.id);
-    else showError(messageText(body.detail) || t("server_error", { status: request.status }));
+    else showError(serverMessage(body.detail, request.status));
   });
-  request.addEventListener("error", () => showError(t("connection_failed")));
+  request.addEventListener("error", () => showError(local("connection_failed")));
   request.send(form);
 }
 
@@ -165,11 +173,11 @@ async function poll(id) {
     try {
       const response = await fetch(`/api/analyses/${id}`);
       job = await response.json();
-      if (!response.ok) throw new Error(messageText(job.detail) || t("server_error", { status: response.status }));
+      if (!response.ok) throw new Error(messageText(serverMessage(job.detail, response.status)));
       failures = 0;
     } catch (error) {
       if (++failures >= 5) {
-        showError(t("connection_lost", { detail: error.message }));
+        showError(local("connection_lost", { detail: error.message }));
         return;
       }
       await new Promise((r) => setTimeout(r, 1000));
@@ -181,7 +189,7 @@ async function poll(id) {
       return;
     }
     if (job.status === "error") {
-      showError(messageText(job.error));
+      showError(job.error);
       return;
     }
     setProgress(`${t(job.step)}…`, job.progress);
@@ -189,9 +197,10 @@ async function poll(id) {
   }
 }
 
-function showError(text) {
+function showError(message) {
   clearInterval(state.timer);
-  $("error-text").textContent = text;
+  state.error = message;
+  $("error-text").textContent = messageText(message);
   show("error");
 }
 
@@ -440,9 +449,25 @@ function drawChords() {
   if (!cells.length) $("bar-grid").append(el("p", { class: "muted" }, t("no_bars")));
 }
 
-// ---------------------------------------------------------------- notation
+// ---------------------------------------------------------------- language and notation
+
+function setLanguage(code) {
+  language = code;
+  savePreference("language", code);
+  translatePage();
+  markButtons();
+  if (state.error) $("error-text").textContent = messageText(state.error);
+  if (state.result) drawReport();
+}
+
+for (const button of document.querySelectorAll("[data-language]")) {
+  button.addEventListener("click", () => setLanguage(button.dataset.language));
+}
 
 function markButtons() {
+  for (const button of document.querySelectorAll("[data-language]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.language === language));
+  }
   for (const button of document.querySelectorAll("[data-notation]")) {
     button.setAttribute("aria-pressed", String(button.dataset.notation === state.notation));
   }
@@ -613,4 +638,5 @@ function stopPlayback() {
   audio.load();
 }
 
+translatePage();
 markButtons();
