@@ -9,33 +9,33 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-FRECUENCIA = 22050  # Hz: la que usan internamente Beat This!, S-KEY y Consonance-ACE
-DURACION_MAXIMA = 20 * 60  # segundos
+SAMPLE_RATE = 22050  # Hz: la que usan internamente Beat This!, S-KEY y Consonance-ACE
+MAX_DURATION = 20 * 60  # segundos
 
 
-class ErrorDeAudio(Exception):
+class AudioError(Exception):
     """Error con un mensaje pensado para mostrarle al usuario."""
 
 
-class AudioEnSilencio(ErrorDeAudio):
+class SilentAudioError(AudioError):
     pass
 
 
-def buscar_ffmpeg(programa: str = "ffmpeg") -> str:
-    ruta = shutil.which(programa)
-    if ruta:
-        return ruta
-    raise ErrorDeAudio(
+def find_ffmpeg(program: str = "ffmpeg") -> str:
+    path = shutil.which(program)
+    if path:
+        return path
+    raise AudioError(
         "No encontré ffmpeg. Instalalo con:  winget install Gyan.FFmpeg  y volvé a abrir la terminal."
     )
 
 
-def contar_pistas_de_audio(entrada: Path) -> int:
+def count_audio_tracks(input_path: Path) -> int:
     """Cantidad de pistas de audio del archivo (1 si no se puede averiguar)."""
     try:
-        resultado = subprocess.run(
+        result = subprocess.run(
             [
-                buscar_ffmpeg("ffprobe"),
+                find_ffmpeg("ffprobe"),
                 "-v",
                 "error",
                 "-select_streams",
@@ -44,92 +44,92 @@ def contar_pistas_de_audio(entrada: Path) -> int:
                 "stream=index",
                 "-of",
                 "csv=p=0",
-                str(entrada),
+                str(input_path),
             ],
             capture_output=True,
             text=True,
             errors="replace",
             timeout=60,
         )
-    except (ErrorDeAudio, OSError, subprocess.TimeoutExpired):
+    except (AudioError, OSError, subprocess.TimeoutExpired):
         return 1
-    return max(1, len([linea for linea in resultado.stdout.splitlines() if linea.strip()]))
+    return max(1, len([line for line in result.stdout.splitlines() if line.strip()]))
 
 
-def extraer_audio(entrada: Path, salida_wav: Path, pista: int = 0) -> None:
+def extract_audio(input_path: Path, wav_path: Path, track: int = 0) -> None:
     """Convierte cualquier archivo con audio en un WAV mono a 22050 Hz.
 
     Corta en DURACION_MAXIMA + 1 s, así un archivo de horas no llena el disco ni la memoria
     antes de poder avisar que es demasiado largo.
     """
-    comando = [
-        buscar_ffmpeg(),
+    command = [
+        find_ffmpeg(),
         "-nostdin",
         "-hide_banner",
         "-loglevel",
         "error",
         "-y",
         "-i",
-        str(entrada),
+        str(input_path),
         "-map",
-        f"0:a:{pista}",  # algunos MP4 traen varias pistas de audio
+        f"0:a:{track}",  # algunos MP4 traen varias pistas de audio
         "-vn",
         "-ac",
         "1",
         "-ar",
-        str(FRECUENCIA),
+        str(SAMPLE_RATE),
         "-c:a",
         "pcm_s16le",
         "-t",
-        str(DURACION_MAXIMA + 1),
-        str(salida_wav),
+        str(MAX_DURATION + 1),
+        str(wav_path),
     ]
-    resultado = subprocess.run(comando, capture_output=True, text=True, errors="replace")
-    if resultado.returncode != 0:
-        detalle = resultado.stderr.strip()
-        if "matches no streams" in detalle:
-            raise ErrorDeAudio("El archivo no tiene ninguna pista de audio.")
-        if "drm" in detalle.lower() or "protected" in detalle.lower():
-            raise ErrorDeAudio("El archivo está protegido con DRM y no se puede leer.")
-        if "Invalid data found" in detalle or "could not find codec" in detalle.lower():
-            raise ErrorDeAudio("No pude leer el archivo: no parece ser audio o video válido.")
-        raise ErrorDeAudio(f"ffmpeg no pudo leer el archivo: {detalle[-300:]}")
+    result = subprocess.run(command, capture_output=True, text=True, errors="replace")
+    if result.returncode != 0:
+        detail = result.stderr.strip()
+        if "matches no streams" in detail:
+            raise AudioError("El archivo no tiene ninguna pista de audio.")
+        if "drm" in detail.lower() or "protected" in detail.lower():
+            raise AudioError("El archivo está protegido con DRM y no se puede leer.")
+        if "Invalid data found" in detail or "could not find codec" in detail.lower():
+            raise AudioError("No pude leer el archivo: no parece ser audio o video válido.")
+        raise AudioError(f"ffmpeg no pudo leer el archivo: {detail[-300:]}")
 
 
-def cargar_wav(ruta: Path) -> tuple[np.ndarray, int]:
+def load_wav(path: Path) -> tuple[np.ndarray, int]:
     """Carga el WAV generado y valida duración y silencio."""
-    duracion = sf.info(str(ruta)).duration
-    if duracion < 5:
-        raise ErrorDeAudio("El audio dura menos de 5 segundos: es muy corto para analizarlo.")
-    if duracion > DURACION_MAXIMA:
-        raise ErrorDeAudio(
-            f"El audio dura más de {DURACION_MAXIMA // 60} minutos, que es el máximo "
+    duration = sf.info(str(path)).duration
+    if duration < 5:
+        raise AudioError("El audio dura menos de 5 segundos: es muy corto para analizarlo.")
+    if duration > MAX_DURATION:
+        raise AudioError(
+            f"El audio dura más de {MAX_DURATION // 60} minutos, que es el máximo "
             "(para mezclas largas, cortá la canción que te interesa)."
         )
-    senal, fs = sf.read(str(ruta), dtype="float32")
-    if senal.ndim > 1:
-        senal = senal.mean(axis=1)
-    if float(np.max(np.abs(senal))) < 1e-4:
-        raise AudioEnSilencio("El audio está en silencio.")
-    return senal, fs
+    signal, sr = sf.read(str(path), dtype="float32")
+    if signal.ndim > 1:
+        signal = signal.mean(axis=1)
+    if float(np.max(np.abs(signal))) < 1e-4:
+        raise SilentAudioError("El audio está en silencio.")
+    return signal, sr
 
 
-def obtener_audio(entrada: Path, salida_wav: Path) -> tuple[np.ndarray, int, int]:
+def read_audio(input_path: Path, wav_path: Path) -> tuple[np.ndarray, int, int]:
     """Extrae y carga la primera pista de audio que no esté en silencio.
 
     Devuelve (señal, frecuencia, número de pista usada).
     """
-    pistas = contar_pistas_de_audio(entrada)
-    for pista in range(pistas):
-        extraer_audio(entrada, salida_wav, pista)
+    tracks = count_audio_tracks(input_path)
+    for track in range(tracks):
+        extract_audio(input_path, wav_path, track)
         try:
-            senal, fs = cargar_wav(salida_wav)
-            return senal, fs, pista
-        except AudioEnSilencio:
-            if pista == pistas - 1:
-                if pistas > 1:
-                    raise AudioEnSilencio(
-                        f"Las {pistas} pistas de audio del archivo están en silencio."
+            signal, sr = load_wav(wav_path)
+            return signal, sr, track
+        except SilentAudioError:
+            if track == tracks - 1:
+                if tracks > 1:
+                    raise SilentAudioError(
+                        f"Las {tracks} pistas de audio del archivo están en silencio."
                     ) from None
                 raise
-    raise ErrorDeAudio("El archivo no tiene ninguna pista de audio.")
+    raise AudioError("El archivo no tiene ninguna pista de audio.")

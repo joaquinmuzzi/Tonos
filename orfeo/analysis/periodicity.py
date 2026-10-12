@@ -18,76 +18,76 @@ from collections import Counter
 import librosa
 import numpy as np
 
-FAMILIAS = {
+FAMILIES = {
     3: (3, 6, 9, 12, 15, 18, 21, 24, 27),
     4: (4, 8, 12, 16, 20, 24, 28),
     5: (5, 10, 15, 20, 25),
     7: (7, 14, 21, 28),
 }
-DESFASE_MAXIMO = 30  # en pulsos
-PESOS = {"armonia": 0.5, "bajo": 0.25, "ataques": 0.25}
-SALTO_CQT = 512
-CLARIDAD_FASE = 1.0  # por debajo, la grilla de compases se informa como aproximada
+MAX_LAG = 30  # en pulsos
+WEIGHTS = {"armonia": 0.5, "bajo": 0.25, "ataques": 0.25}
+CQT_HOP = 512
+PHASE_CLARITY_THRESHOLD = 1.0  # por debajo, la grilla de compases se informa como aproximada
 
 # Un desfase compartido por dos familias (12 = 3 y 4) cuenta la mitad para cada una
-_COMPARTIDOS = Counter(L for desfases in FAMILIAS.values() for L in desfases)
+_SHARED = Counter(L for lags in FAMILIES.values() for L in lags)
 
 
-def _espectro(senal: np.ndarray, fs: int) -> np.ndarray:
+def _spectrum(signal: np.ndarray, sr: int) -> np.ndarray:
     """Transformada de Q constante: 7 octavas desde Do1, un bin por semitono."""
-    cqt = librosa.cqt(senal, sr=fs, hop_length=SALTO_CQT, fmin=librosa.note_to_hz("C1"), n_bins=84)
+    cqt = librosa.cqt(signal, sr=sr, hop_length=CQT_HOP, fmin=librosa.note_to_hz("C1"), n_bins=84)
     return np.abs(cqt).astype(np.float32)
 
 
-def _por_pulso(x: np.ndarray, cuadros: np.ndarray, desde: float = 0.0, hasta: float = 1.0) -> np.ndarray:
+def _per_beat(x: np.ndarray, frames: np.ndarray, start: float = 0.0, end: float = 1.0) -> np.ndarray:
     """Promedio de cada columna de `x` dentro de cada pulso (o de una parte de cada pulso)."""
-    largo = x.shape[-1]
-    columnas = []
-    for a, b in itertools.pairwise(cuadros):
+    length = x.shape[-1]
+    columns = []
+    for a, b in itertools.pairwise(frames):
         n = max(int(b) - int(a), 1)
-        i = min(int(a) + int(desde * n), largo - 1)
-        j = min(max(int(a) + int(hasta * n), i + 1), largo)
-        columnas.append(x[..., i:j].mean(-1))
-    return np.array(columnas).T
+        i = min(int(a) + int(start * n), length - 1)
+        j = min(max(int(a) + int(end * n), i + 1), length)
+        columns.append(x[..., i:j].mean(-1))
+    return np.array(columns).T
 
 
-def _plegar(m: np.ndarray) -> np.ndarray:
+def _fold(m: np.ndarray) -> np.ndarray:
     """De 84 semitonos (7 octavas) a las 12 notas."""
     return m.reshape(-1, 12, m.shape[-1]).sum(0)
 
 
-def _similitud(m: np.ndarray, desfase: int) -> float:
-    a, b = m[:, :-desfase], m[:, desfase:]
+def _similarity(m: np.ndarray, lag: int) -> float:
+    a, b = m[:, :-lag], m[:, lag:]
     cos = (a * b).sum(0) / (np.linalg.norm(a, axis=0) * np.linalg.norm(b, axis=0) + 1e-9)
     return float(cos.mean())
 
 
-def _realce(serie: np.ndarray, misma_paridad: bool = False) -> np.ndarray:
+def _prominence(values: np.ndarray, same_parity: bool = False) -> np.ndarray:
     """Cuánto sobresale cada desfase de sus vecinos (los picos quedan positivos).
 
     Con `misma_paridad`, además tiene que sobresalir de los desfases ±2: así un patrón que
     se repite cada 2 pulsos (bombo y redoblante) no se cuenta como evidencia de 4.
     """
-    r = np.zeros(DESFASE_MAXIMO + 1)
-    for L in range(2, DESFASE_MAXIMO + 1):
-        r[L] = serie[L] - (serie[L - 1] + serie[L + 1]) / 2
-        if misma_paridad and L >= 3:
-            r[L] = min(r[L], serie[L] - (serie[L - 2] + serie[L + 2]) / 2)
+    r = np.zeros(MAX_LAG + 1)
+    for L in range(2, MAX_LAG + 1):
+        r[L] = values[L] - (values[L - 1] + values[L + 1]) / 2
+        if same_parity and L >= 3:
+            r[L] = min(r[L], values[L] - (values[L - 2] + values[L + 2]) / 2)
     return r
 
 
-def _puntajes(realce: np.ndarray) -> dict[int, float]:
+def _scores(prominence: np.ndarray) -> dict[int, float]:
     """Promedio (en desvíos estándar) del realce sobre los desfases de cada familia."""
-    z = realce / (np.std(realce[2:]) + 1e-12)
-    salida = {}
-    for familia, desfases in FAMILIAS.items():
-        pesos = np.array([1 / _COMPARTIDOS[L] for L in desfases])
-        salida[familia] = float(np.sum(pesos * z[list(desfases)]) / np.sum(pesos))
-    return salida
+    z = prominence / (np.std(prominence[2:]) + 1e-12)
+    output = {}
+    for family, lags in FAMILIES.items():
+        weights = np.array([1 / _SHARED[L] for L in lags])
+        output[family] = float(np.sum(weights * z[list(lags)]) / np.sum(weights))
+    return output
 
 
-def analizar(
-    senal: np.ndarray, fs: int, pulsos: np.ndarray, envolvente: np.ndarray, salto_envolvente: int
+def analyze(
+    signal: np.ndarray, sr: int, beats: np.ndarray, envelope: np.ndarray, envelope_hop: int
 ) -> tuple[dict | None, np.ndarray | None]:
     """Devuelve (resumen, espectro). El espectro se reutiliza para ubicar los compases.
 
@@ -95,36 +95,36 @@ def analizar(
                "margen": diferencia con la segunda familia}; None si la canción tiene
     muy pocos pulsos para medir repeticiones de hasta 30 pulsos.
     """
-    if len(pulsos) < 3 * DESFASE_MAXIMO + 2:
+    if len(beats) < 3 * MAX_LAG + 2:
         return None, None
 
-    espectro = _espectro(senal, fs)
-    por_pulso = _por_pulso(espectro, librosa.time_to_frames(pulsos, sr=fs, hop_length=SALTO_CQT))
-    armonia, bajo = _plegar(por_pulso), _plegar(por_pulso[:36])  # bajo: las 3 octavas graves
+    spectrum = _spectrum(signal, sr)
+    per_beat = _per_beat(spectrum, librosa.time_to_frames(beats, sr=sr, hop_length=CQT_HOP))
+    harmony, bass = _fold(per_beat), _fold(per_beat[:36])  # bajo: las 3 octavas graves
 
-    ataques = _por_pulso(envolvente, librosa.time_to_frames(pulsos, sr=fs, hop_length=salto_envolvente))
-    ataques = ataques - np.convolve(ataques, np.ones(9) / 9, mode="same")  # sin cambios lentos de volumen
-    ataques = ataques / (ataques.std() + 1e-9)
+    onsets = _per_beat(envelope, librosa.time_to_frames(beats, sr=sr, hop_length=envelope_hop))
+    onsets = onsets - np.convolve(onsets, np.ones(9) / 9, mode="same")  # sin cambios lentos de volumen
+    onsets = onsets / (onsets.std() + 1e-9)
 
-    desfases = range(DESFASE_MAXIMO + 3)
+    lags = range(MAX_LAG + 3)
     series = {
-        "armonia": np.array([_similitud(armonia, L) if L else 1.0 for L in desfases]),
-        "bajo": np.array([_similitud(bajo, L) if L else 1.0 for L in desfases]),
-        "ataques": np.array([float(np.mean(ataques[:-L] * ataques[L:])) if L else 1.0 for L in desfases]),
+        "armonia": np.array([_similarity(harmony, L) if L else 1.0 for L in lags]),
+        "bajo": np.array([_similarity(bass, L) if L else 1.0 for L in lags]),
+        "ataques": np.array([float(np.mean(onsets[:-L] * onsets[L:])) if L else 1.0 for L in lags]),
     }
-    por_rasgo = {k: _puntajes(_realce(s, misma_paridad=(k == "ataques"))) for k, s in series.items()}
-    total = {f: sum(PESOS[k] * por_rasgo[k][f] for k in PESOS) for f in FAMILIAS}
-    orden = sorted(total, key=total.get, reverse=True)
-    resumen = {
+    per_feature = {k: _scores(_prominence(s, same_parity=(k == "ataques"))) for k, s in series.items()}
+    total = {f: sum(WEIGHTS[k] * per_feature[k][f] for k in WEIGHTS) for f in FAMILIES}
+    order = sorted(total, key=total.get, reverse=True)
+    summary = {
         "puntajes": {f: round(v, 2) for f, v in total.items()},
-        "armonia": {f: round(v, 2) for f, v in por_rasgo["armonia"].items()},
-        "ganador": orden[0],
-        "margen": round(total[orden[0]] - total[orden[1]], 2),
+        "armonia": {f: round(v, 2) for f, v in per_feature["armonia"].items()},
+        "ganador": order[0],
+        "margen": round(total[order[0]] - total[order[1]], 2),
     }
-    return resumen, espectro
+    return summary, spectrum
 
 
-def _novedad(m: np.ndarray) -> np.ndarray:
+def _novelty(m: np.ndarray) -> np.ndarray:
     """Cuánto cambia el contenido de cada pulso respecto del anterior (0 = igual)."""
     a, b = m[:, :-1], m[:, 1:]
     cos = (a * b).sum(0) / (np.linalg.norm(a, axis=0) * np.linalg.norm(b, axis=0) + 1e-9)
@@ -135,24 +135,24 @@ def _z(x: np.ndarray) -> np.ndarray:
     return (x - x.mean()) / x.std() if x.std() > 1e-12 else np.zeros_like(x)
 
 
-def cambios_de_acorde_por_pulso(pulsos: np.ndarray, segmentos: list[tuple[float, float, str]]) -> np.ndarray:
+def chord_changes_per_beat(beats: np.ndarray, segments: list[tuple[float, float, str]]) -> np.ndarray:
     """1 en cada pulso donde empieza un acorde distinto del anterior (los acordes ya vienen por pulso)."""
-    marcas = np.zeros(len(pulsos))
-    for (_, _, anterior), (inicio, _, etiqueta) in itertools.pairwise(segmentos):
-        if etiqueta in ("N", "X") or etiqueta == anterior:
+    marks = np.zeros(len(beats))
+    for (_, _, previous), (start, _, label) in itertools.pairwise(segments):
+        if label in ("N", "X") or label == previous:
             continue
-        i = int(np.argmin(np.abs(pulsos - inicio)))
-        if abs(pulsos[i] - inicio) < 0.15:
-            marcas[i] = 1.0
-    return marcas
+        i = int(np.argmin(np.abs(beats - start)))
+        if abs(beats[i] - start) < 0.15:
+            marks[i] = 1.0
+    return marks
 
 
-def ubicar_compases(
-    pulsos: np.ndarray,
-    pulsos_por_compas: int,
-    espectro: np.ndarray,
-    fs: int,
-    cambios_de_acorde: np.ndarray | None = None,
+def locate_bars(
+    beats: np.ndarray,
+    beats_per_bar: int,
+    spectrum: np.ndarray,
+    sr: int,
+    chord_changes: np.ndarray | None = None,
 ) -> tuple[np.ndarray, float]:
     """Primeros tiempos para compases de `pulsos_por_compas`.
 
@@ -165,36 +165,36 @@ def ubicar_compases(
     separado; un tramo de menos de dos compases sigue la cuenta del anterior.
     Devuelve (primeros tiempos, claridad): cuánto le gana la mejor posición a la segunda.
     """
-    L = pulsos_por_compas
-    armonico, _ = librosa.decompose.hpss(espectro, kernel_size=(31, 9))
-    centro = _por_pulso(armonico, librosa.time_to_frames(pulsos, sr=fs, hop_length=SALTO_CQT), 0.25, 0.85)
-    novedad = np.append(_novedad(_plegar(centro)) + 0.5 * _novedad(_plegar(centro[:36])), 0.0)
-    if cambios_de_acorde is None:
-        cambios_de_acorde = np.zeros(len(pulsos))
+    L = beats_per_bar
+    harmonic, _ = librosa.decompose.hpss(spectrum, kernel_size=(31, 9))
+    center = _per_beat(harmonic, librosa.time_to_frames(beats, sr=sr, hop_length=CQT_HOP), 0.25, 0.85)
+    novelty = np.append(_novelty(_fold(center)) + 0.5 * _novelty(_fold(center[:36])), 0.0)
+    if chord_changes is None:
+        chord_changes = np.zeros(len(beats))
 
-    intervalos = np.diff(pulsos)
-    tipico = float(np.median(intervalos))
-    cortes = [0] + [i + 1 for i, d in enumerate(intervalos) if not 0.75 * tipico <= d <= 1.25 * tipico]
-    cortes.append(len(pulsos))
+    intervals = np.diff(beats)
+    typical = float(np.median(intervals))
+    cuts = [0] + [i + 1 for i, d in enumerate(intervals) if not 0.75 * typical <= d <= 1.25 * typical]
+    cuts.append(len(beats))
 
-    primeros, claridades, pesos = [], [], []
-    for a, b in itertools.pairwise(cortes):
-        if b - a < 2 * L and primeros:
+    downbeats, clarities, weights = [], [], []
+    for a, b in itertools.pairwise(cuts):
+        if b - a < 2 * L and downbeats:
             # Tramo corto: se sigue contando desde el último primer tiempo
-            siguiente = int(np.searchsorted(pulsos, primeros[-1])) + L
-            while siguiente < a:
-                siguiente += L
-            primeros.extend(pulsos[siguiente:b:L])
+            following = int(np.searchsorted(beats, downbeats[-1])) + L
+            while following < a:
+                following += L
+            downbeats.extend(beats[following:b:L])
             continue
-        fases = range(min(L, b - a))
-        nov = np.array([novedad[a + f : b : L].mean() for f in fases])
-        aco = np.array([cambios_de_acorde[a + f : b : L].mean() for f in fases])
-        puntaje = _z(nov) + _z(aco)
-        orden = np.argsort(puntaje)[::-1]
-        fase = int(orden[0])
-        if len(orden) > 1:
-            claridades.append(float(puntaje[orden[0]] - puntaje[orden[1]]))
-            pesos.append(b - a)
-        primeros.extend(pulsos[a + fase : b : L])
-    claridad = float(np.average(claridades, weights=pesos)) if pesos else 0.0
-    return np.asarray(primeros, dtype=float), claridad
+        phases = range(min(L, b - a))
+        novelty_score = np.array([novelty[a + f : b : L].mean() for f in phases])
+        chord_score = np.array([chord_changes[a + f : b : L].mean() for f in phases])
+        score = _z(novelty_score) + _z(chord_score)
+        order = np.argsort(score)[::-1]
+        phase = int(order[0])
+        if len(order) > 1:
+            clarities.append(float(score[order[0]] - score[order[1]]))
+            weights.append(b - a)
+        downbeats.extend(beats[a + phase : b : L])
+    clarity = float(np.average(clarities, weights=weights)) if weights else 0.0
+    return np.asarray(downbeats, dtype=float), clarity

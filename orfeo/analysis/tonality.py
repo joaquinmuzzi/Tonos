@@ -11,222 +11,220 @@ import numpy as np
 import torch
 import torchaudio
 
-from .notation import nombre_tonalidad, parsear_tonalidad_skey, relativa
+from .notation import key_name, parse_skey_label, relative_key
 
-VENTANA = 30.0  # segundos, para ver si la tonalidad cambia a lo largo de la canción
-SALTO_VENTANA = 15.0
-LARGO_DE_UNA_VEZ = 6 * 60.0  # más largo que esto, la tonalidad global sale del promedio de ventanas
+WINDOW_SECONDS = 30.0  # segundos, para ver si la tonalidad cambia a lo largo de la canción
+WINDOW_HOP_SECONDS = 15.0
+MAX_WHOLE_SONG_SECONDS = 6 * 60.0  # más largo que esto, la tonalidad global sale del promedio de ventanas
 
 
 @lru_cache(maxsize=1)
-def _modelo():
+def _model():
     from skey.key_detection import key_map, load_checkpoint, load_model_components
 
     ckpt = load_checkpoint(None)
     with contextlib.redirect_stdout(io.StringIO()):  # nnAudio imprime detalles internos
-        hcqt, chromanet, recorte = load_model_components(ckpt, torch.device("cpu"))
-    clases = [parsear_tonalidad_skey(key_map[i]) for i in range(24)]
-    return hcqt, chromanet, recorte, int(ckpt["audio"]["sr"]), clases
+        hcqt, chromanet, crop = load_model_components(ckpt, torch.device("cpu"))
+    classes = [parse_skey_label(key_map[i]) for i in range(24)]
+    return hcqt, chromanet, crop, int(ckpt["audio"]["sr"]), classes
 
 
-def precargar() -> None:
-    _modelo()
+def preload() -> None:
+    _model()
 
 
-def _probabilidades(hcqt, chromanet, recorte, onda: torch.Tensor) -> np.ndarray:
+def _probabilities(hcqt, chromanet, crop, wave: torch.Tensor) -> np.ndarray:
     """Igual que skey.key_detection.infer_key, pero devuelve las 24 probabilidades."""
     with torch.no_grad():
-        cqt = recorte(hcqt(onda.unsqueeze(0)), torch.zeros(1))
+        cqt = crop(hcqt(wave.unsqueeze(0)), torch.zeros(1))
         return chromanet(cqt).mean(dim=0).numpy()
 
 
-def _describir(tonica_pc: int, modo: str, prob: float) -> dict:
+def _describe(tonic_pc: int, mode: str, prob: float) -> dict:
     return {
-        "tonica_pc": tonica_pc,
-        "modo": modo,
+        "tonica_pc": tonic_pc,
+        "modo": mode,
         "probabilidad": round(float(prob), 3),
-        **nombre_tonalidad(tonica_pc, modo),
+        **key_name(tonic_pc, mode),
     }
 
 
-def detectar_tonalidad(senal: np.ndarray, fs: int) -> dict:
-    hcqt, chromanet, recorte, sr_modelo, clases = _modelo()
-    onda = torch.from_numpy(np.ascontiguousarray(senal, dtype=np.float32)).unsqueeze(0)
-    if fs != sr_modelo:
-        onda = torchaudio.functional.resample(onda, fs, sr_modelo)
-    onda = onda / onda.abs().max().clamp_min(1e-9)
-    duracion = onda.shape[1] / sr_modelo
+def detect_key(signal: np.ndarray, sr: int) -> dict:
+    hcqt, chromanet, crop, model_sr, classes = _model()
+    wave = torch.from_numpy(np.ascontiguousarray(signal, dtype=np.float32)).unsqueeze(0)
+    if sr != model_sr:
+        wave = torchaudio.functional.resample(wave, sr, model_sr)
+    wave = wave / wave.abs().max().clamp_min(1e-9)
+    duration = wave.shape[1] / model_sr
 
-    ventanas = _ventanas(onda, sr_modelo)
-    if duracion > LARGO_DE_UNA_VEZ and ventanas:
+    windows = _windows(wave, model_sr)
+    if duration > MAX_WHOLE_SONG_SECONDS and windows:
         # En canciones largas, la transformada de toda la señal ocupa varios GB de memoria:
         # se usa el promedio de las ventanas (el modelo se entrenó con trozos de 15 s).
-        pesos = [fin - inicio for inicio, fin, _ in ventanas]
-        probs = np.average([p for _, _, p in ventanas], axis=0, weights=pesos)
+        weights = [end - start for start, end, _ in windows]
+        probs = np.average([p for _, _, p in windows], axis=0, weights=weights)
     else:
-        probs = _probabilidades(hcqt, chromanet, recorte, onda)
-    orden = np.argsort(probs)[::-1]
-    tonica, modo = clases[orden[0]]
-    principal = _describir(tonica, modo, probs[orden[0]])
+        probs = _probabilities(hcqt, chromanet, crop, wave)
+    order = np.argsort(probs)[::-1]
+    tonic, mode = classes[order[0]]
+    best = _describe(tonic, mode, probs[order[0]])
 
-    rel = relativa(tonica, modo)
-    idx_rel = clases.index(rel)
-    alternativas = [{**_describir(*rel, probs[idx_rel]), "motivo": "relativa"}]
-    for i in orden[1:3]:
-        if i != idx_rel:
-            alternativas.append({**_describir(*clases[i], probs[i]), "motivo": "segunda opción del modelo"})
+    rel = relative_key(tonic, mode)
+    relative_idx = classes.index(rel)
+    alternatives = [{**_describe(*rel, probs[relative_idx]), "motivo": "relativa"}]
+    for i in order[1:3]:
+        if i != relative_idx:
+            alternatives.append({**_describe(*classes[i], probs[i]), "motivo": "segunda opción del modelo"})
             break
 
     return {
-        "principal": principal,
+        "principal": best,
         "confianza": None,  # se completa con evaluar_confianza() cuando están los acordes
         # Cuántas veces más probable es la primera opción que la segunda
-        "ventaja": round(float(probs[orden[0]] / max(probs[orden[1]], 1e-6)), 2),
-        "alternativas": alternativas,
-        "por_tramos": _por_tramos(ventanas, duracion, clases, (tonica, modo)),
+        "ventaja": round(float(probs[order[0]] / max(probs[order[1]], 1e-6)), 2),
+        "alternativas": alternatives,
+        "por_tramos": _by_section(windows, duration, classes, (tonic, mode)),
     }
 
 
 # Perfiles tonales de Krumhansl y Kessler (1982): cuánto "pertenece" cada grado a la tonalidad
-_KK_MAYOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
-_KK_MENOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+_KK_MAJOR = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+_KK_MINOR = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
 
 
-def tonalidad_desde_acordes(acordes: list[tuple[float, float, str]]) -> tuple[int, str] | None:
+def key_from_chords(chord_segments: list[tuple[float, float, str]]) -> tuple[int, str] | None:
     """Segundo método, independiente de S-KEY: deduce la tonalidad de las notas de los acordes."""
     import mir_eval
 
-    perfil = np.zeros(12)
-    for inicio, fin, etiqueta in acordes:
-        if etiqueta in ("N", "X"):
+    profile = np.zeros(12)
+    for start, end, label in chord_segments:
+        if label in ("N", "X"):
             continue
-        raiz, mapa, _ = mir_eval.chord.encode(etiqueta, reduce_extended_chords=True)
-        if raiz < 0:
+        root, bitmap, _ = mir_eval.chord.encode(label, reduce_extended_chords=True)
+        if root < 0:
             continue
-        notas = np.roll(mapa.astype(float), raiz)
-        notas[raiz] += 1.0  # la fundamental pesa el doble
-        perfil += (fin - inicio) * notas
-    if np.ptp(perfil) == 0:  # sin acordes, o un perfil plano: no hay nada que correlacionar
+        notes = np.roll(bitmap.astype(float), root)
+        notes[root] += 1.0  # la fundamental pesa el doble
+        profile += (end - start) * notes
+    if np.ptp(profile) == 0:  # sin acordes, o un perfil plano: no hay nada que correlacionar
         return None
-    candidatas = [
-        (float(np.corrcoef(perfil, np.roll(plantilla, tonica))[0, 1]), tonica, modo)
-        for tonica in range(12)
-        for modo, plantilla in (("mayor", _KK_MAYOR), ("menor", _KK_MENOR))
+    candidates = [
+        (float(np.corrcoef(profile, np.roll(template, tonic))[0, 1]), tonic, mode)
+        for tonic in range(12)
+        for mode, template in (("mayor", _KK_MAJOR), ("menor", _KK_MINOR))
     ]
-    _, tonica, modo = max(candidatas)
-    return tonica, modo
+    _, tonic, mode = max(candidates)
+    return tonic, mode
 
 
-def evaluar_confianza(ton: dict, desde_acordes: tuple[int, str] | None) -> None:
+def assess_confidence(key_result: dict, chord_key: tuple[int, str] | None) -> None:
     """Combina la ventaja del modelo con el acuerdo del segundo método (modifica `ton`)."""
-    p = ton["principal"]
-    global_ = (p["tonica_pc"], p["modo"])
-    if desde_acordes is None:
-        acuerdo = None
-    elif desde_acordes == global_:
-        acuerdo = "igual"
-    elif desde_acordes == relativa(*global_):
-        acuerdo = "relativa"
+    p = key_result["principal"]
+    global_key = (p["tonica_pc"], p["modo"])
+    if chord_key is None:
+        agreement = None
+    elif chord_key == global_key:
+        agreement = "igual"
+    elif chord_key == relative_key(*global_key):
+        agreement = "relativa"
     else:
-        acuerdo = "distinta"
+        agreement = "distinta"
 
-    ventaja = ton["ventaja"]
-    if acuerdo is None:
+    advantage = key_result["ventaja"]
+    if agreement is None:
         # Sin acordes (solo percusión, ruido, voz hablada...) la tonalidad no tiene sentido
-        confianza = "baja"
-    elif acuerdo == "igual" and ventaja >= 1.3:
-        confianza = "alta"
-    elif acuerdo == "igual" or (acuerdo == "relativa" and ventaja >= 1.5) or ventaja >= 2.5:
-        confianza = "media"
+        confidence = "baja"
+    elif agreement == "igual" and advantage >= 1.3:
+        confidence = "alta"
+    elif agreement == "igual" or (agreement == "relativa" and advantage >= 1.5) or advantage >= 2.5:
+        confidence = "media"
     else:
-        confianza = "baja"
+        confidence = "baja"
     # Si más de la mitad de la canción suena en otra tonalidad, no puede ser "alta"
-    tramos = ton["por_tramos"]
-    if confianza == "alta" and tramos["acuerdo"] is not None and tramos["acuerdo"] < 0.5:
-        confianza = "media"
+    stretches = key_result["por_tramos"]
+    if confidence == "alta" and stretches["acuerdo"] is not None and stretches["acuerdo"] < 0.5:
+        confidence = "media"
 
-    ton["confianza"] = confianza
-    ton["segundo_metodo"] = (
-        {"acuerdo": acuerdo, **nombre_tonalidad(*desde_acordes)} if desde_acordes else None
-    )
+    key_result["confianza"] = confidence
+    key_result["segundo_metodo"] = {"acuerdo": agreement, **key_name(*chord_key)} if chord_key else None
 
 
-def _ventanas(onda: torch.Tensor, sr: int) -> list[tuple[float, float, np.ndarray]]:
+def _windows(wave: torch.Tensor, sr: int) -> list[tuple[float, float, np.ndarray]]:
     """Probabilidades de S-KEY en ventanas de 30 s (cada 15 s): [(inicio, fin, probs), ...]."""
-    hcqt, chromanet, recorte, _, _ = _modelo()
-    n = onda.shape[1]
-    largo, paso = int(VENTANA * sr), int(SALTO_VENTANA * sr)
-    salida = []
-    for ini in range(0, max(n - largo // 2, 1), paso):
-        trozo = onda[:, ini : ini + largo]
-        if trozo.shape[1] < largo // 2 or float(trozo.abs().max()) < 1e-3:
+    hcqt, chromanet, crop, _, _ = _model()
+    n = wave.shape[1]
+    length, step = int(WINDOW_SECONDS * sr), int(WINDOW_HOP_SECONDS * sr)
+    output = []
+    for begin in range(0, max(n - length // 2, 1), step):
+        chunk = wave[:, begin : begin + length]
+        if chunk.shape[1] < length // 2 or float(chunk.abs().max()) < 1e-3:
             continue
-        trozo = trozo / trozo.abs().max()
-        salida.append((ini / sr, min(ini + largo, n) / sr, _probabilidades(hcqt, chromanet, recorte, trozo)))
-    return salida
+        chunk = chunk / chunk.abs().max()
+        output.append((begin / sr, min(begin + length, n) / sr, _probabilities(hcqt, chromanet, crop, chunk)))
+    return output
 
 
-def _por_tramos(ventanas: list, duracion: float, clases: list, global_: tuple[int, str]) -> dict:
+def _by_section(windows: list, duration: float, classes: list, global_key: tuple[int, str]) -> dict:
     """Detecta posibles cambios de tonalidad a lo largo de la canción."""
-    if duracion < VENTANA * 1.5:
+    if duration < WINDOW_SECONDS * 1.5:
         return {"tramos": [], "acuerdo": None, "cambios": []}
 
-    rel = relativa(*global_)
-    tramos = []
-    for inicio, fin, probs in ventanas:
+    rel = relative_key(*global_key)
+    stretches = []
+    for start, end, probs in windows:
         i = int(np.argmax(probs))
-        tonica, modo = clases[i]
-        tramos.append(
+        tonic, mode = classes[i]
+        stretches.append(
             {
-                "inicio": round(inicio, 1),
-                "fin": round(fin, 1),
-                "tonica_pc": tonica,
-                "modo": modo,
+                "inicio": round(start, 1),
+                "fin": round(end, 1),
+                "tonica_pc": tonic,
+                "modo": mode,
                 "probabilidad": round(float(probs[i]), 3),
-                **nombre_tonalidad(tonica, modo),
+                **key_name(tonic, mode),
             }
         )
 
-    def misma(t):
-        return (t["tonica_pc"], t["modo"]) in (global_, rel)
+    def same_or_relative(t):
+        return (t["tonica_pc"], t["modo"]) in (global_key, rel)
 
-    acuerdo = sum(misma(t) for t in tramos) / len(tramos) if tramos else None
+    agreement = sum(same_or_relative(t) for t in stretches) / len(stretches) if stretches else None
 
     # Cambio: al menos 3 ventanas seguidas (~60 s) en otra tonalidad que no sea la relativa
-    cambios = []
+    changes = []
     i = 0
-    while i < len(tramos):
-        if misma(tramos[i]):
+    while i < len(stretches):
+        if same_or_relative(stretches[i]):
             i += 1
             continue
-        clave = (tramos[i]["tonica_pc"], tramos[i]["modo"])
+        key_id = (stretches[i]["tonica_pc"], stretches[i]["modo"])
         j = i
-        while j + 1 < len(tramos) and (tramos[j + 1]["tonica_pc"], tramos[j + 1]["modo"]) == clave:
+        while j + 1 < len(stretches) and (stretches[j + 1]["tonica_pc"], stretches[j + 1]["modo"]) == key_id:
             j += 1
         if j - i + 1 >= 3:
-            cambios.append(
-                {k: tramos[i][k] for k in ("inicio", "tonica_pc", "modo", "latino", "americano")}
-                | {"fin": tramos[j]["fin"]}
+            changes.append(
+                {k: stretches[i][k] for k in ("inicio", "tonica_pc", "modo", "latino", "americano")}
+                | {"fin": stretches[j]["fin"]}
             )
         i = j + 1
 
     return {
-        "tramos": tramos,
-        "acuerdo": round(acuerdo, 2) if acuerdo is not None else None,
-        "cambios": cambios,
+        "tramos": stretches,
+        "acuerdo": round(agreement, 2) if agreement is not None else None,
+        "cambios": changes,
     }
 
 
-def estimar_afinacion(senal: np.ndarray, fs: int) -> dict:
+def estimate_tuning(signal: np.ndarray, sr: int) -> dict:
     """Desvío respecto de La = 440 Hz, en cents (centésimos de semitono)."""
-    trozo = senal[: fs * 90]  # alcanza con el primer minuto y medio
-    desvio = float(librosa.estimate_tuning(y=trozo, sr=fs)) * 100
-    aviso = None
-    if abs(desvio) >= 25:
-        direccion = "más aguda" if desvio > 0 else "más grave"
-        aviso = (
-            f"La grabación está {abs(desvio):.0f} cents {direccion} que la afinación estándar "
+    chunk = signal[: sr * 90]  # alcanza con el primer minuto y medio
+    deviation = float(librosa.estimate_tuning(y=chunk, sr=sr)) * 100
+    warning = None
+    if abs(deviation) >= 25:
+        direction = "más aguda" if deviation > 0 else "más grave"
+        warning = (
+            f"La grabación está {abs(deviation):.0f} cents {direction} que la afinación estándar "
             "(La = 440 Hz). Con un desvío así, la tonalidad y los acordes pueden salir "
             "corridos medio tono."
         )
-    return {"cents": round(desvio), "aviso": aviso}
+    return {"cents": round(deviation), "aviso": warning}

@@ -18,88 +18,90 @@ import webbrowser
 from pathlib import Path
 
 
-def _mmss(segundos: float) -> str:
-    return f"{int(segundos // 60)}:{int(segundos % 60):02d}"
+def _mmss(seconds: float) -> str:
+    return f"{int(seconds // 60)}:{int(seconds % 60):02d}"
 
 
-def _texto(r: dict) -> str:
-    lineas = [f"Archivo: {r['archivo']['nombre']} ({_mmss(r['archivo']['duracion'])})", ""]
+def _text_report(r: dict) -> str:
+    lines = [f"Archivo: {r['archivo']['nombre']} ({_mmss(r['archivo']['duracion'])})", ""]
 
     t = r["tempo"]
     if t.get("bpm"):
         alt = t["alternativas"]
-        lineas.append(
+        lines.append(
             f"Tempo:      {t['bpm']:.0f} BPM  (al doble o a la mitad: {alt['doble']:.0f} / {alt['mitad']:.0f})"
         )
         if t["sugerencia"]:
-            lineas.append(f"            probablemente lo sientas a {alt[t['sugerencia']]:.0f} BPM")
+            lines.append(f"            probablemente lo sientas a {alt[t['sugerencia']]:.0f} BPM")
         if not t["estable"]:
-            lineas.append(f"            el tempo varía entre {t['rango'][0]:.0f} y {t['rango'][1]:.0f} BPM")
+            lines.append(f"            el tempo varía entre {t['rango'][0]:.0f} y {t['rango'][1]:.0f} BPM")
         if t.get("aviso"):
-            lineas.append(f"            {t['aviso']}")
+            lines.append(f"            {t['aviso']}")
     else:
-        lineas.append(f"Tempo:      no determinado ({t.get('motivo')})")
+        lines.append(f"Tempo:      no determinado ({t.get('motivo')})")
 
     c = r["compas"]
     if c.get("lectura"):
         alt = f" ({c['alternativa']})" if c.get("alternativa") else ""
-        lineas.append(f"Compás:     {c['lectura']}{alt}")
+        lines.append(f"Compás:     {c['lectura']}{alt}")
         if c.get("fuente") == "periodicidad":
-            origen = f"la armonía y el bajo se repiten cada {c['pulsos_por_compas']} pulsos"
+            source_text = f"la armonía y el bajo se repiten cada {c['pulsos_por_compas']} pulsos"
         else:
-            origen = f"cuenta en {c['pulsos_por_compas']} en el {c['acuerdo'] * 100:.0f} % de los compases"
+            source_text = (
+                f"cuenta en {c['pulsos_por_compas']} en el {c['acuerdo'] * 100:.0f} % de los compases"
+            )
             if (c.get("segundo_metodo") or {}).get("confirma"):
-                origen += " (y la armonía lo confirma)"
-        lineas.append(
-            f"            {origen}; subdivisión {c['subdivision']['tipo']}; confianza {c['confianza']}"
+                source_text += " (y la armonía lo confirma)"
+        lines.append(
+            f"            {source_text}; subdivisión {c['subdivision']['tipo']}; confianza {c['confianza']}"
         )
-        for aviso in c.get("avisos", []):
-            if aviso.startswith("El detector") or aviso.startswith("No se pudo determinar"):
-                lineas.append(f"            {aviso}")
+        for warning in c.get("avisos", []):
+            if warning.startswith("El detector") or warning.startswith("No se pudo determinar"):
+                lines.append(f"            {warning}")
     else:
-        lineas.append(f"Compás:     no determinado. {c.get('motivo', '')}")
+        lines.append(f"Compás:     no determinado. {c.get('motivo', '')}")
 
     k = r["tonalidad"]
     p = k["principal"]
-    lineas.append(f"Tonalidad:  {p['latino']} ({p['americano']}), confianza {k['confianza']}")
+    lines.append(f"Tonalidad:  {p['latino']} ({p['americano']}), confianza {k['confianza']}")
     alts = ", ".join(f"{a['latino']} ({a['motivo']})" for a in k["alternativas"])
-    lineas.append(f"            alternativas: {alts}")
-    for cambio in k["por_tramos"]["cambios"]:
-        lineas.append(
-            f"            posible cambio: {cambio['latino']} entre {_mmss(cambio['inicio'])} "
-            f"y {_mmss(cambio['fin'])}"
+    lines.append(f"            alternativas: {alts}")
+    for change in k["por_tramos"]["cambios"]:
+        lines.append(
+            f"            posible cambio: {change['latino']} entre {_mmss(change['inicio'])} "
+            f"y {_mmss(change['fin'])}"
         )
     if r["afinacion"]["aviso"]:
-        lineas.append(f"            {r['afinacion']['aviso']}")
+        lines.append(f"            {r['afinacion']['aviso']}")
 
-    resumen = r["acordes"]["resumen_simple"]
-    if not resumen:
-        lineas += ["", "Acordes:   no se detectaron acordes (¿solo percusión, voz hablada o ruido?)"]
+    summary = r["acordes"]["resumen_simple"]
+    if not summary:
+        lines += ["", "Acordes:   no se detectaron acordes (¿solo percusión, voz hablada o ruido?)"]
     else:
-        usados = ", ".join(f"{a['latino']} {a['proporcion'] * 100:.0f} %" for a in resumen[:8])
-        lineas += ["", f"Acordes más usados: {usados}", "", "Primeros 16 compases:"]
+        used = ", ".join(f"{a['latino']} {a['proporcion'] * 100:.0f} %" for a in summary[:8])
+        lines += ["", f"Acordes más usados: {used}", "", "Primeros 16 compases:"]
         segs = r["acordes"]["segmentos"]
-        celdas = []
-        for comp in r["compases"][:16]:
-            nombres = []
-            for i in comp["acordes"]:
+        cells = []
+        for bar in r["compases"][:16]:
+            names = []
+            for i in bar["acordes"]:
                 n = segs[i]["latino_simple"]
-                if not nombres or nombres[-1] != n:
-                    nombres.append(n)
-            celdas.append(f"{comp['etiqueta']}: {' '.join(nombres) or '—'}")
-        for i in range(0, len(celdas), 4):
-            lineas.append("| " + " | ".join(f"{c:<20}" for c in celdas[i : i + 4]) + " |")
-    lineas += ["", f"(análisis en {r['segundos_de_analisis']:.0f} s)"]
-    return "\n".join(lineas)
+                if not names or names[-1] != n:
+                    names.append(n)
+            cells.append(f"{bar['etiqueta']}: {' '.join(names) or '—'}")
+        for i in range(0, len(cells), 4):
+            lines.append("| " + " | ".join(f"{c:<20}" for c in cells[i : i + 4]) + " |")
+    lines += ["", f"(análisis en {r['segundos_de_analisis']:.0f} s)"]
+    return "\n".join(lines)
 
 
-def _puerto_ocupado(puerto: int) -> bool:
+def _port_in_use(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(0.5)
-        return s.connect_ex(("127.0.0.1", puerto)) == 0
+        return s.connect_ex(("127.0.0.1", port)) == 0
 
 
-def _silenciar_logs() -> None:
+def _silence_logs() -> None:
     import logging
 
     logging.disable(logging.INFO)
@@ -118,35 +120,35 @@ def main() -> None:
     a = p.parse_args()
 
     if a.precargar:
-        _silenciar_logs()
+        _silence_logs()
         from .analysis import pipeline
 
-        pipeline.precargar()
+        pipeline.preload()
         print("Modelos listos.")
         return
 
     if a.archivo:
-        _silenciar_logs()
+        _silence_logs()
         from .analysis import pipeline
-        from .analysis.audio import ErrorDeAudio
+        from .analysis.audio import AudioError
 
-        ruta = Path(a.archivo)
-        if not ruta.is_file():
-            sys.exit(f"No encuentro el archivo: {ruta}")
+        path = Path(a.archivo)
+        if not path.is_file():
+            sys.exit(f"No encuentro el archivo: {path}")
 
-        def progreso(paso: str, fraccion: float) -> None:
-            print(f"\r{fraccion * 100:3.0f} %  {paso:<50}", end="", file=sys.stderr, flush=True)
+        def progress(step: str, fraction: float) -> None:
+            print(f"\r{fraction * 100:3.0f} %  {step:<50}", end="", file=sys.stderr, flush=True)
 
         try:
-            resultado = pipeline.analizar(ruta, progreso)
-        except ErrorDeAudio as e:
+            result = pipeline.analyze(path, progress)
+        except AudioError as e:
             sys.exit(f"\n{e}")
         print("\r" + " " * 60 + "\r", end="", file=sys.stderr)
-        print(json.dumps(resultado, ensure_ascii=False, indent=2) if a.json else _texto(resultado))
+        print(json.dumps(result, ensure_ascii=False, indent=2) if a.json else _text_report(result))
         return
 
     url = f"http://127.0.0.1:{a.puerto}"
-    if _puerto_ocupado(a.puerto):
+    if _port_in_use(a.puerto):
         # Ya hay una ventana abierta: no se arranca otra (borraría los archivos en cola)
         print(f"El analizador ya está abierto en {url}")
         if not a.no_abrir:

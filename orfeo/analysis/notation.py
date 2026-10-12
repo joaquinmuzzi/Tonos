@@ -10,52 +10,50 @@ import re
 
 import mir_eval
 
-LETRAS = {
+LETTERS = {
     "latino": ["Do", "Re", "Mi", "Fa", "Sol", "La", "Si"],
     "americano": ["C", "D", "E", "F", "G", "A", "B"],
 }
-_PC_LETRA = [0, 2, 4, 5, 7, 9, 11]  # clase de altura de cada letra natural
+_LETTER_PC = [0, 2, 4, 5, 7, 9, 11]  # clase de altura de cada letra natural
 
 # Ortografía preferida de la tónica (evita C# mayor, D# mayor, G# mayor, A# menor...).
-_TONICA_MAYOR_BEMOL = {1, 3, 8, 10}  # Re♭, Mi♭, La♭, Si♭ mayor
-_TONICA_MENOR_BEMOL = {3, 10}  # Mi♭ menor, Si♭ menor
+_FLAT_MAJOR_TONICS = {1, 3, 8, 10}  # Re♭, Mi♭, La♭, Si♭ mayor
+_FLAT_MINOR_TONICS = {3, 10}  # Mi♭ menor, Si♭ menor
 
-_ESCALA = {"mayor": [0, 2, 4, 5, 7, 9, 11], "menor": [0, 2, 3, 5, 7, 8, 10]}
+_SCALE = {"mayor": [0, 2, 4, 5, 7, 9, 11], "menor": [0, 2, 3, 5, 7, 8, 10]}
 # Notas fuera de la escala: semitonos desde la tónica -> cuántas letras por encima de la tónica.
 # Mayor: ♭II, ♭III, ♯IV, ♭VI, ♭VII (acordes prestados). Menor: ♭II, ♯III, ♯IV, ♯VI, ♯VII (sensible).
-_CROMATICAS = {
+_CHROMATIC = {
     "mayor": {1: 1, 3: 2, 6: 3, 8: 5, 10: 6},
     "menor": {1: 1, 4: 2, 6: 3, 9: 5, 11: 6},
 }
 # Intervalo en semitonos -> cantidad de letras (3.ª = 2 letras, 5.ª = 4, 7.ª = 6...)
-_LETRAS_POR_INTERVALO = {0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 4, 7: 4, 8: 5, 9: 5, 10: 6, 11: 6}
+_LETTERS_PER_INTERVAL = {0: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 4, 7: 4, 8: 5, 9: 5, 10: 6, 11: 6}
 
-Nota = tuple[int, int]  # (índice de letra 0-6, alteración: -1 bemol, 0 natural, +1 sostenido)
-
-
-def _alteracion(pc: int, letra: int) -> int:
-    return (pc - _PC_LETRA[letra] + 6) % 12 - 6
+Note = tuple[int, int]  # (índice de letra 0-6, alteración: -1 bemol, 0 natural, +1 sostenido)
 
 
-def _nota_simple(pc: int, bemol: bool) -> Nota:
+def _accidental(pc: int, letter: int) -> int:
+    return (pc - _LETTER_PC[letter] + 6) % 12 - 6
+
+
+def _simple_note(pc: int, flat: bool) -> Note:
     pc %= 12
-    if pc in _PC_LETRA:
-        return _PC_LETRA.index(pc), 0
-    return (_PC_LETRA.index((pc + 1) % 12), -1) if bemol else (_PC_LETRA.index((pc - 1) % 12), 1)
+    if pc in _LETTER_PC:
+        return _LETTER_PC.index(pc), 0
+    return (_LETTER_PC.index((pc + 1) % 12), -1) if flat else (_LETTER_PC.index((pc - 1) % 12), 1)
 
 
-def _deletrear_tonica(tonica_pc: int, modo: str) -> Nota:
-    return _nota_simple(
-        tonica_pc, tonica_pc in (_TONICA_MAYOR_BEMOL if modo == "mayor" else _TONICA_MENOR_BEMOL)
-    )
+def _spell_tonic(tonic_pc: int, mode: str) -> Note:
+    return _simple_note(tonic_pc, tonic_pc in (_FLAT_MAJOR_TONICS if mode == "mayor" else _FLAT_MINOR_TONICS))
 
 
-def escribir(nota: Nota, sistema: str = "latino") -> str:
-    letra, alteracion = nota
-    return LETRAS[sistema][letra] + ("#" * alteracion if alteracion > 0 else "♭" * -alteracion)
+def write_note(name: Note, system: str = "latino") -> str:
+    letter, accidental = name
+    return LETTERS[system][letter] + ("#" * accidental if accidental > 0 else "♭" * -accidental)
 
 
-_NOTA_A_PC = {
+_NOTE_TO_PC = {
     "C": 0,
     "B#": 0,
     "C#": 1,
@@ -80,78 +78,78 @@ _NOTA_A_PC = {
 }
 
 
-def nota_a_pc(nombre: str) -> int:
+def note_to_pc(name: str) -> int:
     """'Bb' / 'A#' / 'B♭' -> 10."""
-    clave = nombre.strip().replace("♭", "b").replace("♯", "#")
-    clave = clave[0].upper() + clave[1:].upper()
-    return _NOTA_A_PC[clave]
+    key_id = name.strip().replace("♭", "b").replace("♯", "#")
+    key_id = key_id[0].upper() + key_id[1:].upper()
+    return _NOTE_TO_PC[key_id]
 
 
-class Ortografia:
+class Speller:
     """Escribe las notas como lo haría un músico en la tonalidad de la canción.
 
     Las fundamentales se deletrean por grado de la escala (en Fa mayor: Si♭, no La#) y los
     bajos de los acordes por intervalo desde la fundamental (Re/Fa#, nunca Re/Sol♭).
     """
 
-    def __init__(self, tonica_pc: int | None = None, modo: str | None = None):
-        if tonica_pc is None or modo is None:
-            tonica_pc, modo = 0, "mayor"  # sin tonalidad: como en Do mayor
-        self.tonica_pc = tonica_pc % 12
-        self.modo = modo
-        self.tonica = _deletrear_tonica(self.tonica_pc, modo)
+    def __init__(self, tonic_pc: int | None = None, mode: str | None = None):
+        if tonic_pc is None or mode is None:
+            tonic_pc, mode = 0, "mayor"  # sin tonalidad: como en Do mayor
+        self.tonic_pc = tonic_pc % 12
+        self.mode = mode
+        self.tonic = _spell_tonic(self.tonic_pc, mode)
 
-    def deletrear(self, pc: int) -> Nota:
+    def spell(self, pc: int) -> Note:
         pc %= 12
-        relativo = (pc - self.tonica_pc) % 12
-        escala = _ESCALA[self.modo]
-        sensible_menor = self.modo == "menor" and relativo == 11
-        if relativo not in escala and pc in _PC_LETRA and not sensible_menor:
+        relative = (pc - self.tonic_pc) % 12
+        scale = _SCALE[self.mode]
+        minor_leading_tone = self.mode == "menor" and relative == 11
+        if relative not in scale and pc in _LETTER_PC and not minor_leading_tone:
             # Nota fuera de la escala que es una tecla blanca: Do, no Si# (Dom en Sol# menor).
             # La sensible de una tonalidad menor sí se escribe alterada (Si#dim en Do# menor).
-            return _PC_LETRA.index(pc), 0
-        letras = escala.index(relativo) if relativo in escala else _CROMATICAS[self.modo][relativo]
-        letra = (self.tonica[0] + letras) % 7
-        alteracion = _alteracion(pc, letra)
-        if abs(alteracion) > 1:  # evita dobles alteraciones (Fa𝄪 en Sol# menor -> Sol)
-            return _nota_simple(pc, self.tonica[1] < 0)
-        return letra, alteracion
+            return _LETTER_PC.index(pc), 0
+        letters = scale.index(relative) if relative in scale else _CHROMATIC[self.mode][relative]
+        letter = (self.tonic[0] + letters) % 7
+        accidental = _accidental(pc, letter)
+        if abs(accidental) > 1:  # evita dobles alteraciones (Fa𝄪 en Sol# menor -> Sol)
+            return _simple_note(pc, self.tonic[1] < 0)
+        return letter, accidental
 
-    def sobre(self, raiz: Nota, semitonos: int, aumentada: bool = False) -> Nota:
+    def above(self, root: Note, semitones: int, augmented: bool = False) -> Note:
         """La nota que está `semitonos` por encima de `raiz`, escrita como intervalo."""
-        semitonos %= 12
-        pasos = 4 if aumentada and semitonos == 8 else _LETRAS_POR_INTERVALO[semitonos]
-        letra = (raiz[0] + pasos) % 7
-        pc = (_PC_LETRA[raiz[0]] + raiz[1] + semitonos) % 12
-        alteracion = _alteracion(pc, letra)
-        if abs(alteracion) > 1:
-            return self.deletrear(pc)
-        return letra, alteracion
+        semitones %= 12
+        steps = 4 if augmented and semitones == 8 else _LETTERS_PER_INTERVAL[semitones]
+        letter = (root[0] + steps) % 7
+        pc = (_LETTER_PC[root[0]] + root[1] + semitones) % 12
+        accidental = _accidental(pc, letter)
+        if abs(accidental) > 1:
+            return self.spell(pc)
+        return letter, accidental
 
-    def nota(self, pc: int, sistema: str = "latino") -> str:
-        return escribir(self.deletrear(pc), sistema)
+    def name(self, pc: int, system: str = "latino") -> str:
+        return write_note(self.spell(pc), system)
 
 
-def nombre_tonalidad(tonica_pc: int, modo: str) -> dict:
+def key_name(tonic_pc: int, mode: str) -> dict:
     """Nombre de una tonalidad en ambos sistemas. modo: 'mayor' | 'menor'."""
-    tonica = _deletrear_tonica(tonica_pc, modo)
+    tonic = _spell_tonic(tonic_pc, mode)
     return {
-        "latino": f"{escribir(tonica, 'latino')} {modo}",
-        "americano": f"{escribir(tonica, 'americano')}{'m' if modo == 'menor' else ''}",
+        "latino": f"{write_note(tonic, 'latino')} {mode}",
+        "americano": f"{write_note(tonic, 'americano')}{'m' if mode == 'menor' else ''}",
     }
 
 
-def relativa(tonica_pc: int, modo: str) -> tuple[int, str]:
+def relative_key(tonic_pc: int, mode: str) -> tuple[int, str]:
     """Do mayor <-> La menor."""
-    if modo == "mayor":
-        return (tonica_pc + 9) % 12, "menor"
-    return (tonica_pc + 3) % 12, "mayor"
+    if mode == "mayor":
+        return (tonic_pc + 9) % 12, "menor"
+    return (tonic_pc + 3) % 12, "mayor"
 
 
 # --- Acordes -----------------------------------------------------------------
 
 # Plantillas: conjunto de intervalos (semitonos desde la fundamental) -> (sufijo, sufijo simple, descripción)
-_PLANTILLAS: list[tuple[frozenset[int], str, str, str]] = [
+_TEMPLATES: list[tuple[frozenset[int], str, str, str]] = [
     (frozenset({0, 4, 7}), "", "", "mayor"),
     (frozenset({0, 3, 7}), "m", "m", "menor"),
     (frozenset({0, 4, 7, 10}), "7", "", "séptima de dominante"),
@@ -179,61 +177,61 @@ _PLANTILLAS: list[tuple[frozenset[int], str, str, str]] = [
 ]
 
 
-def _sufijos(intervalos: frozenset[int]) -> tuple[str, str, str]:
-    for plantilla, sufijo, simple, descripcion in _PLANTILLAS:
-        if intervalos == plantilla:
-            return sufijo, simple, descripcion
+def _suffixes(intervals: frozenset[int]) -> tuple[str, str, str]:
+    for template, suffix, simple, description in _TEMPLATES:
+        if intervals == template:
+            return suffix, simple, description
     # Sin coincidencia exacta: la plantilla más grande contenida en el acorde
     # (por ejemplo, Em7 con una 11.ª agregada se muestra como Em7).
-    contenidas = [p for p in _PLANTILLAS if p[0] <= intervalos and len(p[0]) >= 3]
-    if contenidas:
-        _, sufijo, simple, descripcion = max(contenidas, key=lambda p: len(p[0]))
-        return sufijo, simple, f"{descripcion} (con notas agregadas)"
-    if 4 in intervalos:
+    contained = [p for p in _TEMPLATES if p[0] <= intervals and len(p[0]) >= 3]
+    if contained:
+        _, suffix, simple, description = max(contained, key=lambda p: len(p[0]))
+        return suffix, simple, f"{description} (con notas agregadas)"
+    if 4 in intervals:
         return "", "", "mayor (con notas agregadas)"
-    if 3 in intervalos:
+    if 3 in intervals:
         return "m", "m", "menor (con notas agregadas)"
-    if 7 in intervalos:
+    if 7 in intervals:
         return "5", "5", "sin tercera"
     # Sin tercera ni quinta: no se puede decir si es mayor o menor
     return "(sin 3.ª)", "(sin 3.ª)", "sin tercera"
 
 
-def describir_acorde(etiqueta: str, orto: Ortografia) -> dict:
+def describe_chord(label: str, speller: Speller) -> dict:
     """Convierte una etiqueta Harte ('A:min7/b3', 'N') en nombres legibles.
 
     Devuelve un dict con: es_acorde, fundamental_pc, latino, americano,
     latino_simple, americano_simple (solo mayor/menor, más confiable) y descripcion.
     """
-    if etiqueta in ("N", "X", ""):
-        sin = {"latino": "—", "americano": "—", "latino_simple": "—", "americano_simple": "—"}
-        return {"es_acorde": False, "fundamental_pc": None, "descripcion": "sin acorde", **sin}
+    if label in ("N", "X", ""):
+        empty = {"latino": "—", "americano": "—", "latino_simple": "—", "americano_simple": "—"}
+        return {"es_acorde": False, "fundamental_pc": None, "descripcion": "sin acorde", **empty}
 
-    raiz, mapa, bajo = mir_eval.chord.encode(etiqueta, reduce_extended_chords=True)
-    intervalos = frozenset(int(i) for i in mapa.nonzero()[0])
-    sufijo, simple, descripcion = _sufijos(intervalos)
-    fundamental = orto.deletrear(raiz)
-    nota_bajo = None
-    if bajo % 12:
-        aumentado = 8 in intervalos and 7 not in intervalos
-        nota_bajo = orto.sobre(fundamental, bajo, aumentada=aumentado)
-    salida = {"es_acorde": True, "fundamental_pc": int(raiz), "descripcion": descripcion}
-    for sistema in ("latino", "americano"):
-        base = escribir(fundamental, sistema)
-        nombre = base + sufijo
-        if nota_bajo:
-            nombre += "/" + escribir(nota_bajo, sistema)
-        salida[sistema] = nombre
-        salida[f"{sistema}_simple"] = base + simple
-    return salida
-
-
-_ETIQUETA_SKEY = re.compile(r"^([A-G][#b]?) (Major|minor)$")
+    root, bitmap, bass = mir_eval.chord.encode(label, reduce_extended_chords=True)
+    intervals = frozenset(int(i) for i in bitmap.nonzero()[0])
+    suffix, simple, description = _suffixes(intervals)
+    spelled_root = speller.spell(root)
+    bass_note = None
+    if bass % 12:
+        is_augmented = 8 in intervals and 7 not in intervals
+        bass_note = speller.above(spelled_root, bass, augmented=is_augmented)
+    output = {"es_acorde": True, "fundamental_pc": int(root), "descripcion": description}
+    for system in ("latino", "americano"):
+        base = write_note(spelled_root, system)
+        name = base + suffix
+        if bass_note:
+            name += "/" + write_note(bass_note, system)
+        output[system] = name
+        output[f"{system}_simple"] = base + simple
+    return output
 
 
-def parsear_tonalidad_skey(etiqueta: str) -> tuple[int, str]:
+_SKEY_LABEL = re.compile(r"^([A-G][#b]?) (Major|minor)$")
+
+
+def parse_skey_label(label: str) -> tuple[int, str]:
     """'Bb Major' -> (10, 'mayor'); 'C# minor' -> (1, 'menor')."""
-    m = _ETIQUETA_SKEY.match(etiqueta)
+    m = _SKEY_LABEL.match(label)
     if not m:
-        raise ValueError(f"Etiqueta de tonalidad inesperada: {etiqueta!r}")
-    return nota_a_pc(m.group(1)), ("mayor" if m.group(2) == "Major" else "menor")
+        raise ValueError(f"Etiqueta de tonalidad inesperada: {label!r}")
+    return note_to_pc(m.group(1)), ("mayor" if m.group(2) == "Major" else "menor")

@@ -19,163 +19,163 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .analysis import pipeline
-from .analysis.audio import ErrorDeAudio
+from .analysis.audio import AudioError
 
 WEB = Path(__file__).parent / "web"
-DATOS = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "analizador-musical"
-CACHE = DATOS / "cache"
-SUBIDAS = DATOS / "subidas"
-TAMANO_MAXIMO = 1024**3  # 1 GB
-MAXIMO_TRABAJOS = 30
+DATA_DIR = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "analizador-musical"
+CACHE_DIR = DATA_DIR / "cache"
+UPLOAD_DIR = DATA_DIR / "subidas"
+MAX_UPLOAD_BYTES = 1024**3  # 1 GB
+MAX_JOBS = 30
 
 log = logging.getLogger("analizador")
 
-_trabajos: dict[str, dict] = {}
-_candado = threading.Lock()
-_ejecutor = ThreadPoolExecutor(max_workers=1)  # un análisis por vez: los modelos usan todo el CPU
-_modelos_listos = threading.Event()
+_jobs: dict[str, dict] = {}
+_lock = threading.Lock()
+_executor = ThreadPoolExecutor(max_workers=1)  # un análisis por vez: los modelos usan todo el CPU
+_models_ready = threading.Event()
 
 
-def _precargar() -> None:
+def _preload() -> None:
     try:
-        pipeline.precargar()
+        pipeline.preload()
     except Exception:
         log.exception("No se pudieron cargar los modelos")
     finally:
-        _modelos_listos.set()
+        _models_ready.set()
 
 
 @asynccontextmanager
-async def _ciclo_de_vida(_app: FastAPI):
-    CACHE.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(SUBIDAS, ignore_errors=True)  # restos de una sesión anterior
-    SUBIDAS.mkdir(parents=True, exist_ok=True)
-    _ejecutor.submit(_precargar)
+async def _lifespan(_app: FastAPI):
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(UPLOAD_DIR, ignore_errors=True)  # restos de una sesión anterior
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    _executor.submit(_preload)
     yield
-    _ejecutor.shutdown(wait=False, cancel_futures=True)
+    _executor.shutdown(wait=False, cancel_futures=True)
 
 
-app = FastAPI(title="Analizador musical", docs_url=None, redoc_url=None, lifespan=_ciclo_de_vida)
+app = FastAPI(title="Analizador musical", docs_url=None, redoc_url=None, lifespan=_lifespan)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
-MENSAJE_GRANDE = "El archivo es demasiado grande (máximo 1 GB)."
+TOO_LARGE_MESSAGE = "El archivo es demasiado grande (máximo 1 GB)."
 
 
 @app.middleware("http")
-async def _limitar_tamano(request: Request, call_next):
+async def _limit_body_size(request: Request, call_next):
     # Se rechaza antes de recibir el cuerpo: si no, el archivo entero se escribe en disco igual.
-    largo = request.headers.get("content-length", "")
-    if request.method == "POST" and largo.isdigit() and int(largo) > TAMANO_MAXIMO + (1 << 20):
-        return JSONResponse({"detail": MENSAJE_GRANDE}, status_code=413)
-    respuesta = await call_next(request)
+    length = request.headers.get("content-length", "")
+    if request.method == "POST" and length.isdigit() and int(length) > MAX_UPLOAD_BYTES + (1 << 20):
+        return JSONResponse({"detail": TOO_LARGE_MESSAGE}, status_code=413)
+    response = await call_next(request)
     # Que el navegador siempre pregunte si hay una versión nueva de la página (si no, después
     # de actualizar la app puede seguir usando el app.js viejo que tenía guardado)
-    respuesta.headers["Cache-Control"] = "no-cache"
-    return respuesta
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.get("/")
-def inicio():
+def index():
     return FileResponse(WEB / "index.html")
 
 
-def _registrar_trabajo(id_: str, **campos) -> None:
-    with _candado:
-        _trabajos[id_] = {"estado": "en_cola", "paso": "En espera", "progreso": 0.0, **campos}
+def _register_job(id_: str, **fields) -> None:
+    with _lock:
+        _jobs[id_] = {"estado": "en_cola", "paso": "En espera", "progreso": 0.0, **fields}
         # Se descartan los más viejos, pero nunca uno que todavía está en cola o analizándose
-        terminados = [k for k, t in _trabajos.items() if t["estado"] in ("listo", "error")]
-        while len(_trabajos) > MAXIMO_TRABAJOS and terminados:
-            _trabajos.pop(terminados.pop(0))
+        finished = [k for k, t in _jobs.items() if t["estado"] in ("listo", "error")]
+        while len(_jobs) > MAX_JOBS and finished:
+            _jobs.pop(finished.pop(0))
 
 
-def _extension_segura(nombre: str) -> str:
+def _safe_extension(name: str) -> str:
     """'.MP4' -> '.mp4'; descarta caracteres que Windows no acepta (ffmpeg igual mira el contenido)."""
-    return re.sub(r"[^a-z0-9.]", "", Path(nombre).suffix.lower())[:10]
+    return re.sub(r"[^a-z0-9.]", "", Path(name).suffix.lower())[:10]
 
 
-def _actualizar(id_: str, **campos) -> None:
-    with _candado:
-        if id_ in _trabajos:
-            _trabajos[id_].update(campos)
+def _update_job(id_: str, **fields) -> None:
+    with _lock:
+        if id_ in _jobs:
+            _jobs[id_].update(fields)
 
 
-def _leer_cache(ruta: Path) -> dict | None:
+def _read_cache(path: Path) -> dict | None:
     try:
-        resultado = json.loads(ruta.read_text(encoding="utf-8"))
+        result = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return resultado if resultado.get("version") == pipeline.VERSION else None
+    return result if result.get("version") == pipeline.VERSION else None
 
 
 @app.post("/api/analisis")
-async def subir(archivo: UploadFile):
-    nombre = Path(archivo.filename or "cancion").name or "cancion"
+async def upload(archivo: UploadFile):
+    name = Path(archivo.filename or "cancion").name or "cancion"
     id_ = uuid.uuid4().hex[:12]
-    carpeta = SUBIDAS / id_
+    folder = UPLOAD_DIR / id_
     # Nombre neutro en disco: evita problemas de ffmpeg con caracteres raros
-    destino = carpeta / ("entrada" + _extension_segura(nombre))
+    target = folder / ("entrada" + _safe_extension(name))
 
-    huella, total = hashlib.sha256(), 0
+    digest, total = hashlib.sha256(), 0
     try:
-        carpeta.mkdir(parents=True, exist_ok=True)
-        with open(destino, "wb") as f:
-            while bloque := await archivo.read(1 << 20):
-                total += len(bloque)
-                if total > TAMANO_MAXIMO:
+        folder.mkdir(parents=True, exist_ok=True)
+        with open(target, "wb") as f:
+            while block := await archivo.read(1 << 20):
+                total += len(block)
+                if total > MAX_UPLOAD_BYTES:
                     break
-                huella.update(bloque)
-                f.write(bloque)
+                digest.update(block)
+                f.write(block)
     except OSError as e:
-        shutil.rmtree(carpeta, ignore_errors=True)
+        shutil.rmtree(folder, ignore_errors=True)
         log.exception("No se pudo guardar la subida")
         raise HTTPException(500, f"No pude guardar el archivo en el disco: {e.strerror or e}") from e
-    if total > TAMANO_MAXIMO:
-        shutil.rmtree(carpeta, ignore_errors=True)
-        raise HTTPException(413, MENSAJE_GRANDE)
+    if total > MAX_UPLOAD_BYTES:
+        shutil.rmtree(folder, ignore_errors=True)
+        raise HTTPException(413, TOO_LARGE_MESSAGE)
     if total == 0:
-        shutil.rmtree(carpeta, ignore_errors=True)
+        shutil.rmtree(folder, ignore_errors=True)
         raise HTTPException(400, "El archivo está vacío.")
 
-    ruta_cache = CACHE / f"{huella.hexdigest()}.json"
-    guardado = _leer_cache(ruta_cache)
-    if guardado is not None:
-        shutil.rmtree(carpeta, ignore_errors=True)
-        guardado["archivo"]["nombre"] = nombre
-        guardado["desde_cache"] = True
-        _registrar_trabajo(id_, nombre=nombre, estado="listo", paso="Listo", progreso=1.0, resultado=guardado)
+    cache_path = CACHE_DIR / f"{digest.hexdigest()}.json"
+    cached = _read_cache(cache_path)
+    if cached is not None:
+        shutil.rmtree(folder, ignore_errors=True)
+        cached["archivo"]["nombre"] = name
+        cached["desde_cache"] = True
+        _register_job(id_, nombre=name, estado="listo", paso="Listo", progreso=1.0, resultado=cached)
     else:
-        _registrar_trabajo(id_, nombre=nombre)
-        _ejecutor.submit(_analizar, id_, destino, nombre, ruta_cache)
+        _register_job(id_, nombre=name)
+        _executor.submit(_run_analysis, id_, target, name, cache_path)
     return {"id": id_}
 
 
-def _analizar(id_: str, ruta: Path, nombre: str, ruta_cache: Path) -> None:
-    def progreso(paso: str, fraccion: float) -> None:
-        _actualizar(id_, estado="procesando", paso=paso, progreso=round(fraccion, 3))
+def _run_analysis(id_: str, path: Path, name: str, cache_path: Path) -> None:
+    def progress(step: str, fraction: float) -> None:
+        _update_job(id_, estado="procesando", paso=step, progreso=round(fraction, 3))
 
     try:
-        resultado = pipeline.analizar(ruta, progreso)
-        resultado["archivo"]["nombre"] = nombre
+        result = pipeline.analyze(path, progress)
+        result["archivo"]["nombre"] = name
         try:
-            ruta_cache.write_text(json.dumps(resultado, ensure_ascii=False), encoding="utf-8")
+            cache_path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
         except OSError:
             log.warning("No se pudo guardar el análisis en caché", exc_info=True)
-        _actualizar(id_, estado="listo", paso="Listo", progreso=1.0, resultado=resultado)
-    except ErrorDeAudio as e:
-        _actualizar(id_, estado="error", error=str(e))
+        _update_job(id_, estado="listo", paso="Listo", progreso=1.0, resultado=result)
+    except AudioError as e:
+        _update_job(id_, estado="error", error=str(e))
     except Exception as e:
-        log.exception("Falló el análisis de %s", nombre)
-        _actualizar(id_, estado="error", error=f"Error inesperado al analizar: {e}")
+        log.exception("Falló el análisis de %s", name)
+        _update_job(id_, estado="error", error=f"Error inesperado al analizar: {e}")
     finally:
-        shutil.rmtree(ruta.parent, ignore_errors=True)
+        shutil.rmtree(path.parent, ignore_errors=True)
 
 
 @app.get("/api/analisis/{id_}")
-def estado(id_: str):
-    with _candado:
-        trabajo = dict(_trabajos.get(id_) or {})
-    if not trabajo:
+def job_status(id_: str):
+    with _lock:
+        job = dict(_jobs.get(id_) or {})
+    if not job:
         raise HTTPException(404, "No existe ese análisis (¿se reinició el servidor?).")
-    if trabajo["estado"] == "en_cola" and not _modelos_listos.is_set():
-        trabajo["paso"] = "Cargando los modelos (la primera vez tarda un poco)"
-    return trabajo
+    if job["estado"] == "en_cola" and not _models_ready.is_set():
+        job["paso"] = "Cargando los modelos (la primera vez tarda un poco)"
+    return job

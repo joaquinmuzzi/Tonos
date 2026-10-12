@@ -18,16 +18,16 @@ from pathlib import Path
 
 import numpy as np
 
-FRECUENCIA = 22050
-SALTO = 512
-TROZO = 20.0  # segundos: el modelo se entrenó con trozos de 20 s y no admite otro largo
-MINIMO_SIN_PULSOS = 0.5  # duración mínima de un acorde donde no hay pulsos para agrupar
+SAMPLE_RATE = 22050
+HOP_LENGTH = 512
+CHUNK_SECONDS = 20.0  # segundos: el modelo se entrenó con trozos de 20 s y no admite otro largo
+MIN_SECONDS_WITHOUT_BEATS = 0.5  # duración mínima de un acorde donde no hay pulsos para agrupar
 
-Segmento = tuple[float, float, str]
+Segment = tuple[float, float, str]
 
 
 @lru_cache(maxsize=1)
-def _modelo():
+def _model():
     import ACE
     from ACE.inference import load_model
 
@@ -36,146 +36,146 @@ def _modelo():
         return load_model(str(ckpt), model_name="conformer_decomposed")
 
 
-def precargar() -> None:
-    _modelo()
+def preload() -> None:
+    _model()
 
 
-def _inicios_de_trozos(duracion: float) -> list[float]:
-    if duracion <= TROZO:
+def _chunk_starts(duration: float) -> list[float]:
+    if duration <= CHUNK_SECONDS:
         return [0.0]
-    inicios = [i * TROZO for i in range(int(duracion // TROZO))]
-    if duracion - (inicios[-1] + TROZO) > 0.05:
-        inicios.append(duracion - TROZO)  # último trozo completo, superpuesto con el anterior
-    return inicios
+    starts = [i * CHUNK_SECONDS for i in range(int(duration // CHUNK_SECONDS))]
+    if duration - (starts[-1] + CHUNK_SECONDS) > 0.05:
+        starts.append(duration - CHUNK_SECONDS)  # último trozo completo, superpuesto con el anterior
+    return starts
 
 
-def detectar_acordes(
-    ruta_wav: Path,
-    duracion: float,
-    pulsos: np.ndarray,
-    progreso: Callable[[float], None] | None = None,
-) -> list[Segmento]:
+def detect_chords(
+    wav_path: Path,
+    duration: float,
+    beats: np.ndarray,
+    progress: Callable[[float], None] | None = None,
+) -> list[Segment]:
     """Devuelve [(inicio, fin, etiqueta_harte), ...] ordenados y sin repetidos consecutivos."""
     from ACE.inference import predict
     from ACE.mir_evaluation import convert_predictions_decomposed
     from ACE.preprocess.audio_processor import AudioChunkProcessor
     from ACE.preprocess.transforms import CQTransform
 
-    modelo = _modelo()
-    trozos = AudioChunkProcessor(
-        audio_path=ruta_wav,
-        target_sample_rate=FRECUENCIA,
-        hop_length=SALTO,
-        max_sequence_length=TROZO,
+    model = _model()
+    chunker = AudioChunkProcessor(
+        audio_path=wav_path,
+        target_sample_rate=SAMPLE_RATE,
+        hop_length=HOP_LENGTH,
+        max_sequence_length=CHUNK_SECONDS,
         device="cpu",
-        transform=CQTransform(FRECUENCIA, SALTO),
+        transform=CQTransform(SAMPLE_RATE, HOP_LENGTH),
         normalize=True,
     )
-    largo = int(TROZO * FRECUENCIA)
-    if trozos.base_signal.shape[1] < largo:
+    length = int(CHUNK_SECONDS * SAMPLE_RATE)
+    if chunker.base_signal.shape[1] < length:
         # Canción más corta que un trozo: se repite en lugar de rellenar con silencio
-        veces = int(np.ceil(largo / trozos.base_signal.shape[1]))
-        trozos.base_signal = trozos.base_signal.repeat(1, veces)[:, :largo]
+        count = int(np.ceil(length / chunker.base_signal.shape[1]))
+        chunker.base_signal = chunker.base_signal.repeat(1, count)[:, :length]
 
-    crudos: list[Segmento] = []
-    cubierto = 0.0
-    inicios = _inicios_de_trozos(duracion)
-    for k, inicio in enumerate(inicios):
-        caracteristicas = trozos.process_chunk(onset=inicio)
-        if caracteristicas.ndim == 2:
-            caracteristicas = caracteristicas.unsqueeze(0).unsqueeze(0)
-        elif caracteristicas.ndim == 3:
-            caracteristicas = caracteristicas.unsqueeze(0)
-        pred = predict(modelo, caracteristicas)
-        tramo, nombres = convert_predictions_decomposed(
+    raw_segments: list[Segment] = []
+    covered = 0.0
+    starts = _chunk_starts(duration)
+    for k, start in enumerate(starts):
+        features = chunker.process_chunk(onset=start)
+        if features.ndim == 2:
+            features = features.unsqueeze(0).unsqueeze(0)
+        elif features.ndim == 3:
+            features = features.unsqueeze(0)
+        pred = predict(model, features)
+        stretch, names = convert_predictions_decomposed(
             root_predictions=pred["root"],
             bass_predictions=pred["bass"],
             chord_predictions=pred["chord"],
-            segment_duration=TROZO,
+            segment_duration=CHUNK_SECONDS,
             threshold=0.5,
             # Solo se quita el parpadeo (< 0,1 s). Más que eso borraría acordes de un pulso
             # en tempos rápidos (a 125 BPM un pulso dura 0,48 s); el agrupado por pulsos
             # de abajo ya suaviza.
             remove_short_min_duration=0.1,
         )
-        for (a, b), etiqueta in zip(np.asarray(tramo, dtype=float) + inicio, nombres):
-            a, b = max(a, cubierto), min(b, duracion)
+        for (a, b), label in zip(np.asarray(stretch, dtype=float) + start, names):
+            a, b = max(a, covered), min(b, duration)
             if b - a > 1e-3:
-                crudos.append((a, b, str(etiqueta)))
-        cubierto = min(inicio + TROZO, duracion)
-        if progreso:
-            progreso((k + 1) / len(inicios))
+                raw_segments.append((a, b, str(label)))
+        covered = min(start + CHUNK_SECONDS, duration)
+        if progress:
+            progress((k + 1) / len(starts))
 
-    return _unir_iguales(agrupar_por_pulsos(crudos, pulsos, duracion))
+    return _merge_equal(group_by_beats(raw_segments, beats, duration))
 
 
-def _mayoritario(crudos: list[Segmento], a: float, b: float, desde: int = 0) -> str | None:
+def _majority_label(raw_segments: list[Segment], a: float, b: float, start: int = 0) -> str | None:
     """El acorde que más suena dentro de [a, b). `crudos` tiene que estar ordenado."""
-    tiempos: dict[str, float] = {}
-    for s, e, etiqueta in crudos[desde:]:
+    times: dict[str, float] = {}
+    for s, e, label in raw_segments[start:]:
         if s >= b:
             break
-        solapa = min(e, b) - max(s, a)
-        if solapa > 0:
-            tiempos[etiqueta] = tiempos.get(etiqueta, 0.0) + solapa
-    return max(tiempos, key=tiempos.get) if tiempos else None
+        overlap = min(e, b) - max(s, a)
+        if overlap > 0:
+            times[label] = times.get(label, 0.0) + overlap
+    return max(times, key=times.get) if times else None
 
 
-def _sin_cortos(segmentos: list[Segmento], minimo: float) -> list[Segmento]:
+def _absorb_short(segments: list[Segment], minimum: float) -> list[Segment]:
     """Absorbe los segmentos de menos de `minimo` segundos en el anterior (o el siguiente)."""
-    salida: list[Segmento] = []
-    pendiente = None  # inicio de un segmento corto al principio, que se pasa al siguiente
-    for a, b, etiqueta in segmentos:
-        if pendiente is not None:
-            a, pendiente = pendiente, None
-        if b - a < minimo:
-            if salida:
-                salida[-1] = (salida[-1][0], b, salida[-1][2])
+    output: list[Segment] = []
+    pending = None  # inicio de un segmento corto al principio, que se pasa al siguiente
+    for a, b, label in segments:
+        if pending is not None:
+            a, pending = pending, None
+        if b - a < minimum:
+            if output:
+                output[-1] = (output[-1][0], b, output[-1][2])
             else:
-                pendiente = a
+                pending = a
             continue
-        salida.append((a, b, etiqueta))
-    if pendiente is not None and segmentos:
-        salida.append((pendiente, segmentos[-1][1], segmentos[-1][2]))
-    return salida
+        output.append((a, b, label))
+    if pending is not None and segments:
+        output.append((pending, segments[-1][1], segments[-1][2]))
+    return output
 
 
-def agrupar_por_pulsos(crudos: list[Segmento], pulsos: np.ndarray, duracion: float) -> list[Segmento]:
+def group_by_beats(raw_segments: list[Segment], beats: np.ndarray, duration: float) -> list[Segment]:
     """Un acorde por pulso (el que más suena en ese pulso) donde los pulsos son regulares.
 
     Donde no hay pulsos (antes del primero, después del último, o en huecos de más de dos
     pulsos) se dejan los segmentos del modelo, quitando solo los de menos de medio segundo.
     """
-    pulsos = np.asarray([p for p in pulsos if 0 < p < duracion], dtype=float)
-    if len(pulsos) < 4:
-        return _sin_cortos(crudos, MINIMO_SIN_PULSOS)
+    beats = np.asarray([p for p in beats if 0 < p < duration], dtype=float)
+    if len(beats) < 4:
+        return _absorb_short(raw_segments, MIN_SECONDS_WITHOUT_BEATS)
 
-    tipico = float(np.median(np.diff(pulsos)))
-    celdas = [(0.0, float(pulsos[0])), *list(zip(pulsos[:-1].tolist(), pulsos[1:].tolist()))]
-    celdas.append((float(pulsos[-1]), duracion))
+    typical = float(np.median(np.diff(beats)))
+    cells = [(0.0, float(beats[0])), *list(zip(beats[:-1].tolist(), beats[1:].tolist()))]
+    cells.append((float(beats[-1]), duration))
 
-    salida: list[Segmento] = []
-    desde = 0  # primer segmento que todavía puede tocar la celda actual
-    for a, b in celdas:
+    output: list[Segment] = []
+    start = 0  # primer segmento que todavía puede tocar la celda actual
+    for a, b in cells:
         if b - a <= 0:
             continue
-        while desde < len(crudos) and crudos[desde][1] <= a:
-            desde += 1
-        if b - a <= 2 * tipico:
-            etiqueta = _mayoritario(crudos, a, b, desde)
-            if etiqueta is not None:
-                salida.append((a, b, etiqueta))
+        while start < len(raw_segments) and raw_segments[start][1] <= a:
+            start += 1
+        if b - a <= 2 * typical:
+            label = _majority_label(raw_segments, a, b, start)
+            if label is not None:
+                output.append((a, b, label))
         else:
-            dentro = [(max(s, a), min(e, b), et) for s, e, et in crudos if min(e, b) - max(s, a) > 0]
-            salida.extend(_sin_cortos(dentro, MINIMO_SIN_PULSOS))
-    return salida
+            inside = [(max(s, a), min(e, b), lab) for s, e, lab in raw_segments if min(e, b) - max(s, a) > 0]
+            output.extend(_absorb_short(inside, MIN_SECONDS_WITHOUT_BEATS))
+    return output
 
 
-def _unir_iguales(segmentos: list[Segmento]) -> list[Segmento]:
-    salida: list[Segmento] = []
-    for a, b, etiqueta in segmentos:
-        if salida and salida[-1][2] == etiqueta and abs(salida[-1][1] - a) < 1e-6:
-            salida[-1] = (salida[-1][0], b, etiqueta)
+def _merge_equal(segments: list[Segment]) -> list[Segment]:
+    output: list[Segment] = []
+    for a, b, label in segments:
+        if output and output[-1][2] == label and abs(output[-1][1] - a) < 1e-6:
+            output[-1] = (output[-1][0], b, label)
         else:
-            salida.append((a, b, etiqueta))
-    return salida
+            output.append((a, b, label))
+    return output

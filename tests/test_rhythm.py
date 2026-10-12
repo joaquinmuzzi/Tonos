@@ -2,70 +2,70 @@ import numpy as np
 import pytest
 
 from orfeo.analysis import rhythm
-from tests.synthetic import FS, cancion
+from tests.synthetic import FS, song
 
 
-def _pulsos(bpm, n):
+def _beats(bpm, n):
     return np.arange(n) * 60.0 / bpm
 
 
-def test_pulsos_por_compas():
-    pulsos = _pulsos(120, 33)
-    primeros = pulsos[1::4]  # anacrusa de un pulso, después compases de 4
-    assert rhythm.pulsos_por_compas(pulsos, primeros) == [4] * 7
+def test_beats_per_bar():
+    beats = _beats(120, 33)
+    downbeats = beats[1::4]  # anacrusa de un pulso, después compases de 4
+    assert rhythm.beats_per_bar(beats, downbeats) == [4] * 7
 
 
-def test_compas_en_cuatro():
-    pulsos = _pulsos(120, 65)
-    resultado = rhythm.analizar_compas(pulsos, pulsos[::4], {"tipo": "binaria"}, 120)
-    assert resultado["pulsos_por_compas"] == 4
-    assert resultado["lectura"] == "4/4"
-    assert resultado["confianza"] == "alta"
-    assert resultado["avisos"] == []
+def test_meter_in_four():
+    beats = _beats(120, 65)
+    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120)
+    assert result["pulsos_por_compas"] == 4
+    assert result["lectura"] == "4/4"
+    assert result["confianza"] == "alta"
+    assert result["avisos"] == []
 
 
-def test_compas_en_tres_avisa_de_la_ambiguedad():
-    pulsos = _pulsos(150, 61)
-    resultado = rhythm.analizar_compas(pulsos, pulsos[::3], {"tipo": "no clara"}, 150)
-    assert resultado["lectura"] == "3/4"
-    assert "6/8" in resultado["alternativa"]
-    assert any("6/8" in a for a in resultado["avisos"])
+def test_meter_in_three_warns_about_ambiguity():
+    beats = _beats(150, 61)
+    result = rhythm.analyze_meter(beats, beats[::3], {"tipo": "no clara"}, 150)
+    assert result["lectura"] == "3/4"
+    assert "6/8" in result["alternativa"]
+    assert any("6/8" in a for a in result["avisos"])
 
 
-def test_swing_rapido_se_lee_como_cuatro_con_swing():
-    pulsos = _pulsos(200, 65)
-    resultado = rhythm.analizar_compas(pulsos, pulsos[::4], {"tipo": "ternaria"}, 200)
-    assert resultado["lectura"] == "4/4 con swing"
+def test_fast_swing_reads_as_four_four_swing():
+    beats = _beats(200, 65)
+    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "ternaria"}, 200)
+    assert result["lectura"] == "4/4 con swing"
 
 
-def test_balada_lenta_ternaria_se_lee_como_doce_octavos():
-    pulsos = _pulsos(60, 65)
-    resultado = rhythm.analizar_compas(pulsos, pulsos[::4], {"tipo": "ternaria"}, 60)
-    assert resultado["lectura"] == "12/8"
+def test_slow_ternary_ballad_reads_as_twelve_eight():
+    beats = _beats(60, 65)
+    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "ternaria"}, 60)
+    assert result["lectura"] == "12/8"
 
 
-def test_un_pulso_por_compas_no_se_informa_como_compas():
-    pulsos = _pulsos(40, 30)
-    resultado = rhythm.analizar_compas(pulsos, pulsos, {"tipo": "ternaria"}, 40)
-    assert resultado["lectura"] is None
-    assert resultado["confianza"] == "baja"
+def test_one_beat_per_bar_is_not_reported_as_meter():
+    beats = _beats(40, 30)
+    result = rhythm.analyze_meter(beats, beats, {"tipo": "ternaria"}, 40)
+    assert result["lectura"] is None
+    assert result["confianza"] == "baja"
 
 
-def test_compas_mezclado_baja_la_confianza():
-    pulsos = _pulsos(120, 200)
-    primeros, i = [], 0
+def test_mixed_bar_lengths_lower_confidence():
+    beats = _beats(120, 200)
+    downbeats, i = [], 0
     for n in [4, 3, 4, 3, 3, 4, 3, 4, 4, 3] * 4:  # 50/50
-        primeros.append(pulsos[i])
+        downbeats.append(beats[i])
         i += n
-    resultado = rhythm.analizar_compas(pulsos, np.array(primeros), {"tipo": "binaria"}, 120)
-    assert resultado["confianza"] == "baja"
-    assert len(resultado["avisos"]) >= 1
+    result = rhythm.analyze_meter(beats, np.array(downbeats), {"tipo": "binaria"}, 120)
+    assert result["confianza"] == "baja"
+    assert len(result["avisos"]) >= 1
 
 
-def test_tempo_desde_pulsos():
-    pulsos = _pulsos(96, 100)
-    envolvente = np.zeros(4000)
-    t = rhythm.analizar_tempo(pulsos, envolvente, 22050)
+def test_tempo_from_beats():
+    beats = _beats(96, 100)
+    envelope = np.zeros(4000)
+    t = rhythm.analyze_tempo(beats, envelope, 22050)
     assert abs(t["bpm"] - 96) < 0.5
     assert t["alternativas"] == {"mitad": 48.0, "doble": 192.0}
     assert t["estable"]
@@ -73,90 +73,90 @@ def test_tempo_desde_pulsos():
 
 
 @pytest.mark.parametrize("bpm", [123, 128, 133, 140, 170, 174, 180, 193.5])
-def test_tempo_sin_error_por_la_grilla_de_20_ms(bpm):
+def test_tempo_has_no_20_ms_grid_error(bpm):
     # Beat This! devuelve los pulsos redondeados a cuadros de 20 ms
-    pulsos = np.round(_pulsos(bpm, 200) * 50) / 50
-    t = rhythm.analizar_tempo(pulsos, np.zeros(4000), 22050)
+    beats = np.round(_beats(bpm, 200) * 50) / 50
+    t = rhythm.analyze_tempo(beats, np.zeros(4000), 22050)
     assert abs(t["bpm"] - bpm) < 0.5
     assert t["rango"][0] - 1 <= t["bpm"] <= t["rango"][1] + 1
 
 
-def test_unificar_tramo_al_doble():
+def test_unify_double_time_section():
     # 105 BPM, con un tramo en el medio donde el detector marcó el doble de pulsos
-    normal = _pulsos(105, 40)
-    doble = normal[-1] + np.arange(1, 41) * (60 / 210)
-    final = doble[-1] + np.arange(1, 21) * (60 / 105)
-    pulsos = np.concatenate([normal, doble, final])
-    primeros = pulsos[::4]
-    unificados, primeros_u, info = rhythm.unificar_pulsos(pulsos, primeros)
-    intervalos = np.diff(unificados)
-    assert np.allclose(intervalos, 60 / 105, rtol=0.02)
+    normal = _beats(105, 40)
+    double = normal[-1] + np.arange(1, 41) * (60 / 210)
+    final = double[-1] + np.arange(1, 21) * (60 / 105)
+    beats = np.concatenate([normal, double, final])
+    downbeats = beats[::4]
+    unified, unified_downbeats, info = rhythm.unify_beats(beats, downbeats)
+    intervals = np.diff(unified)
+    assert np.allclose(intervals, 60 / 105, rtol=0.02)
     assert info["quitados"] == 20
-    assert set(primeros_u) <= set(unificados)
+    assert set(unified_downbeats) <= set(unified)
 
 
-def test_unificar_rellena_pulsos_perdidos():
-    pulsos = np.delete(_pulsos(120, 40), [10, 20, 21])  # uno y dos pulsos perdidos
-    unificados, _, info = rhythm.unificar_pulsos(pulsos, np.array([]))
+def test_unify_fills_missed_beats():
+    beats = np.delete(_beats(120, 40), [10, 20, 21])  # uno y dos pulsos perdidos
+    unified, _, info = rhythm.unify_beats(beats, np.array([]))
     assert info["agregados"] == 3
-    assert np.allclose(unificados, _pulsos(120, 40))
+    assert np.allclose(unified, _beats(120, 40))
 
 
-def test_unificar_no_toca_un_cambio_de_tempo_real():
-    pulsos = np.concatenate([_pulsos(90, 40), _pulsos(90, 40)[-1] + np.arange(1, 41) * 60 / 140])
-    unificados, _, info = rhythm.unificar_pulsos(pulsos, np.array([]))
+def test_unify_keeps_a_real_tempo_change():
+    beats = np.concatenate([_beats(90, 40), _beats(90, 40)[-1] + np.arange(1, 41) * 60 / 140])
+    unified, _, info = rhythm.unify_beats(beats, np.array([]))
     assert info == {"quitados": 0, "agregados": 0}
-    assert np.array_equal(unificados, pulsos)
+    assert np.array_equal(unified, beats)
 
 
-def test_unificar_reparte_un_tramo_desparejo():
+def test_unify_evens_a_mis_tracked_fill():
     # Como en Resident Evil (compás 9): 4 pulsos marcados 0,42 / 0,40 / 0,72 / 0,68 s
-    pulso = 2.22 / 4
-    pulsos = list(np.arange(20) * pulso)
-    t = pulsos[-1]
+    beat = 2.22 / 4
+    beats = list(np.arange(20) * beat)
+    t = beats[-1]
     for d in (0.42, 0.40, 0.72, 0.68):
         t += d
-        pulsos.append(t)
-    pulsos += list(t + np.arange(1, 21) * pulso)
-    unificados, _, _ = rhythm.unificar_pulsos(np.array(pulsos), np.array([]))
-    assert len(unificados) == len(pulsos)
-    assert np.allclose(np.diff(unificados), pulso, atol=0.01)
+        beats.append(t)
+    beats += list(t + np.arange(1, 21) * beat)
+    unified, _, _ = rhythm.unify_beats(np.array(beats), np.array([]))
+    assert len(unified) == len(beats)
+    assert np.allclose(np.diff(unified), beat, atol=0.01)
 
 
-def test_unificar_reparte_un_redoble_con_un_pulso_normal_en_medio():
-    pulso = 0.556
-    intervalos = [1.0] * 20 + [0.79, 1.0, 1.22] + [1.0] * 20
-    pulsos = _desde_intervalos(intervalos, pulso)
-    unificados, _, _info = rhythm.unificar_pulsos(pulsos, np.array([]))
-    assert len(unificados) == len(pulsos)
-    assert np.allclose(np.diff(unificados), pulso, rtol=0.02)
+def test_unify_evens_fill_with_regular_beat():
+    beat = 0.556
+    intervals = [1.0] * 20 + [0.79, 1.0, 1.22] + [1.0] * 20
+    beats = _from_intervals(intervals, beat)
+    unified, _, _info = rhythm.unify_beats(beats, np.array([]))
+    assert len(unified) == len(beats)
+    assert np.allclose(np.diff(unified), beat, rtol=0.02)
 
 
-def test_unificar_no_reparte_un_corrimiento_real():
+def test_unify_keeps_a_real_shift():
     # Un intervalo de 1,46 pulsos (un calderón o un corrimiento de medio pulso) no se toca
-    pulsos = np.concatenate([np.arange(20) * 0.56, 19 * 0.56 + 0.82 + np.arange(20) * 0.56])
-    unificados, _, info = rhythm.unificar_pulsos(pulsos, np.array([]))
-    assert np.array_equal(unificados, pulsos)
+    beats = np.concatenate([np.arange(20) * 0.56, 19 * 0.56 + 0.82 + np.arange(20) * 0.56])
+    unified, _, info = rhythm.unify_beats(beats, np.array([]))
+    assert np.array_equal(unified, beats)
     assert info == {"quitados": 0, "agregados": 0}
 
 
-def test_unificar_rellena_un_hueco_junto_a_un_compas_mas_corto():
+def test_unify_fills_gap_next_to_short_bar():
     # Un intervalo de 1,5 pulsos (compás de 7/8, real) seguido de un pulso perdido (2,0)
-    pulso = 0.56
-    intervalos = [1.0] * 15 + [1.5, 2.0] + [1.0] * 15
-    pulsos = np.concatenate([[0.0], np.cumsum(np.array(intervalos) * pulso)])
-    unificados, _, info = rhythm.unificar_pulsos(pulsos, np.array([]))
-    relativos = np.round(np.diff(unificados) / pulso, 2).tolist()
-    assert relativos == [1.0] * 15 + [1.5, 1.0, 1.0] + [1.0] * 15
+    beat = 0.56
+    intervals = [1.0] * 15 + [1.5, 2.0] + [1.0] * 15
+    beats = np.concatenate([[0.0], np.cumsum(np.array(intervals) * beat)])
+    unified, _, info = rhythm.unify_beats(beats, np.array([]))
+    relative_intervals = np.round(np.diff(unified) / beat, 2).tolist()
+    assert relative_intervals == [1.0] * 15 + [1.5, 1.0, 1.0] + [1.0] * 15
     assert info["agregados"] == 1
 
 
-def _desde_intervalos(intervalos, pulso=0.5):
-    return np.concatenate([[0.0], np.cumsum(np.array(intervalos, dtype=float) * pulso)])
+def _from_intervals(intervals, beat=0.5):
+    return np.concatenate([[0.0], np.cumsum(np.array(intervals, dtype=float) * beat)])
 
 
 @pytest.mark.parametrize(
-    ("nombre", "intervalos"),
+    ("name", "intervals"),
     [
         ("ritardando de un compás", [1.0] * 16 + [1.2] * 4 + [1.0] * 16),
         ("dos pulsos más lentos", [1.0] * 16 + [1.4] * 2 + [1.0] * 16),
@@ -165,41 +165,41 @@ def _desde_intervalos(intervalos, pulso=0.5):
         ("ritardando final", [1.0] * 30 + [1.2, 1.4, 1.6, 1.8]),
     ],
 )
-def test_unificar_respeta_los_cambios_de_tempo_reales(nombre, intervalos):
-    pulsos = _desde_intervalos(intervalos)
-    unificados, _, info = rhythm.unificar_pulsos(pulsos, pulsos[::4])
-    assert np.allclose(unificados, pulsos), nombre
+def test_unify_respects_real_tempo_changes(name, intervals):
+    beats = _from_intervals(intervals)
+    unified, _, info = rhythm.unify_beats(beats, beats[::4])
+    assert np.allclose(unified, beats), name
     assert info == {"quitados": 0, "agregados": 0}
 
 
-@pytest.mark.parametrize("hueco", [2.28, 3.35, 4.4, 6.4, 8.35])
-def test_unificar_rellena_huecos_con_la_banda_un_poco_tarde(hueco):
-    pulsos = _desde_intervalos([1.0] * 16 + [hueco] + [1.0] * 16)
-    _unificados, _, info = rhythm.unificar_pulsos(pulsos, np.array([]))
-    assert info["agregados"] == round(hueco) - 1
+@pytest.mark.parametrize("gap", [2.28, 3.35, 4.4, 6.4, 8.35])
+def test_unify_fills_gaps_when_band_returns_late(gap):
+    beats = _from_intervals([1.0] * 16 + [gap] + [1.0] * 16)
+    _unified, _, info = rhythm.unify_beats(beats, np.array([]))
+    assert info["agregados"] == round(gap) - 1
 
 
-@pytest.mark.parametrize("corchea", [0.6, 0.64, 0.67, 0.75])
-def test_unificar_con_swing_al_doble_no_corre_la_grilla(corchea):
+@pytest.mark.parametrize("eighth", [0.6, 0.64, 0.67, 0.75])
+def test_unify_double_time_swing_keeps_the_grid(eighth):
     # Tramo donde el detector marca también la corchea del swing
-    negras = np.arange(64) * 0.5
-    swing = negras[16:32] + corchea * 0.5
-    pulsos = np.sort(np.concatenate([negras, swing]))
-    unificados, primeros, _ = rhythm.unificar_pulsos(pulsos, negras[::4])
-    assert np.allclose(unificados, negras)
-    assert np.allclose(primeros, negras[::4])
+    quarter_notes = np.arange(64) * 0.5
+    swing = quarter_notes[16:32] + eighth * 0.5
+    beats = np.sort(np.concatenate([quarter_notes, swing]))
+    unified, downbeats, _ = rhythm.unify_beats(beats, quarter_notes[::4])
+    assert np.allclose(unified, quarter_notes)
+    assert np.allclose(downbeats, quarter_notes[::4])
 
 
-def _compases(*largos, inicio=0):
+def _bars(*lengths, start=0):
     """Pulsos cada 0,5 s y primeros tiempos que dejan compases de esos largos."""
-    total = inicio + sum(largos) + 4
-    pulsos = np.arange(total) * 0.5
-    indices = np.cumsum((inicio, *largos))
-    return pulsos, pulsos[indices]
+    total = start + sum(lengths) + 4
+    beats = np.arange(total) * 0.5
+    indices = np.cumsum((start, *lengths))
+    return beats, beats[indices]
 
 
 @pytest.mark.parametrize(
-    ("largos", "esperados"),
+    ("lengths", "expected_lengths"),
     [
         ((4, 4, 3, 1, 4, 4), [4, 4, 4, 4, 4]),  # Resident Evil: 3 + 1
         ((4, 1, 3, 4), [4, 4, 4]),  # 1 + 3
@@ -214,82 +214,82 @@ def _compases(*largos, inicio=0):
         ((4, 5, 7, 4), [4, 5, 7, 4]),  # suman 12: más de dos compases
     ],
 )
-def test_regularizar_compases(largos, esperados):
-    pulsos, primeros = _compases(*largos)
-    nuevos, _ = rhythm.regularizar_compases(pulsos, primeros, 4)
-    assert np.diff(np.searchsorted(pulsos, nuevos)).tolist() == esperados
+def test_regularize_bars(lengths, expected_lengths):
+    beats, downbeats = _bars(*lengths)
+    new, _ = rhythm.regularize_bars(beats, downbeats, 4)
+    assert np.diff(np.searchsorted(beats, new)).tolist() == expected_lengths
 
 
-def test_regularizar_respeta_compases_de_4_en_un_vals():
-    pulsos, primeros = _compases(3, 3, 4, 4, 4, 3, 3)
-    nuevos, rearmados = rhythm.regularizar_compases(pulsos, primeros, 3)
-    assert np.diff(np.searchsorted(pulsos, nuevos)).tolist() == [3, 3, 4, 4, 4, 3, 3]
-    assert rearmados == 0
+def test_regularize_keeps_four_beat_bars_in_waltz():
+    beats, downbeats = _bars(3, 3, 4, 4, 4, 3, 3)
+    new, regrouped = rhythm.regularize_bars(beats, downbeats, 3)
+    assert np.diff(np.searchsorted(beats, new)).tolist() == [3, 3, 4, 4, 4, 3, 3]
+    assert regrouped == 0
 
 
-def test_regularizar_no_hace_nada_sin_compas():
-    pulsos, primeros = _compases(3, 1, 4)
-    nuevos, rearmados = rhythm.regularizar_compases(pulsos, primeros, None)
-    assert np.array_equal(nuevos, primeros)
-    assert rearmados == 0
+def test_regularize_does_nothing_without_meter():
+    beats, downbeats = _bars(3, 1, 4)
+    new, regrouped = rhythm.regularize_bars(beats, downbeats, None)
+    assert np.array_equal(new, downbeats)
+    assert regrouped == 0
 
 
-def test_compases_con_anacrusa():
-    pulsos = _pulsos(120, 17)
-    lista = rhythm.compases(pulsos, pulsos[1::4], duracion=9.0)
-    assert lista[0]["numero"] == 0
-    assert lista[0]["etiqueta"] == "anacrusa"
-    assert lista[1]["numero"] == 1
-    assert abs(lista[1]["inicio"] - 0.5) < 1e-9
-    assert lista[1]["etiqueta"] == "compás 1"
-    assert abs(lista[-1]["fin"] - 9.0) < 1e-9
+def test_bar_grid_with_pickup():
+    beats = _beats(120, 17)
+    bar_cells = rhythm.bar_grid(beats, beats[1::4], duration=9.0)
+    assert bar_cells[0]["numero"] == 0
+    assert bar_cells[0]["etiqueta"] == "anacrusa"
+    assert bar_cells[1]["numero"] == 1
+    assert abs(bar_cells[1]["inicio"] - 0.5) < 1e-9
+    assert bar_cells[1]["etiqueta"] == "compás 1"
+    assert abs(bar_cells[-1]["fin"] - 9.0) < 1e-9
 
 
-def test_intro_sin_pulsos_aparece_en_la_grilla():
-    pulsos = 20 + _pulsos(120, 40)  # la batería entra a los 20 s
-    lista = rhythm.compases(pulsos, pulsos[::4], duracion=40.0)
-    assert lista[0] == {"numero": 0, "etiqueta": "intro", "inicio": 0.0, "fin": 20.0}
+def test_intro_without_beats_appears_in_grid():
+    beats = 20 + _beats(120, 40)  # la batería entra a los 20 s
+    bar_cells = rhythm.bar_grid(beats, beats[::4], duration=40.0)
+    assert bar_cells[0] == {"numero": 0, "etiqueta": "intro", "inicio": 0.0, "fin": 20.0}
 
 
-def test_sin_primeros_tiempos_se_agrupa_de_a_cuatro_pulsos():
-    pulsos = _pulsos(120, 33)
-    lista = rhythm.compases(pulsos, np.array([]), duracion=17.0)
-    assert lista[0]["etiqueta"] == "tramo 1"
-    assert abs(lista[1]["inicio"] - 2.0) < 1e-9
+def test_without_downbeats_groups_four_beats():
+    beats = _beats(120, 33)
+    bar_cells = rhythm.bar_grid(beats, np.array([]), duration=17.0)
+    assert bar_cells[0]["etiqueta"] == "tramo 1"
+    assert abs(bar_cells[1]["inicio"] - 2.0) < 1e-9
 
 
-def test_sin_pulsos_se_agrupa_cada_cuatro_segundos():
-    lista = rhythm.compases(np.array([]), np.array([]), duracion=10.0)
-    assert [c["inicio"] for c in lista] == [0.0, 4.0, 8.0]
+def test_without_beats_groups_every_four_seconds():
+    bar_cells = rhythm.bar_grid(np.array([]), np.array([]), duration=10.0)
+    assert [c["inicio"] for c in bar_cells] == [0.0, 4.0, 8.0]
 
 
-def test_compas_no_es_mas_seguro_que_el_pulso():
-    pulsos = _pulsos(120, 65)
-    resultado = rhythm.analizar_compas(pulsos, pulsos[::4], {"tipo": "binaria"}, 120, "baja")
-    assert resultado["confianza"] == "baja"
+def test_meter_is_not_more_confident_than_beats():
+    beats = _beats(120, 65)
+    result = rhythm.analyze_meter(beats, beats[::4], {"tipo": "binaria"}, 120, "baja")
+    assert result["confianza"] == "baja"
 
 
-def test_subdivision_no_clara_sin_ataques():
+def test_unclear_subdivision_without_onsets():
     # Envolvente sin ataques entre pulsos (acordes sostenidos): no debe inventar subdivisión
     rng = np.random.default_rng(3)
-    envolvente = 1 + 0.05 * rng.random(int(60 * 22050 / rhythm.SALTO))
-    pulsos = _pulsos(60, 55)
-    assert rhythm.analizar_subdivision(pulsos, envolvente, 22050)["tipo"] == "no clara"
+    envelope = 1 + 0.05 * rng.random(int(60 * 22050 / rhythm.HOP_LENGTH))
+    beats = _beats(60, 55)
+    assert rhythm.analyze_subdivision(beats, envelope, 22050)["tipo"] == "no clara"
 
 
 def _subdivision(sub):
     import librosa
 
-    y = cancion(100, 4, [("C", False)], compases=16, subdivision=sub)
+    y = song(100, 4, [("C", False)], bars=16, subdivision=sub)
     y = librosa.resample(y, orig_sr=FS, target_sr=22050)
-    pulsos = np.arange(0, 16 * 4) * 0.6
-    env = rhythm.envolvente_de_ataques(y, 22050)
-    return rhythm.analizar_subdivision(pulsos, env, 22050)["tipo"]
+    beats = np.arange(0, 16 * 4) * 0.6
+    env = rhythm.onset_envelope(y, 22050)
+    return rhythm.analyze_subdivision(beats, env, 22050)["tipo"]
 
 
-def test_subdivision_binaria():
+def test_binary_subdivision():
     assert _subdivision(2) == "binaria"
 
 
-def test_subdivision_ternaria():
+def test_ternary_subdivision():
     assert _subdivision(3) == "ternaria"
