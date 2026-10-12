@@ -37,10 +37,39 @@ def test_ubica_el_primer_tiempo(pulsos_por_compas):
     y, pulsos = _sintetica(pulsos_por_compas)
     envolvente = ritmo.envolvente_de_ataques(y, 22050)
     _, espectro = periodicidad.analizar(y, 22050, pulsos, envolvente, ritmo.SALTO)
-    primeros, contraste = periodicidad.ubicar_compases(pulsos, pulsos_por_compas, espectro, 22050)
+    primeros, claridad = periodicidad.ubicar_compases(pulsos, pulsos_por_compas, espectro, 22050)
     assert primeros[0] == pytest.approx(0.0)
     assert np.allclose(np.diff(primeros), pulsos_por_compas * 60 / 130)
-    assert contraste >= periodicidad.CONTRASTE_FASE_CLARA
+    assert claridad >= periodicidad.CLARIDAD_FASE
+
+
+def test_acordes_anticipados_no_corren_el_primer_tiempo():
+    """Si los acordes entran medio pulso antes, la armonía sola marca el primer tiempo un
+    pulso antes de tiempo; los cambios de acorde reconocidos (en el pulso 1) lo corrigen."""
+    L, bpm = 7, 105
+    y = cancion(bpm, L, PROGRESIONES[7], compases=36, anticipo=0.5)
+    y = librosa.resample(y, orig_sr=FS, target_sr=22050)
+    pulsos = np.arange(36 * L) * 60.0 / bpm
+    envolvente = ritmo.envolvente_de_ataques(y, 22050)
+    _, espectro = periodicidad.analizar(y, 22050, pulsos, envolvente, ritmo.SALTO)
+    cambios = np.zeros(len(pulsos))
+    cambios[::L] = 1.0  # donde el reconocedor de acordes marca el cambio
+    cambios[0] = 0.0
+    primeros, _ = periodicidad.ubicar_compases(pulsos, L, espectro, 22050, cambios)
+    assert primeros[0] == pytest.approx(0.0)
+
+
+def test_tramo_corto_sigue_la_cuenta():
+    L = 5
+    pulsos = np.concatenate([np.arange(60) * 0.5, 30.0 + 0.8 + np.arange(6) * 0.5,  # salto y tramo corto
+                             33.8 + 0.8 + np.arange(60) * 0.5])
+    espectro = np.random.default_rng(0).random((84, 4000)).astype(np.float32)
+    cambios = np.zeros(len(pulsos))
+    cambios[::L] = 1.0
+    primeros, _ = periodicidad.ubicar_compases(pulsos, L, espectro, 22050, cambios)
+    cuentas = np.diff(np.searchsorted(pulsos, primeros))
+    assert len(primeros) >= 20  # el tramo corto no deja un hueco sin compases
+    assert np.all(cuentas <= 2 * L)
 
 
 def test_cancion_corta_no_se_analiza():

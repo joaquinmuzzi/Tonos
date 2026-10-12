@@ -26,7 +26,7 @@ FAMILIAS = {
 DESFASE_MAXIMO = 30  # en pulsos
 PESOS = {"armonia": 0.5, "bajo": 0.25, "ataques": 0.25}
 SALTO_CQT = 512
-CONTRASTE_FASE_CLARA = 1.0  # por debajo, la grilla de compases se informa como aproximada
+CLARIDAD_FASE = 1.0  # por debajo, la grilla de compases se informa como aproximada
 
 # Un desfase compartido por dos familias (12 = 3 y 4) cuenta la mitad para cada una
 _COMPARTIDOS = Counter(L for desfases in FAMILIAS.values() for L in desfases)
@@ -129,35 +129,65 @@ def _novedad(m: np.ndarray) -> np.ndarray:
     return np.concatenate([[0.0], 1 - cos])
 
 
-def ubicar_compases(pulsos: np.ndarray, pulsos_por_compas: int, espectro: np.ndarray,
-                    fs: int) -> tuple[np.ndarray, float]:
-    """Primeros tiempos para compases de `pulsos_por_compas`, donde más cambia la armonía.
+def _z(x: np.ndarray) -> np.ndarray:
+    return (x - x.mean()) / x.std() if x.std() > 1e-12 else np.zeros_like(x)
 
-    Usa solo la parte armónica (sin batería) y el centro de cada pulso, para que el golpe
-    del bombo o el arrastre del cambio de acorde no corran el resultado un pulso.
-    Si hay saltos en los pulsos (un corte, un pulso perdido), cada tramo se ubica por separado.
-    Devuelve (primeros tiempos, contraste): contraste alto = inicio de compás claro.
+
+def cambios_de_acorde_por_pulso(pulsos: np.ndarray, segmentos: list[tuple[float, float, str]]) -> np.ndarray:
+    """1 en cada pulso donde empieza un acorde distinto del anterior (los acordes ya vienen por pulso)."""
+    marcas = np.zeros(len(pulsos))
+    for (_, _, anterior), (inicio, _, etiqueta) in zip(segmentos[:-1], segmentos[1:]):
+        if etiqueta in ("N", "X") or etiqueta == anterior:
+            continue
+        i = int(np.argmin(np.abs(pulsos - inicio)))
+        if abs(pulsos[i] - inicio) < 0.15:
+            marcas[i] = 1.0
+    return marcas
+
+
+def ubicar_compases(pulsos: np.ndarray, pulsos_por_compas: int, espectro: np.ndarray, fs: int,
+                    cambios_de_acorde: np.ndarray | None = None) -> tuple[np.ndarray, float]:
+    """Primeros tiempos para compases de `pulsos_por_compas`.
+
+    Dos pistas de dónde empieza cada compás, que se suman:
+    - dónde cambian los acordes reconocidos (los acordes suelen cambiar en el primer tiempo);
+    - dónde más cambia la armonía de un pulso al siguiente (sin batería y en el centro de
+      cada pulso, para que el bombo o el arrastre del sonido no lo corran).
+    La segunda sola se equivoca cuando los acordes se anticipan medio pulso (una síncopa muy
+    común): por eso pesan las dos. Si quedan saltos en los pulsos, cada tramo se ubica por
+    separado; un tramo de menos de dos compases sigue la cuenta del anterior.
+    Devuelve (primeros tiempos, claridad): cuánto le gana la mejor posición a la segunda.
     """
     L = pulsos_por_compas
     armonico, _ = librosa.decompose.hpss(espectro, kernel_size=(31, 9))
     centro = _por_pulso(armonico, librosa.time_to_frames(pulsos, sr=fs, hop_length=SALTO_CQT), 0.25, 0.85)
     novedad = np.append(_novedad(_plegar(centro)) + 0.5 * _novedad(_plegar(centro[:36])), 0.0)
+    if cambios_de_acorde is None:
+        cambios_de_acorde = np.zeros(len(pulsos))
 
     intervalos = np.diff(pulsos)
     tipico = float(np.median(intervalos))
     cortes = [0] + [i + 1 for i, d in enumerate(intervalos) if not 0.75 * tipico <= d <= 1.25 * tipico]
     cortes.append(len(pulsos))
 
-    primeros, contrastes, pesos = [], [], []
+    primeros, claridades, pesos = [], [], []
     for a, b in zip(cortes[:-1], cortes[1:]):
-        if b - a < L:
-            continue  # menos de un compás entre dos saltos
-        tramo = novedad[a:b]
-        puntaje = np.array([tramo[f::L].mean() for f in range(L)])
-        fase = int(np.argmax(puntaje))
-        resto = np.delete(puntaje, fase)
-        contrastes.append((puntaje[fase] - resto.mean()) / (puntaje.mean() + 1e-9))
-        pesos.append(b - a)
+        if b - a < 2 * L and primeros:
+            # Tramo corto: se sigue contando desde el último primer tiempo
+            siguiente = int(np.searchsorted(pulsos, primeros[-1])) + L
+            while siguiente < a:
+                siguiente += L
+            primeros.extend(pulsos[siguiente:b:L])
+            continue
+        fases = range(min(L, b - a))
+        nov = np.array([novedad[a + f:b:L].mean() for f in fases])
+        aco = np.array([cambios_de_acorde[a + f:b:L].mean() for f in fases])
+        puntaje = _z(nov) + _z(aco)
+        orden = np.argsort(puntaje)[::-1]
+        fase = int(orden[0])
+        if len(orden) > 1:
+            claridades.append(float(puntaje[orden[0]] - puntaje[orden[1]]))
+            pesos.append(b - a)
         primeros.extend(pulsos[a + fase: b: L])
-    contraste = float(np.average(contrastes, weights=pesos)) if pesos else 0.0
-    return np.asarray(primeros, dtype=float), contraste
+    claridad = float(np.average(claridades, weights=pesos)) if pesos else 0.0
+    return np.asarray(primeros, dtype=float), claridad

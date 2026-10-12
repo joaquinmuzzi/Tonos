@@ -32,6 +32,8 @@ def _texto(r: dict) -> str:
             lineas.append(f"            probablemente lo sientas a {alt[t['sugerencia']]:.0f} BPM")
         if not t["estable"]:
             lineas.append(f"            el tempo varía entre {t['rango'][0]:.0f} y {t['rango'][1]:.0f} BPM")
+        if t.get("aviso"):
+            lineas.append(f"            {t['aviso']}")
     else:
         lineas.append(f"Tempo:      no determinado ({t.get('motivo')})")
 

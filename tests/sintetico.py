@@ -57,16 +57,23 @@ def cancion(
     progresion: list[tuple[str, bool]],
     compases: int,
     subdivision: int = 2,
+    anticipo: float = 0.0,
 ) -> np.ndarray:
-    """Batería + acordes. Cada acorde de `progresion` dura un compás y se repite en ciclo."""
+    """Batería + acordes. Cada acorde de `progresion` dura un compás y se repite en ciclo.
+
+    `anticipo`: fracción de pulso que cada acorde entra antes del primer tiempo (síncopa).
+    """
     pulso = 60.0 / bpm
-    total = compases * pulsos_por_compas * pulso + 1.0
+    compas = pulsos_por_compas * pulso
+    total = compases * compas + 1.0
     y = np.zeros(int(total * FS))
     for c in range(compases):
-        inicio_compas = c * pulsos_por_compas * pulso
+        inicio_compas = c * compas
         raiz, menor = progresion[c % len(progresion)]
+        entra = inicio_compas - (anticipo * pulso if c > 0 else 0.0)
+        sale = inicio_compas + compas - (anticipo * pulso if c < compases - 1 else 0.0)
         for nota in _acorde(raiz, menor):
-            _sumar(y, _tono(_midi_a_hz(nota), pulsos_por_compas * pulso, 0.08), inicio_compas)
+            _sumar(y, _tono(_midi_a_hz(nota), sale - entra, 0.08), entra)
         for p in range(pulsos_por_compas):
             t = inicio_compas + p * pulso
             if p == 0:

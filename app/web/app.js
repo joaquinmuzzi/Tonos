@@ -322,6 +322,7 @@ function dibujarTempo(t) {
     t.regularidad < 0.7
       ? el("p", { class: "aviso" }, "El pulso es irregular (tempo libre o rubato): tomá el número como aproximado.")
       : null,
+    t.aviso ? el("p", { class: "aviso" }, t.aviso) : null,
     el("p", { class: "tenue" }, textoSegundoMetodo(t.segundo_metodo)),
     curvaDeTempo(t.curva, estado.resultado.archivo.duracion)
   );
@@ -511,7 +512,10 @@ function actualizarReproduccion() {
 
   const p = buscar(estado.pulsos, t, null);
   const cerca = p >= 0 && t - estado.pulsos[p] < 0.25;
-  const numero = cerca ? estado.numeros[p] : null;
+  const porCompas = estado.resultado.compas.pulsos_por_compas;
+  let numero = cerca ? estado.numeros[p] : null;
+  // Si falta un primer tiempo, la cuenta seguiría de largo (8, 9, 10…): mejor no mostrar nada
+  if (numero && porCompas && numero > porCompas + 1) numero = null;
   const cuenta = $("cuenta");
   cuenta.textContent = numero ? String(numero) : "";
   cuenta.classList.toggle("uno", numero === 1);

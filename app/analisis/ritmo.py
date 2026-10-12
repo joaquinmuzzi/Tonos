@@ -39,6 +39,37 @@ def envolvente_de_ataques(senal: np.ndarray, fs: int) -> np.ndarray:
     return librosa.onset.onset_strength(y=senal, sr=fs, hop_length=SALTO)
 
 
+def unificar_pulsos(pulsos: np.ndarray, primeros: np.ndarray) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Deja una sola grilla de pulsos, al tempo que domina la canción.
+
+    El detector a veces pasa a marcar el doble de pulsos en un tramo (210 BPM en una canción
+    a 105) o se saltea algunos. Con la grilla despareja no se pueden contar compases: en los
+    tramos al doble se deja un pulso de cada dos (el que sigue la cuenta que venía) y los
+    pulsos salteados se rellenan. Los cambios de tempo reales (que no son el doble ni la
+    mitad) no se tocan.
+    """
+    if len(pulsos) < 8:
+        return pulsos, primeros, {"quitados": 0, "agregados": 0}
+    tipico = float(np.median(np.diff(pulsos)))
+    salida = [float(pulsos[0])]
+    quitados = agregados = 0
+    for t in pulsos[1:]:
+        d = float(t) - salida[-1]
+        if d < 0.7 * tipico:  # pulso de más
+            quitados += 1
+            continue
+        k = round(d / tipico)
+        if 2 <= k <= 8 and abs(d / k - tipico) <= 0.15 * tipico:  # pulsos perdidos
+            salida.extend((salida[-1] + d * np.arange(1, k) / k).tolist())
+            agregados += k - 1
+        salida.append(float(t))
+    nuevos = np.asarray(salida)
+    # Cada primer tiempo pasa al pulso más cercano de la grilla nueva
+    cercanos = [float(nuevos[np.argmin(np.abs(nuevos - p))]) for p in primeros]
+    primeros_nuevos = np.unique([c for c, p in zip(cercanos, primeros) if abs(c - p) <= 0.25 * tipico])
+    return nuevos, primeros_nuevos, {"quitados": quitados, "agregados": agregados}
+
+
 # --- Tempo -------------------------------------------------------------------
 
 

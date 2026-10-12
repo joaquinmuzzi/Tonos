@@ -80,6 +80,34 @@ def test_tempo_sin_error_por_la_grilla_de_20_ms(bpm):
     assert t["rango"][0] - 1 <= t["bpm"] <= t["rango"][1] + 1
 
 
+def test_unificar_tramo_al_doble():
+    # 105 BPM, con un tramo en el medio donde el detector marcó el doble de pulsos
+    normal = _pulsos(105, 40)
+    doble = normal[-1] + np.arange(1, 41) * (60 / 210)
+    final = doble[-1] + np.arange(1, 21) * (60 / 105)
+    pulsos = np.concatenate([normal, doble, final])
+    primeros = pulsos[::4]
+    unificados, primeros_u, info = ritmo.unificar_pulsos(pulsos, primeros)
+    intervalos = np.diff(unificados)
+    assert np.allclose(intervalos, 60 / 105, rtol=0.02)
+    assert info["quitados"] == 20
+    assert set(primeros_u) <= set(unificados)
+
+
+def test_unificar_rellena_pulsos_perdidos():
+    pulsos = np.delete(_pulsos(120, 40), [10, 20, 21])  # uno y dos pulsos perdidos
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, np.array([]))
+    assert info["agregados"] == 3
+    assert np.allclose(unificados, _pulsos(120, 40))
+
+
+def test_unificar_no_toca_un_cambio_de_tempo_real():
+    pulsos = np.concatenate([_pulsos(90, 40), _pulsos(90, 40)[-1] + np.arange(1, 41) * 60 / 140])
+    unificados, _, info = ritmo.unificar_pulsos(pulsos, np.array([]))
+    assert info == {"quitados": 0, "agregados": 0}
+    assert np.array_equal(unificados, pulsos)
+
+
 def test_compases_con_anacrusa():
     pulsos = _pulsos(120, 17)
     lista = ritmo.compases(pulsos, pulsos[1::4], duracion=9.0)
