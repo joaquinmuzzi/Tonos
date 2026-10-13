@@ -122,10 +122,15 @@ instantly, because it is cached. What changed in each version is in [CHANGELOG.m
 
 | What | Reliability | How it is computed |
 |---|---|---|
-| Tempo and beats | High for music with drums; the typical error is double or half the tempo | Beat This! (CPJKU, 2024), checked against a second method (librosa) |
-| Meter | Medium for 3/4 and 4/4; finds 5/4 and 7/4 when the harmony repeats clearly | Counts the beats between downbeats, checks it against how often the harmony and the bass repeat, and looks at whether each beat divides into 2 or 3 |
-| Key | Medium: exact for 7 or 8 songs out of 10; when wrong, usually the relative key or a fifth | S-KEY (Deezer, 2025), checked against a second method based on the chords |
-| Chords | Medium: about 78 % of the time for major/minor, less with sevenths | Consonance-ACE (2025), one chord per beat |
+| Tempo and beats | On solo guitar: beats with an F-measure of 79 %, tempo within 4 % in 76 % of the excerpts and in 93 % counting double or half, the typical error. Optimistic: the beat model was trained on these recordings | Beat This! (CPJKU, 2024), checked against a second method (librosa) |
+| Meter | Not measured yet. In tests by hand: medium for 3/4 and 4/4; finds 5/4 and 7/4 when the harmony repeats clearly | Counts the beats between downbeats, checks it against how often the harmony and the bass repeat, and looks at whether each beat divides into 2 or 3 |
+| Key | Exact for 71 % of 566 electronic dance music excerpts (weighted score 76 %). When wrong: the parallel key 7 %, a fifth away 5 %, the relative key 4 %, something else 13 %. On solo guitar, weighted score 67 % | S-KEY (Deezer, 2025), checked against a second method based on the chords |
+| Chords | On solo guitar comping: right 61 % of the time for major/minor and 45 % with sevenths, from 80 % in rock and singer-songwriter songs down to 35 % in funk | Consonance-ACE (2025), one chord per beat |
+
+These numbers were measured with [`benchmarks/run.py`](benchmarks/run.py) on two public datasets,
+GuitarSet (solo guitar) and GiantSteps (electronic dance music), with Tonos 0.2.0: see
+[benchmarks/results.md](benchmarks/results.md) for every metric, the caveats and how to run it
+again. Neither dataset is a band with vocals, the music Tonos meets most often.
 
 Things to keep in mind:
 
