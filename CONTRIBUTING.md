@@ -144,14 +144,39 @@ fix(notation): spell out-of-key white-key roots without accidentals
 build(deps): bump librosa from 0.11.0 to 1.0.0
 ```
 
+## AI-assisted contributions
+
+You can use AI tools (Claude Code, Codex, Copilot, Cursor…), but say so, as the
+[Linux kernel](https://docs.kernel.org/process/coding-assistants.html) and
+[asbplayer](https://github.com/asbplayer/asbplayer/blob/main/CONTRIBUTING.md) ask:
+
+- **Every commit made with an AI assistant ends with a trailer** naming the tool and the model:
+
+  ```
+  Assisted-by: AGENT_NAME:MODEL_VERSION
+  ```
+
+  For example `Assisted-by: Claude Code:claude-opus-5-5` or `Assisted-by: GitHub Copilot:gpt-5`.
+  Write one line per assistant if you used more than one. Editors, linters and formatters do not
+  count.
+- **The pull request description ends with the same line**, or with `Assisted-by: none` if no AI
+  tool was used. Pull requests are squash-merged and their description becomes the commit message
+  on `main`, so this is where the line stays in the history. CI checks that it is there.
+- **You are responsible for the change**, whoever wrote it: read and understand every line, run
+  `ruff check .`, `ruff format --check .` and the tests yourself, and say in the description what
+  you ran.
+
+Pull requests that were not run, or that are sent in bulk to many projects at once, are closed.
+
 ## Pull requests
 
 1. Fork the repository and create a branch from `main` (for example `fix/meter-in-waltzes`).
 2. Make your change with its tests, and run `ruff check .`, `ruff format .` and the tests.
 3. Open a pull request. Its **title must follow Conventional Commits**: CI checks it, and the
    pull request is squash-merged, so the title becomes the commit message on `main`.
-4. In the description, explain what changes, why, and how you tested it. The template has the
-   sections.
+4. In the description, explain what changes, why, and how you tested it, and end it with the
+   `Assisted-by:` line (see [AI-assisted contributions](#ai-assisted-contributions)). The
+   template has the sections.
 5. CI runs the linter and every test (including the end-to-end ones) on Linux. A maintainer
    reviews the change once it is green.
 
