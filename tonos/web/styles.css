@@ -10,6 +10,8 @@
 }
 
 * { box-sizing: border-box; border-radius: 0; }
+/* `hidden` always hides, also elements whose class sets a display */
+[hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
 /* Thin, square scrollbars in the page colours */
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) var(--bg); }
@@ -39,6 +41,12 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .main { min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .upload, .progress, .error-box { flex: 1; overflow-y: auto; }
 #report:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Online demo: what it is, the song's credit and where to install Tonos */
+.demo-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 18px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.demo-badge { background: var(--accent); color: var(--bg); padding: 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.demo-bar a:last-child { margin-left: auto; color: var(--text); }
+.demo-bar a:hover { color: var(--accent); }
 
 /* Top bar */
 .topbar { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--bg); }
@@ -157,6 +165,8 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   .rail-button { width: 52px; }
   .languages { flex-direction: row; }
   .topbar { flex-wrap: wrap; gap: 10px; padding: 10px 12px; position: sticky; top: 0; z-index: 2; }
+  .demo-bar { padding: 6px 12px; }
+  .demo-bar a:last-child { margin-left: 0; }
   .song { order: -1; flex: 1 1 100%; }
   .star { margin-left: auto; padding: 9px; }
   .star span { display: none; }

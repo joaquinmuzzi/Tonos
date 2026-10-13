@@ -5,6 +5,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   result: null,
   url: null, // local URL of the chosen file, to play it without uploading it again
+  title: null, // shown instead of the file name (in the online demo)
   notation: readPreference("notation", language === "es" ? "solfege" : "letter"),
   detail: readPreference("detail", "simple"),
   beats: [],
@@ -20,6 +21,7 @@ const state = {
 };
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
+const DEMO = window.TONOS_DEMO; // set only in the online demo (static/demo.js)
 const audio = $("audio");
 let audioContext = null;
 
@@ -116,7 +118,7 @@ document.addEventListener("dragover", (e) => e.preventDefault());
 document.addEventListener("drop", (e) => {
   e.preventDefault();
   dropzone.classList.remove("dragover");
-  if (!$("progress").hidden) return; // an analysis is already running
+  if (DEMO || !$("progress").hidden) return; // the demo does not analyze; or one is running
   if (e.dataTransfer && e.dataTransfer.files.length) upload(e.dataTransfer.files[0]);
 });
 
@@ -210,7 +212,7 @@ function showError(message) {
   show("error");
 }
 
-$("retry").addEventListener("click", () => show("upload"));
+$("retry").addEventListener("click", () => (DEMO ? location.reload() : show("upload")));
 $("new-analysis").addEventListener("click", () => {
   stopPlayback();
   state.result = null;
@@ -500,6 +502,7 @@ function setLanguage(code) {
   markButtons();
   if (state.error) $("error-text").textContent = messageText(state.error);
   if (state.result) drawReport();
+  if (DEMO) drawDemoBar();
 }
 
 for (const button of document.querySelectorAll("[data-language]")) {
@@ -575,7 +578,7 @@ function updatePlayback() {
     }
   }
   setSong(
-    state.result.file.name.replace(/\.[^.]+$/, ""),
+    state.title || state.result.file.name.replace(/\.[^.]+$/, ""),
     `${mmss(now)} / ${mmss(duration)} · ${chordName(current)} → ${chordName(next)}`
   );
 
@@ -712,5 +715,38 @@ function stopPlayback() {
   $("beat-count").textContent = "";
 }
 
+// ---------------------------------------------------------------- online demo
+
+/** The demo has no server: it opens one song that is already analyzed (see demo/README.md). */
+async function startDemo() {
+  $("new-analysis").hidden = true;
+  $("install").hidden = false;
+  $("demo-bar").hidden = false;
+  drawDemoBar();
+  try {
+    const response = await fetch(DEMO.result);
+    if (!response.ok) throw new Error(String(response.status));
+    const result = await response.json();
+    state.url = DEMO.audio;
+    state.title = `${DEMO.title} – ${DEMO.author}`;
+    showReport(result);
+  } catch {
+    showError(local("demo_failed"));
+  }
+}
+
+/** Says that this is a demo, credits the song (its licence asks for it) and links to the install. */
+function drawDemoBar() {
+  const link = (href, text) => el("a", { href, target: "_blank", rel: "noopener" }, text);
+  $("demo-bar").replaceChildren(
+    el("span", { class: "demo-badge" }, t("demo_badge")),
+    el("span", { class: "demo-credit" },
+      t("demo_credit", { title: DEMO.title, author: DEMO.author }), " (",
+      link(DEMO.source, "incompetech.com"), ", ", link(DEMO.licenseUrl, DEMO.license), ")"),
+    link("https://github.com/joaquinmuzzi/Tonos#installation", `${t("demo_install")} →`),
+  );
+}
+
 translatePage();
 markButtons();
+if (DEMO) startDemo();

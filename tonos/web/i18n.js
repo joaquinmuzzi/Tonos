@@ -9,6 +9,11 @@
 const MESSAGES = {
   en: {
     // Page
+    rail_install: "install",
+    demo_badge: "demo",
+    demo_credit: "Song: “{title}” by {author}",
+    demo_install: "Install Tonos to analyze your own songs",
+    demo_failed: "Could not load the demo song.",
     rail_analyze: "analyze",
     rail_about: "about",
     state_on: "on",
@@ -169,6 +174,11 @@ const MESSAGES = {
   },
   es: {
     // Page
+    rail_install: "instalar",
+    demo_badge: "demo",
+    demo_credit: "Canción: “{title}” de {author}",
+    demo_install: "Instalá Tonos para analizar tus canciones",
+    demo_failed: "No se pudo cargar la canción de la demo.",
     rail_analyze: "analizar",
     rail_about: "info",
     state_on: "on",
