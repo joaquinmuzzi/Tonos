@@ -9,6 +9,8 @@ note on what to update.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-12
+
 ### Changed
 
 - The project is now called **Tonos** (it was orfeo). It runs with `python -m tonos` and
@@ -21,6 +23,9 @@ note on what to update.
 - Bars in 5/4 and 7/4 start on the right beat in more songs: the bar position now follows the
   bass and the chord changes (also when chords are anticipated by half a beat), instead of the
   beat where the harmony changes the most.
+- `install.ps1` keeps its window open when it is started from Explorer (right-click > Run with
+  PowerShell), so its result or its error can be read, and it reports errors as a single
+  `ERROR:` line.
 
 ## [0.1.0] - 2026-10-12
 
@@ -61,5 +66,6 @@ Compared with the unreleased prototype, everything is now in English. If you use
   the old `%LOCALAPPDATA%\analizador-musical` folder can then be deleted (its saved analyses use
   the old report format and would be recomputed anyway).
 
-[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/joaquinmuzzi/tonos/releases/tag/v0.1.0
