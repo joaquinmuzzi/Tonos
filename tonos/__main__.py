@@ -112,6 +112,17 @@ def _chord_lines(r: dict) -> list[str]:
     return lines
 
 
+def _lab_report(r: dict) -> str:
+    """Return chord segments in the .lab format used by music-research tools."""
+    merged = []
+    for segment in r["chords"]["segments"]:
+        if merged and merged[-1]["label"] == segment["label"]:
+            merged[-1]["end"] = segment["end"]
+        else:
+            merged.append({"start": segment["start"], "end": segment["end"], "label": segment["label"]})
+    return "\n".join(f'{s["start"]:.3f}\t{s["end"]:.3f}\t{s["label"]}' for s in merged)
+
+
 def _text_report(r: dict) -> str:
     lines = [f"File:   {r['file']['name']} ({_mmss(r['file']['duration'])})", ""]
     lines += _tempo_lines(r["tempo"])
@@ -142,7 +153,9 @@ def main() -> None:
         prog="python -m tonos", description="Find the tempo, meter, key and chords of a song."
     )
     p.add_argument("file", nargs="?", help="file to analyze in the terminal (without it, opens the app)")
-    p.add_argument("--json", action="store_true", help="print the full result as JSON")
+    output = p.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", help="print the full result as JSON")
+    output.add_argument("--lab", action="store_true", help="print chords as a .lab file")
     p.add_argument("--port", type=int, default=8765, help="port of the local web app (default: 8765)")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
     p.add_argument("--preload", action="store_true", help="download and test the models")
@@ -175,7 +188,12 @@ def main() -> None:
         except AudioError as e:
             sys.exit(f"\n{e}")
         print("\r" + " " * 60 + "\r", end="", file=sys.stderr)
-        print(json.dumps(result, ensure_ascii=False, indent=2) if args.json else _text_report(result))
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.lab:
+            print(_lab_report(result))
+        else:
+            print(_text_report(result))
         return
 
     url = f"http://127.0.0.1:{args.port}"

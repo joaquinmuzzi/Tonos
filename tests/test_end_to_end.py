@@ -157,3 +157,19 @@ def test_text_report(pop_in_g):
     text = _text_report(pop_in_g)
     for heading in ("File:", "Tempo:", "Meter:", "Key:", "Most used chords:", "First 16 bars:"):
         assert heading in text
+
+
+def test_lab_report(pop_in_g, tmp_path):
+    from tonos.__main__ import _lab_report
+
+    text = _lab_report(pop_in_g)
+    path = tmp_path / "chords.lab"
+    path.write_text(text + "\n", encoding="utf-8")
+    intervals, labels = mir_eval.io.load_labeled_intervals(path)
+
+    segments = pop_in_g["chords"]["segments"]
+    assert len(intervals) == len(labels)
+    assert intervals[0, 0] == pytest.approx(segments[0]["start"], abs=0.001)
+    assert intervals[-1, 1] == pytest.approx(segments[-1]["end"], abs=0.001)
+    assert np.all(intervals[1:, 0] >= intervals[:-1, 1])
+    assert all(a != b for a, b in zip(labels, labels[1:]))
