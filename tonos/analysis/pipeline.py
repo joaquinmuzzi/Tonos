@@ -17,7 +17,11 @@ from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 10  # version of the report format; bumping it invalidates the cached analyses
+VERSION = 11  # version of the report format; bumping it invalidates the cached analyses
+
+# A re-estimated steady beat is used only if its harmony repeats clearly (z-score margin between
+# the best and the second-best bar length, as in periodicity.analyze)
+STEADY_MIN_MARGIN = 0.5
 
 ProgressCallback = Callable[[str, float], None]  # (step code, fraction done)
 
@@ -42,7 +46,7 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
         duration = len(signal) / sr
 
         notify("finding_beats", 0.08)
-        beats, downbeats, downbeat_activation = rhythm.detect_beats(signal, sr)
+        beats, downbeats, activations = rhythm.detect_beats(signal, sr)
         beats, downbeats, unified = rhythm.unify_beats(beats, downbeats)
         envelope = rhythm.onset_envelope(signal, sr)
 
@@ -51,8 +55,18 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
         tempo["unified_beats"] = unified
         corrected = unified["removed"] + unified["added"]
         tempo["warning"] = message("beats_corrected", count=corrected) if corrected >= 8 else None
+        spectrum = None
+        if tempo.get("regularity", 1.0) < rhythm.IRREGULAR_BEATS:
+            steady, spectrum = _steady_beats(signal, sr, beats, activations["beat"], envelope)
+            if steady is not None:
+                # The detector's downbeats belong to the irregular grid: the meter comes from the
+                # repetition of the harmony, and the bars are placed from it
+                beats, downbeats = steady, np.array([])
+                tempo = rhythm.analyze_tempo(beats, envelope, sr)
+                tempo["unified_beats"] = unified
+                tempo["warning"] = message("beats_retracked")
         subdivision = rhythm.analyze_subdivision(beats, envelope, sr)
-        repetition, spectrum = periodicity.analyze(signal, sr, beats, envelope, rhythm.HOP_LENGTH)
+        repetition, spectrum = periodicity.analyze(signal, sr, beats, envelope, rhythm.HOP_LENGTH, spectrum)
         meter = rhythm.analyze_meter(
             beats, downbeats, subdivision, tempo.get("bpm"), tempo.get("confidence", "low"), repetition
         )
@@ -80,7 +94,7 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
             notify("locating_bars", 0.96)
             changes = periodicity.chord_changes_per_beat(beats, raw_segments)
             downbeats, clarity = periodicity.locate_bars(
-                beats, meter["beats_per_bar"], spectrum, sr, changes, downbeat_activation
+                beats, meter["beats_per_bar"], spectrum, sr, changes, activations["downbeat"]
             )
             _finish_grid(meter, clarity, tempo)
         del spectrum
@@ -113,6 +127,23 @@ def analyze(path: Path, progress: ProgressCallback | None = None) -> dict:
         "beats": [round(float(p), 3) for p in beats],
         "downbeats": [round(float(p), 3) for p in downbeats],
     }
+
+
+def _steady_beats(
+    signal, sr, beats, beat_activation, envelope
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """A steady beat grid for irregular detected beats, or None (see rhythm.steady_beat_grids).
+
+    Among the candidate grids, the one whose harmony repeats most clearly wins, and only if that
+    repetition is clear (STEADY_MIN_MARGIN): otherwise the detected beats are kept. Also returns the
+    spectrum, to reuse it.
+    """
+    best, best_margin, spectrum = None, STEADY_MIN_MARGIN, None
+    for _, grid in rhythm.steady_beat_grids(beats, beat_activation):
+        summary, spectrum = periodicity.analyze(signal, sr, grid, envelope, rhythm.HOP_LENGTH, spectrum)
+        if summary is not None and summary["margin"] >= best_margin:
+            best, best_margin = grid, summary["margin"]
+    return best, spectrum
 
 
 def _finish_grid(meter: dict, clarity: float, tempo: dict) -> None:

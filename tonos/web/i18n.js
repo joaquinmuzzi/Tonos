@@ -152,6 +152,8 @@ const MESSAGES = {
     too_few_beats: "Too few beats were detected to estimate the tempo.",
     beats_corrected:
       "In some stretches the detector marked extra beats (double time) or missed some: {count} beats were corrected so that the grid is even and the bars can be counted.",
+    beats_retracked:
+      "The beat detector could not follow a steady beat (a single instrument, pauses or a free tempo), so the beat was estimated again at a steady tempo: the one at which the harmony repeats most clearly. Check it with the click.",
     too_few_downbeats: "Not enough downbeats were detected to estimate the meter.",
     all_beats_downbeats:
       "Almost every detected beat was marked as a downbeat, so the meter could not be counted. This happens with very free music or a lot of rubato.",
@@ -323,6 +325,8 @@ const MESSAGES = {
     too_few_beats: "Se detectaron muy pocos pulsos para estimar el tempo.",
     beats_corrected:
       "En algunos tramos el detector marcó pulsos de más (el doble) o de menos: se corrigieron {count} pulsos para que la grilla quede pareja y se puedan contar los compases.",
+    beats_retracked:
+      "El detector no pudo seguir un pulso estable (un solo instrumento, pausas o tempo libre), así que el pulso se volvió a estimar con un tempo constante: el que hace más clara la repetición de la armonía. Comprobalo con el clic.",
     too_few_downbeats: "No se detectaron suficientes primeros tiempos para estimar el compás.",
     all_beats_downbeats:
       "Casi todos los pulsos detectados quedaron marcados como primer tiempo, así que no se pudo contar el compás. Pasa con música muy libre o con mucho rubato.",

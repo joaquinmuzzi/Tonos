@@ -19,6 +19,10 @@ import numpy as np
 
 from ..messages import Message, message
 
+ACTIVATION_FPS = 50  # frame rate of Beat This!'s activations
+# Below this share of regular intervals the detected beats are not trusted (see steady_beat_grids)
+IRREGULAR_BEATS = 0.6
+STEADY_BPM_RANGE = (55, 170)  # tempos considered when the beat is estimated again
 HOP_LENGTH = 256  # samples per frame of the onset envelope (~11.6 ms at 22050 Hz)
 
 
@@ -33,16 +37,52 @@ def preload() -> None:
     _model()
 
 
-def detect_beats(signal: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Beats and downbeats (seconds), and the downbeat activation per frame (logits, 50 per second)."""
+def detect_beats(signal: np.ndarray, sr: int) -> tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
+    """Beats and downbeats (seconds), and the activations per frame (logits, ACTIVATION_FPS per second):
+    {"beat": ..., "downbeat": ...}."""
     from beat_this.inference import Audio2Frames
 
     model = _model()
     # Same as calling the model, but keeping the activations it computes on the way
     beat_logits, downbeat_logits = Audio2Frames.__call__(model, signal, sr)
     beats, downbeats = model.frames2beats(beat_logits, downbeat_logits)
-    activation = downbeat_logits.detach().cpu().numpy().astype(np.float32)
-    return np.asarray(beats, dtype=float), np.asarray(downbeats, dtype=float), activation
+    activations = {
+        "beat": beat_logits.detach().cpu().numpy().astype(np.float32),
+        "downbeat": downbeat_logits.detach().cpu().numpy().astype(np.float32),
+    }
+    return np.asarray(beats, dtype=float), np.asarray(downbeats, dtype=float), activations
+
+
+def steady_beat_grids(beats: np.ndarray, beat_activation: np.ndarray) -> list[tuple[int, np.ndarray]]:
+    """Beat grids at a steady tempo, for when the detected beats are irregular.
+
+    With a single instrument, pauses or a free tempo, Beat This! may mark every note of a triplet as
+    a beat in some stretches and the real beats in others. Candidates are steady grids at 1, 2, 3
+    and 4 times the detected beat period (within STEADY_BPM_RANGE): for each, the tempo is refined
+    near that period and the beats are placed by dynamic programming on the beat activation.
+    Returns [(multiple, beat times), ...].
+    """
+    if len(beats) < 8 or len(beat_activation) == 0:
+        return []
+    period = float(np.median(np.diff(beats)))
+    probability = 1 / (1 + np.exp(-np.asarray(beat_activation, dtype=float)))
+    # librosa works in frames of hop_length samples at sr; this pair gives ACTIVATION_FPS frames/s
+    sr, hop = ACTIVATION_FPS * 512, 512
+    grids = []
+    for multiple in (1, 2, 3, 4):
+        guess = 60.0 / (multiple * period)
+        if not STEADY_BPM_RANGE[0] <= guess <= STEADY_BPM_RANGE[1]:
+            continue
+        # The nearest tempo the activation supports (a narrow prior around the guess)
+        bpm = float(
+            librosa.feature.tempo(
+                onset_envelope=probability, sr=sr, hop_length=hop, start_bpm=guess, std_bpm=0.1
+            )[0]
+        )
+        _, frames = librosa.beat.beat_track(onset_envelope=probability, sr=sr, hop_length=hop, bpm=bpm)
+        if len(frames) >= 8:
+            grids.append((multiple, np.asarray(frames, dtype=float) / ACTIVATION_FPS))
+    return grids
 
 
 def onset_envelope(signal: np.ndarray, sr: int) -> np.ndarray:

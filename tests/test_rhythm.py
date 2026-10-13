@@ -295,3 +295,47 @@ def test_binary_subdivision():
 
 def test_ternary_subdivision():
     assert _subdivision(3) == "ternary"
+
+
+def _triplet_tracking(bpm, seconds, rng):
+    """What Beat This! does on a lone instrument with a triplet feel: an activation that peaks on
+    every note of the triplet, and detected beats that jump between those notes and the real beats."""
+    triplet = 60.0 / bpm / 3
+    notes = np.arange(0, seconds, triplet)
+    frames = np.arange(int(seconds * 50)) / 50
+    activation = np.full(len(frames), -6.0)
+    for t in notes:
+        activation[np.abs(frames - t) < 0.011] = 4.0 if round(t / triplet) % 3 == 0 else 2.0
+    beats, i = [], 0
+    while i < len(notes):
+        beats.append(notes[i])
+        i += int(rng.choice([1, 1, 3]))  # mostly the triplet notes, sometimes the real beat
+    return np.array(beats), activation
+
+
+def test_steady_beat_grids_include_the_real_beat():
+    beats, activation = _triplet_tracking(80, 60, np.random.default_rng(0))
+    grids = dict(rhythm.steady_beat_grids(beats, activation))
+    assert 3 in grids or 2 in grids  # multiples of the triplet note that fall in 55-170 BPM
+    slow = [g for g in grids.values() if abs(60 / np.median(np.diff(g)) - 80) < 4]
+    assert slow, "no grid near the real 80 BPM"
+    assert np.std(np.diff(slow[0])) < 0.02  # steady
+
+
+def test_irregular_triplet_tracking_is_replaced_by_the_real_beat():
+    from tonos.analysis import pipeline
+
+    bpm, bars = 80, 40
+    y = song(bpm, 4, [("C", False), ("A", True), ("F", False), ("G", False)], bars=bars, subdivision=3)
+    y = librosa_resample(y)
+    beats, activation = _triplet_tracking(bpm, bars * 4 * 60 / bpm, np.random.default_rng(1))
+    envelope = rhythm.onset_envelope(y, 22050)
+    steady, _ = pipeline._steady_beats(y, 22050, beats, activation, envelope)
+    assert steady is not None
+    assert 60 / np.median(np.diff(steady)) == pytest.approx(bpm, rel=0.05)
+
+
+def librosa_resample(y):
+    import librosa
+
+    return librosa.resample(y, orig_sr=FS, target_sr=22050)

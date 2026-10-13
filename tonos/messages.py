@@ -50,6 +50,11 @@ ENGLISH = {
         "In some stretches the detector marked extra beats (double time) or missed some: {count} "
         "beats were corrected so that the grid is even and the bars can be counted."
     ),
+    "beats_retracked": (
+        "The beat detector could not follow a steady beat (a single instrument, pauses or a free "
+        "tempo), so the beat was estimated again at a steady tempo: the one at which the harmony "
+        "repeats most clearly. Check it with the click."
+    ),
     # Meter
     "too_few_downbeats": "Not enough downbeats were detected to estimate the meter.",
     "all_beats_downbeats": (

@@ -9,6 +9,13 @@ note on what to update.
 
 ## [Unreleased]
 
+### Fixed
+
+- Songs with a single instrument, pauses or a free tempo, where the beat detector jumps between
+  the beat and the notes of a triplet (a guitar ballad at 83 BPM came out at 246 BPM in 3/4): when
+  the detected beats are irregular, the beat is estimated again at a steady tempo, the one at which
+  the harmony repeats most clearly, and the report says so.
+
 ## [0.2.0] - 2026-10-12
 
 ### Changed

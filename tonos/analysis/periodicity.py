@@ -93,9 +93,15 @@ def _scores(prominence: np.ndarray) -> dict[int, float]:
 
 
 def analyze(
-    signal: np.ndarray, sr: int, beats: np.ndarray, envelope: np.ndarray, envelope_hop: int
+    signal: np.ndarray,
+    sr: int,
+    beats: np.ndarray,
+    envelope: np.ndarray,
+    envelope_hop: int,
+    spectrum: np.ndarray | None = None,
 ) -> tuple[dict | None, np.ndarray | None]:
-    """Returns (summary, spectrum). The spectrum is reused to locate the bars.
+    """Returns (summary, spectrum). The spectrum is reused to locate the bars (and can be passed in,
+    to analyze several beat grids of the same song without computing it again).
 
     summary = {"scores": {3: z, 4: z, 5: z, 7: z}, "harmony": {...}, "winner": f,
                "margin": difference with the runner-up family}; None if the song has too
@@ -104,7 +110,8 @@ def analyze(
     if len(beats) < 3 * MAX_LAG + 2:
         return None, None
 
-    spectrum = _spectrum(signal, sr)
+    if spectrum is None:
+        spectrum = _spectrum(signal, sr)
     per_beat = _per_beat(spectrum, librosa.time_to_frames(beats, sr=sr, hop_length=CQT_HOP))
     harmony, bass = _fold(per_beat), _fold(per_beat[:36])  # bass: the 3 lowest octaves
 
