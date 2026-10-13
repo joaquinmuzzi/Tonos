@@ -41,3 +41,7 @@ models/
 *.mkv
 *.mov
 *.webm
+
+# The online demo: its song is licensed for redistribution (demo/README.md), and its build
+!demo/carefree.mp3
+_site/

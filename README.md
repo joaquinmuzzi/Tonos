@@ -16,6 +16,11 @@ download the models the first time. The interface is in English and Spanish.
   <img src="docs/screenshots/phone.png" alt="Tonos on a phone: the same report in a single column" width="21.6%">
 </p>
 
+<p align="center">
+  <b><a href="https://joaquinmuzzi.github.io/Tonos/">Try the online demo</a></b>: a song that is already analyzed,
+  in your browser, without installing anything.
+</p>
+
 > [!IMPORTANT]
 > **Model licensing.** The code in this repository is MIT-licensed, but the analysis relies on
 > third-party model weights with their own terms: the S-KEY weights have no stated licence, and

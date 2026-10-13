@@ -1,0 +1,4058 @@
+{
+  "version": 12,
+  "tonos_version": "0.2.0",
+  "file": {
+    "name": "carefree.mp3",
+    "duration": 205.14,
+    "audio_track": 1
+  },
+  "analysis_seconds": 25.6,
+  "tempo": {
+    "bpm": 96.0,
+    "confidence": "high",
+    "alternatives": {
+      "half": 48.0,
+      "double": 192.0
+    },
+    "suggestion": null,
+    "range": [
+      95.6,
+      96.4
+    ],
+    "stable": true,
+    "regularity": 1.0,
+    "curve": [
+      [
+        0.66,
+        96.8
+      ],
+      [
+        1.9,
+        96.3
+      ],
+      [
+        3.16,
+        96.0
+      ],
+      [
+        4.4,
+        96.0
+      ],
+      [
+        5.66,
+        95.6
+      ],
+      [
+        6.9,
+        96.0
+      ],
+      [
+        8.16,
+        96.0
+      ],
+      [
+        9.4,
+        95.6
+      ],
+      [
+        10.66,
+        96.0
+      ],
+      [
+        11.92,
+        95.6
+      ],
+      [
+        13.16,
+        96.0
+      ],
+      [
+        14.42,
+        96.0
+      ],
+      [
+        15.66,
+        96.0
+      ],
+      [
+        16.92,
+        96.0
+      ],
+      [
+        18.16,
+        96.0
+      ],
+      [
+        19.42,
+        96.4
+      ],
+      [
+        20.66,
+        96.0
+      ],
+      [
+        21.9,
+        96.4
+      ],
+      [
+        23.16,
+        96.0
+      ],
+      [
+        24.4,
+        96.0
+      ],
+      [
+        25.66,
+        96.4
+      ],
+      [
+        26.9,
+        96.0
+      ],
+      [
+        28.16,
+        96.0
+      ],
+      [
+        29.4,
+        96.0
+      ],
+      [
+        30.66,
+        95.6
+      ],
+      [
+        31.92,
+        95.6
+      ],
+      [
+        33.16,
+        96.0
+      ],
+      [
+        34.42,
+        95.6
+      ],
+      [
+        35.68,
+        96.0
+      ],
+      [
+        36.92,
+        96.0
+      ],
+      [
+        38.18,
+        96.0
+      ],
+      [
+        39.42,
+        96.4
+      ],
+      [
+        40.66,
+        96.4
+      ],
+      [
+        41.92,
+        96.4
+      ],
+      [
+        43.16,
+        96.0
+      ],
+      [
+        44.42,
+        95.6
+      ],
+      [
+        45.66,
+        96.0
+      ],
+      [
+        46.9,
+        96.0
+      ],
+      [
+        48.16,
+        96.0
+      ],
+      [
+        49.42,
+        96.0
+      ],
+      [
+        50.66,
+        95.6
+      ],
+      [
+        51.92,
+        95.6
+      ],
+      [
+        53.18,
+        96.0
+      ],
+      [
+        54.42,
+        96.0
+      ],
+      [
+        55.66,
+        95.6
+      ],
+      [
+        56.92,
+        96.0
+      ],
+      [
+        58.18,
+        96.0
+      ],
+      [
+        59.4,
+        96.4
+      ],
+      [
+        60.66,
+        96.8
+      ],
+      [
+        61.9,
+        96.4
+      ],
+      [
+        63.16,
+        96.0
+      ],
+      [
+        64.4,
+        96.0
+      ],
+      [
+        65.66,
+        96.0
+      ],
+      [
+        66.9,
+        96.0
+      ],
+      [
+        68.16,
+        96.0
+      ],
+      [
+        69.4,
+        95.6
+      ],
+      [
+        70.68,
+        95.6
+      ],
+      [
+        71.92,
+        95.6
+      ],
+      [
+        73.18,
+        95.6
+      ],
+      [
+        74.42,
+        96.0
+      ],
+      [
+        75.68,
+        96.0
+      ],
+      [
+        76.92,
+        96.0
+      ],
+      [
+        78.18,
+        96.4
+      ],
+      [
+        79.42,
+        96.4
+      ],
+      [
+        80.66,
+        96.0
+      ],
+      [
+        81.9,
+        96.4
+      ],
+      [
+        83.16,
+        96.0
+      ],
+      [
+        84.4,
+        96.0
+      ],
+      [
+        85.66,
+        96.0
+      ],
+      [
+        86.9,
+        96.0
+      ],
+      [
+        88.16,
+        96.0
+      ],
+      [
+        89.42,
+        95.6
+      ],
+      [
+        90.68,
+        95.6
+      ],
+      [
+        91.92,
+        95.6
+      ],
+      [
+        93.18,
+        95.6
+      ],
+      [
+        94.42,
+        96.0
+      ],
+      [
+        95.68,
+        96.4
+      ],
+      [
+        96.94,
+        96.0
+      ],
+      [
+        98.18,
+        96.4
+      ],
+      [
+        99.42,
+        96.0
+      ],
+      [
+        100.66,
+        96.0
+      ],
+      [
+        101.92,
+        96.0
+      ],
+      [
+        103.16,
+        96.0
+      ],
+      [
+        104.42,
+        96.0
+      ],
+      [
+        105.66,
+        96.4
+      ],
+      [
+        106.92,
+        96.4
+      ],
+      [
+        108.16,
+        96.0
+      ],
+      [
+        109.42,
+        96.0
+      ],
+      [
+        110.68,
+        95.6
+      ],
+      [
+        111.92,
+        95.6
+      ],
+      [
+        113.16,
+        96.0
+      ],
+      [
+        114.42,
+        96.0
+      ],
+      [
+        115.66,
+        95.6
+      ],
+      [
+        116.92,
+        96.0
+      ],
+      [
+        118.16,
+        96.4
+      ],
+      [
+        119.4,
+        96.4
+      ],
+      [
+        120.66,
+        96.4
+      ],
+      [
+        121.9,
+        96.4
+      ],
+      [
+        123.16,
+        95.6
+      ],
+      [
+        124.4,
+        96.0
+      ],
+      [
+        125.66,
+        96.0
+      ],
+      [
+        126.9,
+        95.6
+      ],
+      [
+        128.16,
+        96.0
+      ],
+      [
+        129.42,
+        95.6
+      ],
+      [
+        130.68,
+        96.0
+      ],
+      [
+        131.92,
+        96.0
+      ],
+      [
+        133.18,
+        96.0
+      ],
+      [
+        134.42,
+        96.0
+      ],
+      [
+        135.68,
+        96.0
+      ],
+      [
+        136.92,
+        96.0
+      ],
+      [
+        138.18,
+        96.0
+      ],
+      [
+        139.42,
+        96.4
+      ],
+      [
+        140.66,
+        96.0
+      ],
+      [
+        141.92,
+        96.0
+      ],
+      [
+        143.16,
+        96.0
+      ],
+      [
+        144.42,
+        96.0
+      ],
+      [
+        145.66,
+        96.4
+      ],
+      [
+        146.92,
+        96.0
+      ],
+      [
+        148.16,
+        96.0
+      ],
+      [
+        149.42,
+        96.0
+      ],
+      [
+        150.66,
+        95.6
+      ],
+      [
+        151.92,
+        96.0
+      ],
+      [
+        153.18,
+        96.0
+      ],
+      [
+        154.42,
+        95.6
+      ],
+      [
+        155.66,
+        96.0
+      ],
+      [
+        156.92,
+        96.0
+      ],
+      [
+        158.16,
+        96.0
+      ],
+      [
+        159.42,
+        96.4
+      ],
+      [
+        160.66,
+        96.4
+      ],
+      [
+        161.9,
+        96.4
+      ],
+      [
+        163.14,
+        96.0
+      ],
+      [
+        164.4,
+        96.0
+      ],
+      [
+        165.66,
+        95.6
+      ],
+      [
+        166.9,
+        96.0
+      ],
+      [
+        168.16,
+        96.0
+      ],
+      [
+        169.4,
+        95.6
+      ],
+      [
+        170.66,
+        96.0
+      ],
+      [
+        171.92,
+        95.6
+      ],
+      [
+        173.16,
+        96.0
+      ],
+      [
+        174.42,
+        96.0
+      ],
+      [
+        175.66,
+        96.0
+      ],
+      [
+        176.92,
+        96.0
+      ],
+      [
+        178.16,
+        96.0
+      ],
+      [
+        179.42,
+        96.4
+      ],
+      [
+        180.66,
+        96.4
+      ],
+      [
+        181.9,
+        96.4
+      ],
+      [
+        183.14,
+        96.0
+      ],
+      [
+        184.4,
+        96.0
+      ],
+      [
+        185.66,
+        95.6
+      ],
+      [
+        186.9,
+        96.0
+      ],
+      [
+        188.16,
+        96.0
+      ],
+      [
+        189.4,
+        95.6
+      ],
+      [
+        190.66,
+        96.0
+      ],
+      [
+        191.92,
+        95.6
+      ],
+      [
+        193.16,
+        96.0
+      ],
+      [
+        194.42,
+        96.0
+      ],
+      [
+        195.66,
+        96.0
+      ],
+      [
+        196.92,
+        96.0
+      ],
+      [
+        198.16,
+        96.0
+      ],
+      [
+        199.42,
+        96.3
+      ]
+    ],
+    "second_method": {
+      "bpm": 95.7,
+      "relation": "same"
+    },
+    "unified_beats": {
+      "removed": 0,
+      "added": 0
+    },
+    "warning": null
+  },
+  "meter": {
+    "beats_per_bar": 4,
+    "time_signature": "4/4",
+    "swing": false,
+    "alternative": null,
+    "source": "downbeats",
+    "agreement": 1.0,
+    "confidence": "high",
+    "bars_counted": 80,
+    "downbeat_count": 4,
+    "distribution": {
+      "4": 1.0
+    },
+    "subdivision": {
+      "kind": "binary",
+      "ratio": 0.16
+    },
+    "second_method": {
+      "beats": 3,
+      "scores": {
+        "3": -0.09,
+        "4": -0.48,
+        "5": -0.25,
+        "7": -0.32
+      },
+      "confirms": false,
+      "replaces": false,
+      "contradicts": false,
+      "strong": false
+    },
+    "warnings": [],
+    "regrouped_bars": 0
+  },
+  "key": {
+    "best": {
+      "tonic_pc": 5,
+      "mode": "major",
+      "probability": 0.926,
+      "solfege": "Fa",
+      "letter": "F",
+      "scale": {
+        "solfege": [
+          "Fa",
+          "Sol",
+          "La",
+          "Si♭",
+          "Do",
+          "Re",
+          "Mi"
+        ],
+        "letter": [
+          "F",
+          "G",
+          "A",
+          "B♭",
+          "C",
+          "D",
+          "E"
+        ]
+      }
+    },
+    "confidence": "high",
+    "advantage": 127.37,
+    "alternatives": [
+      {
+        "tonic_pc": 2,
+        "mode": "minor",
+        "probability": 0.005,
+        "solfege": "Re",
+        "letter": "D",
+        "reason": "relative"
+      },
+      {
+        "tonic_pc": 10,
+        "mode": "major",
+        "probability": 0.007,
+        "solfege": "Si♭",
+        "letter": "B♭",
+        "reason": "runner_up"
+      }
+    ],
+    "sections": {
+      "windows": [
+        {
+          "start": 0.0,
+          "end": 30.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.937,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 15.0,
+          "end": 45.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.882,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 30.0,
+          "end": 60.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.757,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 45.0,
+          "end": 75.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.915,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 60.0,
+          "end": 90.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.95,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 75.0,
+          "end": 105.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.919,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 90.0,
+          "end": 120.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.779,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 105.0,
+          "end": 135.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.931,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 120.0,
+          "end": 150.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.938,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 135.0,
+          "end": 165.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.931,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 150.0,
+          "end": 180.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.689,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 165.0,
+          "end": 195.0,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.515,
+          "solfege": "Fa",
+          "letter": "F"
+        },
+        {
+          "start": 180.0,
+          "end": 205.1,
+          "tonic_pc": 5,
+          "mode": "major",
+          "probability": 0.403,
+          "solfege": "Fa",
+          "letter": "F"
+        }
+      ],
+      "agreement": 1.0,
+      "changes": []
+    },
+    "second_method": {
+      "agreement": "same",
+      "tonic_pc": 5,
+      "mode": "major",
+      "solfege": "Fa",
+      "letter": "F"
+    }
+  },
+  "tuning": {
+    "cents": -2,
+    "warning": null
+  },
+  "chords": {
+    "segments": [
+      {
+        "start": 0.0,
+        "end": 0.66,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 0.66,
+        "end": 1.28,
+        "label": "D:min",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem",
+        "solfege_simple": "Rem",
+        "letter": "Dm",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 1.28,
+        "end": 1.9,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 1.9,
+        "end": 2.52,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 2.52,
+        "end": 5.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 5.04,
+        "end": 5.66,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 5.66,
+        "end": 6.9,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 6.9,
+        "end": 7.54,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 7.54,
+        "end": 10.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 10.04,
+        "end": 12.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 12.54,
+        "end": 13.8,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 13.8,
+        "end": 15.04,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 15.04,
+        "end": 15.66,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 15.66,
+        "end": 17.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 17.54,
+        "end": 18.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 18.8,
+        "end": 20.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 20.04,
+        "end": 21.9,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 21.9,
+        "end": 22.54,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 22.54,
+        "end": 25.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 25.04,
+        "end": 25.66,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 25.66,
+        "end": 26.9,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 26.9,
+        "end": 27.52,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 27.52,
+        "end": 30.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 30.04,
+        "end": 32.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 32.54,
+        "end": 33.8,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 33.8,
+        "end": 34.42,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 34.42,
+        "end": 35.04,
+        "label": "F:min",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "minor",
+        "solfege": "Fam",
+        "solfege_simple": "Fam",
+        "letter": "Fm",
+        "letter_simple": "Fm"
+      },
+      {
+        "start": 35.04,
+        "end": 35.68,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 35.68,
+        "end": 37.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 37.54,
+        "end": 38.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 38.8,
+        "end": 40.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 40.04,
+        "end": 42.52,
+        "label": "A#:maj(b6)",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major (with added notes)",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 42.52,
+        "end": 43.78,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 43.78,
+        "end": 45.04,
+        "label": "N",
+        "is_chord": false,
+        "root_pc": null,
+        "description": "no chord",
+        "solfege": "—",
+        "letter": "—",
+        "solfege_simple": "—",
+        "letter_simple": "—"
+      },
+      {
+        "start": 45.04,
+        "end": 47.52,
+        "label": "A:min",
+        "is_chord": true,
+        "root_pc": 9,
+        "description": "minor",
+        "solfege": "Lam",
+        "solfege_simple": "Lam",
+        "letter": "Am",
+        "letter_simple": "Am"
+      },
+      {
+        "start": 47.52,
+        "end": 48.78,
+        "label": "D:maj",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "major",
+        "solfege": "Re",
+        "solfege_simple": "Re",
+        "letter": "D",
+        "letter_simple": "D"
+      },
+      {
+        "start": 48.78,
+        "end": 49.42,
+        "label": "N",
+        "is_chord": false,
+        "root_pc": null,
+        "description": "no chord",
+        "solfege": "—",
+        "letter": "—",
+        "solfege_simple": "—",
+        "letter_simple": "—"
+      },
+      {
+        "start": 49.42,
+        "end": 50.04,
+        "label": "D:maj",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "major",
+        "solfege": "Re",
+        "solfege_simple": "Re",
+        "letter": "D",
+        "letter_simple": "D"
+      },
+      {
+        "start": 50.04,
+        "end": 52.54,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 52.54,
+        "end": 54.42,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 54.42,
+        "end": 55.04,
+        "label": "C:maj(b6)",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major (with added notes)",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 55.04,
+        "end": 57.56,
+        "label": "A:min",
+        "is_chord": true,
+        "root_pc": 9,
+        "description": "minor",
+        "solfege": "Lam",
+        "solfege_simple": "Lam",
+        "letter": "Am",
+        "letter_simple": "Am"
+      },
+      {
+        "start": 57.56,
+        "end": 58.8,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 58.8,
+        "end": 59.4,
+        "label": "C:maj(b6)",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major (with added notes)",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 59.4,
+        "end": 60.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 60.04,
+        "end": 60.66,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 60.66,
+        "end": 61.9,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 61.9,
+        "end": 62.52,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 62.52,
+        "end": 65.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 65.04,
+        "end": 65.66,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 65.66,
+        "end": 66.9,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 66.9,
+        "end": 67.52,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 67.52,
+        "end": 70.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 70.04,
+        "end": 70.68,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 70.68,
+        "end": 72.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 72.54,
+        "end": 75.06,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 75.06,
+        "end": 75.68,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 75.68,
+        "end": 77.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 77.54,
+        "end": 78.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 78.8,
+        "end": 79.42,
+        "label": "C:7",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "dominant seventh",
+        "solfege": "Do7",
+        "solfege_simple": "Do",
+        "letter": "C7",
+        "letter_simple": "C"
+      },
+      {
+        "start": 79.42,
+        "end": 80.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 80.04,
+        "end": 81.9,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 81.9,
+        "end": 82.54,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 82.54,
+        "end": 85.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 85.04,
+        "end": 87.54,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 87.54,
+        "end": 90.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 90.04,
+        "end": 90.68,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 90.68,
+        "end": 92.56,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 92.56,
+        "end": 95.06,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 95.06,
+        "end": 97.54,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 97.54,
+        "end": 98.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 98.8,
+        "end": 100.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 100.04,
+        "end": 102.54,
+        "label": "A#:maj(b6)",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major (with added notes)",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 102.54,
+        "end": 103.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 103.8,
+        "end": 105.04,
+        "label": "N",
+        "is_chord": false,
+        "root_pc": null,
+        "description": "no chord",
+        "solfege": "—",
+        "letter": "—",
+        "solfege_simple": "—",
+        "letter_simple": "—"
+      },
+      {
+        "start": 105.04,
+        "end": 107.52,
+        "label": "A:min",
+        "is_chord": true,
+        "root_pc": 9,
+        "description": "minor",
+        "solfege": "Lam",
+        "solfege_simple": "Lam",
+        "letter": "Am",
+        "letter_simple": "Am"
+      },
+      {
+        "start": 107.52,
+        "end": 108.78,
+        "label": "D:maj",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "major",
+        "solfege": "Re",
+        "solfege_simple": "Re",
+        "letter": "D",
+        "letter_simple": "D"
+      },
+      {
+        "start": 108.78,
+        "end": 110.04,
+        "label": "N",
+        "is_chord": false,
+        "root_pc": null,
+        "description": "no chord",
+        "solfege": "—",
+        "letter": "—",
+        "solfege_simple": "—",
+        "letter_simple": "—"
+      },
+      {
+        "start": 110.04,
+        "end": 112.54,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 112.54,
+        "end": 115.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 115.04,
+        "end": 117.56,
+        "label": "A:min",
+        "is_chord": true,
+        "root_pc": 9,
+        "description": "minor",
+        "solfege": "Lam",
+        "solfege_simple": "Lam",
+        "letter": "Am",
+        "letter_simple": "Am"
+      },
+      {
+        "start": 117.56,
+        "end": 118.8,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 118.8,
+        "end": 120.02,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 120.02,
+        "end": 121.9,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 121.9,
+        "end": 122.54,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 122.54,
+        "end": 125.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 125.04,
+        "end": 127.54,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 127.54,
+        "end": 130.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 130.04,
+        "end": 130.68,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 130.68,
+        "end": 132.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 132.54,
+        "end": 135.04,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 135.04,
+        "end": 135.68,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 135.68,
+        "end": 137.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 137.54,
+        "end": 138.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 138.8,
+        "end": 139.42,
+        "label": "C:7",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "dominant seventh",
+        "solfege": "Do7",
+        "solfege_simple": "Do",
+        "letter": "C7",
+        "letter_simple": "C"
+      },
+      {
+        "start": 139.42,
+        "end": 140.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 140.04,
+        "end": 141.28,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 141.28,
+        "end": 141.92,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 141.92,
+        "end": 142.54,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 142.54,
+        "end": 145.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 145.04,
+        "end": 145.66,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 145.66,
+        "end": 147.52,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 147.52,
+        "end": 150.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 150.04,
+        "end": 150.66,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 150.66,
+        "end": 152.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 152.54,
+        "end": 155.04,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 155.04,
+        "end": 156.3,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 156.3,
+        "end": 156.92,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 156.92,
+        "end": 157.54,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 157.54,
+        "end": 158.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 158.8,
+        "end": 160.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 160.04,
+        "end": 161.9,
+        "label": "D:min",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem",
+        "solfege_simple": "Rem",
+        "letter": "Dm",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 161.9,
+        "end": 162.52,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 162.52,
+        "end": 163.14,
+        "label": "F:(1,5)",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "fifth (power chord)",
+        "solfege": "Fa5",
+        "solfege_simple": "Fa5",
+        "letter": "F5",
+        "letter_simple": "F5"
+      },
+      {
+        "start": 163.14,
+        "end": 163.78,
+        "label": "F:(1,5)/5",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "fifth (power chord)",
+        "solfege": "Fa5/Do",
+        "solfege_simple": "Fa5",
+        "letter": "F5/C",
+        "letter_simple": "F5"
+      },
+      {
+        "start": 163.78,
+        "end": 164.4,
+        "label": "F:(5)/5",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "fifth (power chord)",
+        "solfege": "Fa5/Do",
+        "solfege_simple": "Fa5",
+        "letter": "F5/C",
+        "letter_simple": "F5"
+      },
+      {
+        "start": 164.4,
+        "end": 165.04,
+        "label": "C:(1)",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "no third",
+        "solfege": "Do(no3)",
+        "solfege_simple": "Do(no3)",
+        "letter": "C(no3)",
+        "letter_simple": "C(no3)"
+      },
+      {
+        "start": 165.04,
+        "end": 165.66,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 165.66,
+        "end": 166.28,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 166.28,
+        "end": 166.9,
+        "label": "D:min",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem",
+        "solfege_simple": "Rem",
+        "letter": "Dm",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 166.9,
+        "end": 167.54,
+        "label": "F:(1)",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "no third",
+        "solfege": "Fa(no3)",
+        "solfege_simple": "Fa(no3)",
+        "letter": "F(no3)",
+        "letter_simple": "F(no3)"
+      },
+      {
+        "start": 167.54,
+        "end": 168.16,
+        "label": "F:(5)",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "fifth (power chord)",
+        "solfege": "Fa5",
+        "solfege_simple": "Fa5",
+        "letter": "F5",
+        "letter_simple": "F5"
+      },
+      {
+        "start": 168.16,
+        "end": 170.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 170.04,
+        "end": 170.66,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 170.66,
+        "end": 172.54,
+        "label": "G:min/b3",
+        "is_chord": true,
+        "root_pc": 7,
+        "description": "minor",
+        "solfege": "Solm/Si♭",
+        "solfege_simple": "Solm",
+        "letter": "Gm/B♭",
+        "letter_simple": "Gm"
+      },
+      {
+        "start": 172.54,
+        "end": 173.16,
+        "label": "D:min",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem",
+        "solfege_simple": "Rem",
+        "letter": "Dm",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 173.16,
+        "end": 173.8,
+        "label": "D:min/b3",
+        "is_chord": true,
+        "root_pc": 2,
+        "description": "minor",
+        "solfege": "Rem/Fa",
+        "solfege_simple": "Rem",
+        "letter": "Dm/F",
+        "letter_simple": "Dm"
+      },
+      {
+        "start": 173.8,
+        "end": 174.42,
+        "label": "N",
+        "is_chord": false,
+        "root_pc": null,
+        "description": "no chord",
+        "solfege": "—",
+        "letter": "—",
+        "solfege_simple": "—",
+        "letter_simple": "—"
+      },
+      {
+        "start": 174.42,
+        "end": 175.04,
+        "label": "F:(1)",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "no third",
+        "solfege": "Fa(no3)",
+        "solfege_simple": "Fa(no3)",
+        "letter": "F(no3)",
+        "letter_simple": "F(no3)"
+      },
+      {
+        "start": 175.04,
+        "end": 176.3,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 176.3,
+        "end": 177.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 177.54,
+        "end": 178.16,
+        "label": "F:(1,5,6)",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "no third",
+        "solfege": "Fa5",
+        "solfege_simple": "Fa5",
+        "letter": "F5",
+        "letter_simple": "F5"
+      },
+      {
+        "start": 178.16,
+        "end": 178.8,
+        "label": "F:min",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "minor",
+        "solfege": "Fam",
+        "solfege_simple": "Fam",
+        "letter": "Fm",
+        "letter_simple": "Fm"
+      },
+      {
+        "start": 178.8,
+        "end": 180.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 180.04,
+        "end": 180.66,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 180.66,
+        "end": 181.28,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 181.28,
+        "end": 182.52,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 182.52,
+        "end": 185.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 185.04,
+        "end": 185.66,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 185.66,
+        "end": 186.9,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 186.9,
+        "end": 187.54,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 187.54,
+        "end": 190.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 190.04,
+        "end": 192.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 192.54,
+        "end": 193.8,
+        "label": "F:maj6",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "sixth",
+        "solfege": "Fa6",
+        "solfege_simple": "Fa",
+        "letter": "F6",
+        "letter_simple": "F"
+      },
+      {
+        "start": 193.8,
+        "end": 195.04,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 195.04,
+        "end": 196.92,
+        "label": "A#:maj",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "major",
+        "solfege": "Si♭",
+        "solfege_simple": "Si♭",
+        "letter": "B♭",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 196.92,
+        "end": 197.54,
+        "label": "A#:maj6",
+        "is_chord": true,
+        "root_pc": 10,
+        "description": "sixth",
+        "solfege": "Si♭6",
+        "solfege_simple": "Si♭",
+        "letter": "B♭6",
+        "letter_simple": "B♭"
+      },
+      {
+        "start": 197.54,
+        "end": 198.8,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 198.8,
+        "end": 200.04,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      },
+      {
+        "start": 200.04,
+        "end": 200.754,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 200.754,
+        "end": 202.332,
+        "label": "F:(1,5)",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "fifth (power chord)",
+        "solfege": "Fa5",
+        "solfege_simple": "Fa5",
+        "letter": "F5",
+        "letter_simple": "F5"
+      },
+      {
+        "start": 202.332,
+        "end": 203.608,
+        "label": "F:maj",
+        "is_chord": true,
+        "root_pc": 5,
+        "description": "major",
+        "solfege": "Fa",
+        "solfege_simple": "Fa",
+        "letter": "F",
+        "letter_simple": "F"
+      },
+      {
+        "start": 203.608,
+        "end": 204.444,
+        "label": "N",
+        "is_chord": false,
+        "root_pc": null,
+        "description": "no chord",
+        "solfege": "—",
+        "letter": "—",
+        "solfege_simple": "—",
+        "letter_simple": "—"
+      },
+      {
+        "start": 204.444,
+        "end": 205.14,
+        "label": "C:maj",
+        "is_chord": true,
+        "root_pc": 0,
+        "description": "major",
+        "solfege": "Do",
+        "solfege_simple": "Do",
+        "letter": "C",
+        "letter_simple": "C"
+      }
+    ],
+    "summary": [
+      {
+        "solfege": "Do",
+        "letter": "C",
+        "share": 0.27
+      },
+      {
+        "solfege": "Fa",
+        "letter": "F",
+        "share": 0.177
+      },
+      {
+        "solfege": "Si♭6",
+        "letter": "B♭6",
+        "share": 0.128
+      },
+      {
+        "solfege": "Si♭",
+        "letter": "B♭",
+        "share": 0.126
+      },
+      {
+        "solfege": "Fa6",
+        "letter": "F6",
+        "share": 0.11
+      },
+      {
+        "solfege": "Rem/Fa",
+        "letter": "Dm/F",
+        "share": 0.05
+      },
+      {
+        "solfege": "Lam",
+        "letter": "Am",
+        "share": 0.05
+      },
+      {
+        "solfege": "Rem",
+        "letter": "Dm",
+        "share": 0.019
+      },
+      {
+        "solfege": "Fa5",
+        "letter": "F5",
+        "share": 0.017
+      },
+      {
+        "solfege": "Re",
+        "letter": "D",
+        "share": 0.016
+      }
+    ],
+    "summary_simple": [
+      {
+        "solfege": "Fa",
+        "letter": "F",
+        "share": 0.286
+      },
+      {
+        "solfege": "Do",
+        "letter": "C",
+        "share": 0.276
+      },
+      {
+        "solfege": "Si♭",
+        "letter": "B♭",
+        "share": 0.254
+      },
+      {
+        "solfege": "Rem",
+        "letter": "Dm",
+        "share": 0.069
+      },
+      {
+        "solfege": "Lam",
+        "letter": "Am",
+        "share": 0.05
+      },
+      {
+        "solfege": "Fa5",
+        "letter": "F5",
+        "share": 0.024
+      },
+      {
+        "solfege": "Re",
+        "letter": "D",
+        "share": 0.016
+      },
+      {
+        "solfege": "Solm",
+        "letter": "Gm",
+        "share": 0.009
+      },
+      {
+        "solfege": "Fam",
+        "letter": "Fm",
+        "share": 0.006
+      },
+      {
+        "solfege": "Fa(no3)",
+        "letter": "F(no3)",
+        "share": 0.006
+      }
+    ]
+  },
+  "bars": [
+    {
+      "number": 1,
+      "kind": "bar",
+      "start": 0.04,
+      "end": 2.52,
+      "chords": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "number": 2,
+      "kind": "bar",
+      "start": 2.52,
+      "end": 5.04,
+      "chords": [
+        4
+      ]
+    },
+    {
+      "number": 3,
+      "kind": "bar",
+      "start": 5.04,
+      "end": 7.54,
+      "chords": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "number": 4,
+      "kind": "bar",
+      "start": 7.54,
+      "end": 10.04,
+      "chords": [
+        8
+      ]
+    },
+    {
+      "number": 5,
+      "kind": "bar",
+      "start": 10.04,
+      "end": 12.54,
+      "chords": [
+        9
+      ]
+    },
+    {
+      "number": 6,
+      "kind": "bar",
+      "start": 12.54,
+      "end": 15.04,
+      "chords": [
+        10,
+        11
+      ]
+    },
+    {
+      "number": 7,
+      "kind": "bar",
+      "start": 15.04,
+      "end": 17.54,
+      "chords": [
+        12,
+        13
+      ]
+    },
+    {
+      "number": 8,
+      "kind": "bar",
+      "start": 17.54,
+      "end": 20.04,
+      "chords": [
+        14,
+        15
+      ]
+    },
+    {
+      "number": 9,
+      "kind": "bar",
+      "start": 20.04,
+      "end": 22.54,
+      "chords": [
+        16,
+        17
+      ]
+    },
+    {
+      "number": 10,
+      "kind": "bar",
+      "start": 22.54,
+      "end": 25.04,
+      "chords": [
+        18
+      ]
+    },
+    {
+      "number": 11,
+      "kind": "bar",
+      "start": 25.04,
+      "end": 27.52,
+      "chords": [
+        19,
+        20,
+        21
+      ]
+    },
+    {
+      "number": 12,
+      "kind": "bar",
+      "start": 27.52,
+      "end": 30.04,
+      "chords": [
+        22
+      ]
+    },
+    {
+      "number": 13,
+      "kind": "bar",
+      "start": 30.04,
+      "end": 32.54,
+      "chords": [
+        23
+      ]
+    },
+    {
+      "number": 14,
+      "kind": "bar",
+      "start": 32.54,
+      "end": 35.04,
+      "chords": [
+        24,
+        25,
+        26
+      ]
+    },
+    {
+      "number": 15,
+      "kind": "bar",
+      "start": 35.04,
+      "end": 37.54,
+      "chords": [
+        27,
+        28
+      ]
+    },
+    {
+      "number": 16,
+      "kind": "bar",
+      "start": 37.54,
+      "end": 40.04,
+      "chords": [
+        29,
+        30
+      ]
+    },
+    {
+      "number": 17,
+      "kind": "bar",
+      "start": 40.04,
+      "end": 42.52,
+      "chords": [
+        31
+      ]
+    },
+    {
+      "number": 18,
+      "kind": "bar",
+      "start": 42.52,
+      "end": 45.04,
+      "chords": [
+        32,
+        33
+      ]
+    },
+    {
+      "number": 19,
+      "kind": "bar",
+      "start": 45.04,
+      "end": 47.52,
+      "chords": [
+        34
+      ]
+    },
+    {
+      "number": 20,
+      "kind": "bar",
+      "start": 47.52,
+      "end": 50.04,
+      "chords": [
+        35,
+        36,
+        37
+      ]
+    },
+    {
+      "number": 21,
+      "kind": "bar",
+      "start": 50.04,
+      "end": 52.54,
+      "chords": [
+        38
+      ]
+    },
+    {
+      "number": 22,
+      "kind": "bar",
+      "start": 52.54,
+      "end": 55.04,
+      "chords": [
+        39,
+        40
+      ]
+    },
+    {
+      "number": 23,
+      "kind": "bar",
+      "start": 55.04,
+      "end": 57.56,
+      "chords": [
+        41
+      ]
+    },
+    {
+      "number": 24,
+      "kind": "bar",
+      "start": 57.56,
+      "end": 60.04,
+      "chords": [
+        42,
+        43,
+        44
+      ]
+    },
+    {
+      "number": 25,
+      "kind": "bar",
+      "start": 60.04,
+      "end": 62.52,
+      "chords": [
+        45,
+        46,
+        47
+      ]
+    },
+    {
+      "number": 26,
+      "kind": "bar",
+      "start": 62.52,
+      "end": 65.04,
+      "chords": [
+        48
+      ]
+    },
+    {
+      "number": 27,
+      "kind": "bar",
+      "start": 65.04,
+      "end": 67.52,
+      "chords": [
+        49,
+        50,
+        51
+      ]
+    },
+    {
+      "number": 28,
+      "kind": "bar",
+      "start": 67.52,
+      "end": 70.04,
+      "chords": [
+        52
+      ]
+    },
+    {
+      "number": 29,
+      "kind": "bar",
+      "start": 70.04,
+      "end": 72.54,
+      "chords": [
+        53,
+        54
+      ]
+    },
+    {
+      "number": 30,
+      "kind": "bar",
+      "start": 72.54,
+      "end": 75.06,
+      "chords": [
+        55
+      ]
+    },
+    {
+      "number": 31,
+      "kind": "bar",
+      "start": 75.06,
+      "end": 77.54,
+      "chords": [
+        56,
+        57
+      ]
+    },
+    {
+      "number": 32,
+      "kind": "bar",
+      "start": 77.54,
+      "end": 80.04,
+      "chords": [
+        58,
+        59,
+        60
+      ]
+    },
+    {
+      "number": 33,
+      "kind": "bar",
+      "start": 80.04,
+      "end": 82.54,
+      "chords": [
+        61,
+        62
+      ]
+    },
+    {
+      "number": 34,
+      "kind": "bar",
+      "start": 82.54,
+      "end": 85.04,
+      "chords": [
+        63
+      ]
+    },
+    {
+      "number": 35,
+      "kind": "bar",
+      "start": 85.04,
+      "end": 87.54,
+      "chords": [
+        64
+      ]
+    },
+    {
+      "number": 36,
+      "kind": "bar",
+      "start": 87.54,
+      "end": 90.04,
+      "chords": [
+        65
+      ]
+    },
+    {
+      "number": 37,
+      "kind": "bar",
+      "start": 90.04,
+      "end": 92.56,
+      "chords": [
+        66,
+        67
+      ]
+    },
+    {
+      "number": 38,
+      "kind": "bar",
+      "start": 92.56,
+      "end": 95.06,
+      "chords": [
+        68
+      ]
+    },
+    {
+      "number": 39,
+      "kind": "bar",
+      "start": 95.06,
+      "end": 97.54,
+      "chords": [
+        69
+      ]
+    },
+    {
+      "number": 40,
+      "kind": "bar",
+      "start": 97.54,
+      "end": 100.04,
+      "chords": [
+        70,
+        71
+      ]
+    },
+    {
+      "number": 41,
+      "kind": "bar",
+      "start": 100.04,
+      "end": 102.54,
+      "chords": [
+        72
+      ]
+    },
+    {
+      "number": 42,
+      "kind": "bar",
+      "start": 102.54,
+      "end": 105.04,
+      "chords": [
+        73,
+        74
+      ]
+    },
+    {
+      "number": 43,
+      "kind": "bar",
+      "start": 105.04,
+      "end": 107.52,
+      "chords": [
+        75
+      ]
+    },
+    {
+      "number": 44,
+      "kind": "bar",
+      "start": 107.52,
+      "end": 110.04,
+      "chords": [
+        76,
+        77
+      ]
+    },
+    {
+      "number": 45,
+      "kind": "bar",
+      "start": 110.04,
+      "end": 112.54,
+      "chords": [
+        78
+      ]
+    },
+    {
+      "number": 46,
+      "kind": "bar",
+      "start": 112.54,
+      "end": 115.04,
+      "chords": [
+        79
+      ]
+    },
+    {
+      "number": 47,
+      "kind": "bar",
+      "start": 115.04,
+      "end": 117.56,
+      "chords": [
+        80
+      ]
+    },
+    {
+      "number": 48,
+      "kind": "bar",
+      "start": 117.56,
+      "end": 120.02,
+      "chords": [
+        81,
+        82
+      ]
+    },
+    {
+      "number": 49,
+      "kind": "bar",
+      "start": 120.02,
+      "end": 122.54,
+      "chords": [
+        83,
+        84
+      ]
+    },
+    {
+      "number": 50,
+      "kind": "bar",
+      "start": 122.54,
+      "end": 125.04,
+      "chords": [
+        85
+      ]
+    },
+    {
+      "number": 51,
+      "kind": "bar",
+      "start": 125.04,
+      "end": 127.54,
+      "chords": [
+        86
+      ]
+    },
+    {
+      "number": 52,
+      "kind": "bar",
+      "start": 127.54,
+      "end": 130.04,
+      "chords": [
+        87
+      ]
+    },
+    {
+      "number": 53,
+      "kind": "bar",
+      "start": 130.04,
+      "end": 132.54,
+      "chords": [
+        88,
+        89
+      ]
+    },
+    {
+      "number": 54,
+      "kind": "bar",
+      "start": 132.54,
+      "end": 135.04,
+      "chords": [
+        90
+      ]
+    },
+    {
+      "number": 55,
+      "kind": "bar",
+      "start": 135.04,
+      "end": 137.54,
+      "chords": [
+        91,
+        92
+      ]
+    },
+    {
+      "number": 56,
+      "kind": "bar",
+      "start": 137.54,
+      "end": 140.04,
+      "chords": [
+        93,
+        94,
+        95
+      ]
+    },
+    {
+      "number": 57,
+      "kind": "bar",
+      "start": 140.04,
+      "end": 142.54,
+      "chords": [
+        96,
+        97,
+        98
+      ]
+    },
+    {
+      "number": 58,
+      "kind": "bar",
+      "start": 142.54,
+      "end": 145.04,
+      "chords": [
+        99
+      ]
+    },
+    {
+      "number": 59,
+      "kind": "bar",
+      "start": 145.04,
+      "end": 147.52,
+      "chords": [
+        100,
+        101
+      ]
+    },
+    {
+      "number": 60,
+      "kind": "bar",
+      "start": 147.52,
+      "end": 150.04,
+      "chords": [
+        102
+      ]
+    },
+    {
+      "number": 61,
+      "kind": "bar",
+      "start": 150.04,
+      "end": 152.54,
+      "chords": [
+        103,
+        104
+      ]
+    },
+    {
+      "number": 62,
+      "kind": "bar",
+      "start": 152.54,
+      "end": 155.04,
+      "chords": [
+        105
+      ]
+    },
+    {
+      "number": 63,
+      "kind": "bar",
+      "start": 155.04,
+      "end": 157.54,
+      "chords": [
+        106,
+        107,
+        108
+      ]
+    },
+    {
+      "number": 64,
+      "kind": "bar",
+      "start": 157.54,
+      "end": 160.04,
+      "chords": [
+        109,
+        110
+      ]
+    },
+    {
+      "number": 65,
+      "kind": "bar",
+      "start": 160.04,
+      "end": 162.52,
+      "chords": [
+        111,
+        112
+      ]
+    },
+    {
+      "number": 66,
+      "kind": "bar",
+      "start": 162.52,
+      "end": 165.04,
+      "chords": [
+        113,
+        114,
+        115,
+        116
+      ]
+    },
+    {
+      "number": 67,
+      "kind": "bar",
+      "start": 165.04,
+      "end": 167.54,
+      "chords": [
+        117,
+        118,
+        119,
+        120
+      ]
+    },
+    {
+      "number": 68,
+      "kind": "bar",
+      "start": 167.54,
+      "end": 170.04,
+      "chords": [
+        121,
+        122
+      ]
+    },
+    {
+      "number": 69,
+      "kind": "bar",
+      "start": 170.04,
+      "end": 172.54,
+      "chords": [
+        123,
+        124
+      ]
+    },
+    {
+      "number": 70,
+      "kind": "bar",
+      "start": 172.54,
+      "end": 175.04,
+      "chords": [
+        125,
+        126,
+        127,
+        128
+      ]
+    },
+    {
+      "number": 71,
+      "kind": "bar",
+      "start": 175.04,
+      "end": 177.54,
+      "chords": [
+        129,
+        130
+      ]
+    },
+    {
+      "number": 72,
+      "kind": "bar",
+      "start": 177.54,
+      "end": 180.04,
+      "chords": [
+        131,
+        132,
+        133
+      ]
+    },
+    {
+      "number": 73,
+      "kind": "bar",
+      "start": 180.04,
+      "end": 182.52,
+      "chords": [
+        134,
+        135,
+        136
+      ]
+    },
+    {
+      "number": 74,
+      "kind": "bar",
+      "start": 182.52,
+      "end": 185.04,
+      "chords": [
+        137
+      ]
+    },
+    {
+      "number": 75,
+      "kind": "bar",
+      "start": 185.04,
+      "end": 187.54,
+      "chords": [
+        138,
+        139,
+        140
+      ]
+    },
+    {
+      "number": 76,
+      "kind": "bar",
+      "start": 187.54,
+      "end": 190.04,
+      "chords": [
+        141
+      ]
+    },
+    {
+      "number": 77,
+      "kind": "bar",
+      "start": 190.04,
+      "end": 192.54,
+      "chords": [
+        142
+      ]
+    },
+    {
+      "number": 78,
+      "kind": "bar",
+      "start": 192.54,
+      "end": 195.04,
+      "chords": [
+        143,
+        144
+      ]
+    },
+    {
+      "number": 79,
+      "kind": "bar",
+      "start": 195.04,
+      "end": 197.54,
+      "chords": [
+        145,
+        146
+      ]
+    },
+    {
+      "number": 80,
+      "kind": "bar",
+      "start": 197.54,
+      "end": 200.04,
+      "chords": [
+        147,
+        148
+      ]
+    },
+    {
+      "number": 81,
+      "kind": "bar",
+      "start": 200.04,
+      "end": 205.1395918367347,
+      "chords": [
+        149,
+        150,
+        151,
+        152,
+        153
+      ]
+    }
+  ],
+  "beats": [
+    0.04,
+    0.66,
+    1.28,
+    1.9,
+    2.52,
+    3.16,
+    3.78,
+    4.4,
+    5.04,
+    5.66,
+    6.28,
+    6.9,
+    7.54,
+    8.16,
+    8.78,
+    9.4,
+    10.04,
+    10.66,
+    11.3,
+    11.92,
+    12.54,
+    13.16,
+    13.8,
+    14.42,
+    15.04,
+    15.66,
+    16.3,
+    16.92,
+    17.54,
+    18.16,
+    18.8,
+    19.42,
+    20.04,
+    20.66,
+    21.28,
+    21.9,
+    22.54,
+    23.16,
+    23.78,
+    24.4,
+    25.04,
+    25.66,
+    26.28,
+    26.9,
+    27.52,
+    28.16,
+    28.78,
+    29.4,
+    30.04,
+    30.66,
+    31.28,
+    31.92,
+    32.54,
+    33.16,
+    33.8,
+    34.42,
+    35.04,
+    35.68,
+    36.3,
+    36.92,
+    37.54,
+    38.18,
+    38.8,
+    39.42,
+    40.04,
+    40.66,
+    41.28,
+    41.92,
+    42.52,
+    43.16,
+    43.78,
+    44.42,
+    45.04,
+    45.66,
+    46.3,
+    46.9,
+    47.52,
+    48.16,
+    48.78,
+    49.42,
+    50.04,
+    50.66,
+    51.3,
+    51.92,
+    52.54,
+    53.18,
+    53.8,
+    54.42,
+    55.04,
+    55.66,
+    56.3,
+    56.92,
+    57.56,
+    58.18,
+    58.8,
+    59.4,
+    60.04,
+    60.66,
+    61.28,
+    61.9,
+    62.52,
+    63.16,
+    63.78,
+    64.4,
+    65.04,
+    65.66,
+    66.28,
+    66.9,
+    67.52,
+    68.16,
+    68.78,
+    69.4,
+    70.04,
+    70.68,
+    71.3,
+    71.92,
+    72.54,
+    73.18,
+    73.8,
+    74.42,
+    75.06,
+    75.68,
+    76.3,
+    76.92,
+    77.54,
+    78.18,
+    78.8,
+    79.42,
+    80.04,
+    80.66,
+    81.28,
+    81.9,
+    82.54,
+    83.16,
+    83.78,
+    84.4,
+    85.04,
+    85.66,
+    86.28,
+    86.9,
+    87.54,
+    88.16,
+    88.78,
+    89.42,
+    90.04,
+    90.68,
+    91.3,
+    91.92,
+    92.56,
+    93.18,
+    93.8,
+    94.42,
+    95.06,
+    95.68,
+    96.3,
+    96.94,
+    97.54,
+    98.18,
+    98.8,
+    99.42,
+    100.04,
+    100.66,
+    101.3,
+    101.92,
+    102.54,
+    103.16,
+    103.8,
+    104.42,
+    105.04,
+    105.66,
+    106.3,
+    106.92,
+    107.52,
+    108.16,
+    108.78,
+    109.42,
+    110.04,
+    110.68,
+    111.3,
+    111.92,
+    112.54,
+    113.16,
+    113.8,
+    114.42,
+    115.04,
+    115.66,
+    116.3,
+    116.92,
+    117.56,
+    118.16,
+    118.8,
+    119.4,
+    120.02,
+    120.66,
+    121.28,
+    121.9,
+    122.54,
+    123.16,
+    123.78,
+    124.4,
+    125.04,
+    125.66,
+    126.28,
+    126.9,
+    127.54,
+    128.16,
+    128.8,
+    129.42,
+    130.04,
+    130.68,
+    131.3,
+    131.92,
+    132.54,
+    133.18,
+    133.8,
+    134.42,
+    135.04,
+    135.68,
+    136.3,
+    136.92,
+    137.54,
+    138.18,
+    138.8,
+    139.42,
+    140.04,
+    140.66,
+    141.28,
+    141.92,
+    142.54,
+    143.16,
+    143.8,
+    144.42,
+    145.04,
+    145.66,
+    146.28,
+    146.92,
+    147.52,
+    148.16,
+    148.8,
+    149.42,
+    150.04,
+    150.66,
+    151.28,
+    151.92,
+    152.54,
+    153.18,
+    153.8,
+    154.42,
+    155.04,
+    155.66,
+    156.3,
+    156.92,
+    157.54,
+    158.16,
+    158.8,
+    159.42,
+    160.04,
+    160.66,
+    161.28,
+    161.9,
+    162.52,
+    163.14,
+    163.78,
+    164.4,
+    165.04,
+    165.66,
+    166.28,
+    166.9,
+    167.54,
+    168.16,
+    168.78,
+    169.4,
+    170.04,
+    170.66,
+    171.3,
+    171.92,
+    172.54,
+    173.16,
+    173.8,
+    174.42,
+    175.04,
+    175.66,
+    176.3,
+    176.92,
+    177.54,
+    178.16,
+    178.8,
+    179.42,
+    180.04,
+    180.66,
+    181.28,
+    181.9,
+    182.52,
+    183.14,
+    183.78,
+    184.4,
+    185.04,
+    185.66,
+    186.28,
+    186.9,
+    187.54,
+    188.16,
+    188.78,
+    189.4,
+    190.04,
+    190.66,
+    191.3,
+    191.92,
+    192.54,
+    193.16,
+    193.8,
+    194.42,
+    195.04,
+    195.66,
+    196.3,
+    196.92,
+    197.54,
+    198.16,
+    198.8,
+    199.42,
+    200.04
+  ],
+  "downbeats": [
+    0.04,
+    2.52,
+    5.04,
+    7.54,
+    10.04,
+    12.54,
+    15.04,
+    17.54,
+    20.04,
+    22.54,
+    25.04,
+    27.52,
+    30.04,
+    32.54,
+    35.04,
+    37.54,
+    40.04,
+    42.52,
+    45.04,
+    47.52,
+    50.04,
+    52.54,
+    55.04,
+    57.56,
+    60.04,
+    62.52,
+    65.04,
+    67.52,
+    70.04,
+    72.54,
+    75.06,
+    77.54,
+    80.04,
+    82.54,
+    85.04,
+    87.54,
+    90.04,
+    92.56,
+    95.06,
+    97.54,
+    100.04,
+    102.54,
+    105.04,
+    107.52,
+    110.04,
+    112.54,
+    115.04,
+    117.56,
+    120.02,
+    122.54,
+    125.04,
+    127.54,
+    130.04,
+    132.54,
+    135.04,
+    137.54,
+    140.04,
+    142.54,
+    145.04,
+    147.52,
+    150.04,
+    152.54,
+    155.04,
+    157.54,
+    160.04,
+    162.52,
+    165.04,
+    167.54,
+    170.04,
+    172.54,
+    175.04,
+    177.54,
+    180.04,
+    182.52,
+    185.04,
+    187.54,
+    190.04,
+    192.54,
+    195.04,
+    197.54,
+    200.04
+  ]
+}

@@ -11,6 +11,9 @@ note on what to update.
 
 ### Added
 
+- An [online demo](https://joaquinmuzzi.github.io/Tonos/) on GitHub Pages: the same page with a
+  song that is already analyzed ("Carefree" by Kevin MacLeod, CC BY 3.0), to try the player,
+  the click and the grid without installing anything. See `demo/README.md`.
 - The report lists the seven notes of the key's scale (`key.best.scale`), spelled for the key, in
   both notations.
 

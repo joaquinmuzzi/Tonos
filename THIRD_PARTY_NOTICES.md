@@ -25,6 +25,15 @@ downloaded from its authors' server on first use.
 of this project. If you plan to use it in a commercial product or service, review the licence and
 training-data terms of each model first, and consider contacting their authors.
 
+## Demo song
+
+The [online demo](https://joaquinmuzzi.github.io/Tonos/) plays "Carefree" by Kevin MacLeod
+([incompetech.com](https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400037)),
+licensed under [Creative Commons: By Attribution 3.0](https://creativecommons.org/licenses/by/3.0/).
+The file in `demo/carefree.mp3` comes from
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Carefree_(ISRC_USUAN1400037).mp3)
+and was re-encoded at 128 kbps; the music is unchanged. It is not covered by the MIT License.
+
 ## Libraries
 
 Main runtime dependencies and the licences declared in their package metadata:
