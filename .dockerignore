@@ -1,0 +1,6 @@
+# The image only needs the app and the list of its dependencies
+*
+!requirements.txt
+!constraints.txt
+!tonos/
+**/__pycache__

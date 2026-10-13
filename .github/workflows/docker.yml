@@ -1,0 +1,147 @@
+name: Docker
+
+# Builds the image and tries it on every change to it; publishes it on GitHub Container Registry
+# (ghcr.io/joaquinmuzzi/tonos) when a version tag such as v0.3.0 is pushed.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - "requirements.txt"
+      - "constraints.txt"
+      - "tonos/__main__.py"
+      - ".github/workflows/docker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/joaquinmuzzi/tonos
+
+jobs:
+  test:
+    name: build and try
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the image (linux/amd64)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: tonos:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The image has an audio-only ffmpeg: check it reads every common format, also in videos
+      - name: Make test files in several formats
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+          mkdir media && cd media
+          # 20 s of a plucked note every half second (120 BPM)
+          ffmpeg -loglevel error -f lavfi -i 'aevalsrc=0.5*sin(2*PI*220*t)*exp(-20*mod(t\,0.5)):d=20' beat.wav
+          for name in beat.mp3 beat.m4a beat.ogg beat.opus beat.flac beat.wma beat.aiff; do
+            ffmpeg -loglevel error -i beat.wav "$name"
+          done
+          video='testsrc=size=160x120:rate=10:duration=20'
+          ffmpeg -loglevel error -f lavfi -i "$video" -i beat.wav -c:v libx264 -c:a aac -shortest video.mp4
+          ffmpeg -loglevel error -f lavfi -i "$video" -i beat.wav -c:v libvpx-vp9 -c:a libopus -shortest video.webm
+          ffmpeg -loglevel error -f lavfi -i "$video" -i beat.wav -c:v mpeg4 -c:a ac3 -shortest video.mkv
+          ls -l
+
+      - name: Read them and analyze one inside the container, without network
+        run: |
+          docker run --rm --network none tonos:test python -m tonos --version
+          docker run --rm --network none -v "$PWD/media:/media:ro" tonos:test python -c '
+          from pathlib import Path
+          from tonos.analysis.audio import read_audio
+          for path in sorted(Path("/media").iterdir()):
+              signal, sr, track = read_audio(path, Path("/tmp/audio.wav"))
+              print(f"{path.name}: {len(signal) / sr:.1f} s")
+          '
+          docker run --rm --network none -v "$PWD/media:/media:ro" tonos:test python -m tonos /media/video.mp4
+
+      - name: Serve the web app
+        run: |
+          docker run -d --name tonos -p 127.0.0.1:8765:8765 tonos:test
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8765/ > /dev/null && break; sleep 2; done
+          curl -fs http://127.0.0.1:8765/ | grep -q "<title>Tonos</title>"
+          curl -fs http://127.0.0.1:8765/static/app.js > /dev/null
+          docker logs tonos
+          docker rm -f tonos
+
+      - name: Report the image size
+        run: |
+          size=$(docker image inspect tonos:test --format '{{.Size}}')
+          compressed=$(docker save tonos:test | gzip -1 | wc -c)
+          {
+            echo "### Image size (linux/amd64)"
+            echo "- Uncompressed: $((size / 1000000)) MB"
+            echo "- Download (gzip, approximate): $((compressed / 1000000)) MB"
+            echo
+            echo '```'
+            docker history tonos:test --format '{{.Size}}\t{{.CreatedBy}}' | cut -c1-140
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Also builds for linux/arm64 (Apple silicon, Raspberry Pi), emulated
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          # v0.3.0 -> 0.3.0, 0.3 and latest
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=Tonos
+            org.opencontainers.image.description=Finds the tempo, meter, key and chords of a song, on your computer.
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

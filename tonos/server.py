@@ -23,9 +23,11 @@ from .analysis.audio import AudioError
 from .messages import message
 
 WEB = Path(__file__).parent / "web"
-# %LOCALAPPDATA%\tonos on Windows (next to the installer's venv), ~/.cache/tonos elsewhere
-DATA_DIR = (
-    Path(os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+# %LOCALAPPDATA%\tonos on Windows (next to the installer's venv), ~/.cache/tonos elsewhere;
+# TONOS_DATA_DIR overrides it (the Docker image keeps it in a volume)
+DATA_DIR = Path(
+    os.environ.get("TONOS_DATA_DIR")
+    or Path(os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     / "tonos"
 )
 CACHE_DIR = DATA_DIR / "cache"

@@ -1,0 +1,16 @@
+# Tonos at http://127.0.0.1:8765:  docker compose up
+# Uses the published image; if it cannot be pulled, it builds it from this folder (10 to 15 minutes).
+services:
+  tonos:
+    image: ghcr.io/joaquinmuzzi/tonos:latest
+    build: .
+    ports:
+      # Only this computer: the app has no login
+      - "127.0.0.1:8765:8765"
+    volumes:
+      # Finished analyses, kept between runs
+      - tonos-data:/data
+    restart: unless-stopped
+
+volumes:
+  tonos-data:

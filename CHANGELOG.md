@@ -14,6 +14,11 @@ note on what to update.
 - `install.sh` and `tonos.sh`, the installer and the launcher for macOS and Linux, equivalent to
   `install.ps1` and `tonos.bat`. The environment goes in `~/.local/share/tonos/venv`. A CI job
   installs Tonos with them on Ubuntu and macOS.
+- A Docker image, `ghcr.io/joaquinmuzzi/tonos`, with the models inside so it works offline, and a
+  `docker-compose.yml` that keeps the analyses in a volume. It is published for `linux/amd64` and
+  `linux/arm64` with each version tag.
+- `--host`, the address the web app listens on (default `127.0.0.1`; the image uses `0.0.0.0`),
+  and the `TONOS_DATA_DIR` environment variable, which moves the folder of cached analyses.
 - An [online demo](https://joaquinmuzzi.github.io/Tonos/) on GitHub Pages: the same page with a
   song that is already analyzed ("Carefree" by Kevin MacLeod, CC BY 3.0), to try the player,
   the click and the grid without installing anything. See `demo/README.md`.

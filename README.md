@@ -91,6 +91,21 @@ has it.
 
 Running either installer again updates the environment instead of creating it from scratch.
 
+### Docker
+
+If you would rather not install Python, run the image, which has everything inside, the models
+included, so it works offline:
+
+```bash
+docker run -p 8765:8765 ghcr.io/joaquinmuzzi/tonos
+```
+
+Then open http://127.0.0.1:8765. `-p 8765:8765` also lets other devices on your network reach the
+app, which has no login; use `-p 127.0.0.1:8765:8765` to keep it on your computer. To keep the
+analyses between runs, add `-v tonos-data:/data`, or use `docker compose up` in this folder,
+which does both. The image is built for `linux/amd64` and `linux/arm64` (Apple silicon) and
+published with each version; `docker build -t tonos .` builds it from this folder.
+
 ## Usage
 
 - **Web app:** double-click `tonos.bat` on Windows, or run `./tonos.sh` on macOS and Linux. The
@@ -143,7 +158,8 @@ The code is in [`tonos/analysis`](tonos/analysis), one module per step.
 - `%LOCALAPPDATA%\tonos\venv` on Windows, `~/.local/share/tonos/venv` on macOS and Linux: the
   Python environment the installers create.
 - `%LOCALAPPDATA%\tonos\cache` (`~/.cache/tonos/cache` on macOS and Linux): finished analyses,
-  small JSON files.
+  small JSON files. The `TONOS_DATA_DIR` environment variable moves this folder; the Docker image
+  sets it to `/data`, its volume.
 - `~/.cache/torch/hub/checkpoints/beat_this-final0.ckpt`: the beat model (77 MB).
 
 To uninstall, delete those and this folder. Versions before 0.1.0 used

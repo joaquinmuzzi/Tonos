@@ -3,7 +3,8 @@
 python -m tonos                 opens the app in the browser
 python -m tonos song.mp4        analyzes a file and prints the result in the terminal
 python -m tonos song.mp4 --json
-python -m tonos --preload       downloads and tests the models (used by install.ps1)
+python -m tonos --preload       downloads and tests the models (used by the installers)
+python -m tonos --host 0.0.0.0  lets other devices reach the app (used by the Docker image)
 """
 
 from __future__ import annotations
@@ -143,6 +144,12 @@ def main() -> None:
     )
     p.add_argument("file", nargs="?", help="file to analyze in the terminal (without it, opens the app)")
     p.add_argument("--json", action="store_true", help="print the full result as JSON")
+    p.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="address the web app listens on (default: 127.0.0.1, only this computer; "
+        "0.0.0.0 inside a container)",
+    )
     p.add_argument("--port", type=int, default=8765, help="port of the local web app (default: 8765)")
     p.add_argument("--no-browser", action="store_true", help="do not open the browser")
     p.add_argument("--preload", action="store_true", help="download and test the models")
@@ -193,7 +200,10 @@ def main() -> None:
     if not args.no_browser:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
     print(f"Tonos is running at {url}  (close this window or press Ctrl+C to quit)")
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        # The app has no login: on another address, anyone who can reach it can use it
+        print(f"It listens on {args.host}: other devices that can reach this address can use it too.")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":
