@@ -1,25 +1,43 @@
 # Tonos
 
+**The tempo, meter, key and chords of a song, bar by bar, worked out on your own computer.**
+
+<p>
+  <a href="https://joaquinmuzzi.github.io/Tonos/"><img src="https://img.shields.io/badge/%E2%96%B6%20Try%20the%20online%20demo-ef9f27?style=for-the-badge" alt="Try the online demo"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/Install-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20Docker-2a2a2a?style=for-the-badge" alt="Install on Windows, macOS, Linux or with Docker"></a>
+</p>
+
 [![Tests](https://github.com/joaquinmuzzi/tonos/actions/workflows/tests.yml/badge.svg)](https://github.com/joaquinmuzzi/tonos/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Tonos listens to a song and tells you its **tempo**, **meter**, **key** and **chords**, bar by
-bar. Drop in an audio or video file (MP4, MP3, M4A, WAV, FLAC, MKV…) and you get a report with
-a player that shows the chord being played and an optional click on every beat, so you can check
-the analysis by ear.
+Drop in an audio or video file (MP4, MP3, M4A, WAV, FLAC, MKV…) and Tonos shows its chords on a
+bar-by-bar grid, with a player that follows the song and an optional click on every beat, so you
+can check the analysis by ear.
 
-Everything runs on your computer: files never leave it, and the internet is only used to
-download the models the first time. The interface is in English and Spanish.
+<!-- Demo recording: uncomment once docs/demo.gif exists.
+<p align="center">
+  <img src="docs/demo.gif" alt="Tonos playing a song: the click blinks on every beat and the bar being played lights up on the chord grid" width="100%">
+</p>
+-->
 
 <p align="center">
   <img src="docs/screenshots/desktop.png" alt="Tonos on a computer: the transport bar, a timeline coloured by chord, tempo 120 bpm, meter 5/4, key D minor and the bar-by-bar chord grid" width="75%">
   <img src="docs/screenshots/phone.png" alt="Tonos on a phone: the same report in a single column" width="21.6%">
 </p>
 
-<p align="center">
-  <b><a href="https://joaquinmuzzi.github.io/Tonos/">Try the online demo</a></b>: a song that is already analyzed,
-  in your browser, without installing anything.
-</p>
+## Why Tonos?
+
+- **Local and private.** The analysis runs on your computer and your files are never uploaded.
+  The internet is only used once, to download the models.
+- **Odd meters too.** Besides 3/4, 4/4 and 6/8, it finds 5/4 and 7/4 when the harmony repeats
+  clearly, and it marks the grid as approximate when it is not sure where each bar starts.
+- **Chords spelled for the key.** In F major you read B♭, not A♯, in letter names (C D E) or in
+  solfège (Do Re Mi).
+- **In Spanish.** The web app is in Spanish as well as English.
+- **Says when it is unsure.** In styles that move between 3/4 and 6/8, like the chacarera or the
+  zamba, it shows both readings instead of picking one in silence. Its models learned mostly from
+  pop and rock, so folk and Latin American genres are worth checking by ear: see
+  [how reliable it is](#how-reliable-it-is).
 
 > [!IMPORTANT]
 > **Model licensing.** The code in this repository is MIT-licensed, but the analysis relies on
