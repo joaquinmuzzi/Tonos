@@ -28,3 +28,25 @@ jobs:
             echo "Got: $TITLE"
             exit 1
           fi
+
+  # The description becomes the commit message on main, so it must say which AI tool and model
+  # helped, if any (see "AI-assisted contributions" in CONTRIBUTING.md)
+  ai-disclosure:
+    name: ai disclosure
+    # Dependabot writes its own descriptions
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check that the description ends with an Assisted-by line
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          lines=$(printf '%s\n' "$BODY" | tr -d '\r' | grep -Ei '^Assisted-by:' || true)
+          if [ -n "$lines" ] && ! printf '%s\n' "$lines" | grep -Eivq '^Assisted-by: *(none|[^:]+:[^[:space:]]+) *$'; then
+            echo "$lines"
+          else
+            echo "::error::End the description with 'Assisted-by: AGENT_NAME:MODEL_VERSION', one line per AI assistant (for example 'Assisted-by: Claude Code:claude-opus-5-5'), or with 'Assisted-by: none'. See 'AI-assisted contributions' in CONTRIBUTING.md."
+            echo "Found: ${lines:-no Assisted-by line}"
+            exit 1
+          fi
