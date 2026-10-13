@@ -11,6 +11,11 @@ the analysis by ear.
 Everything runs on your computer: files never leave it, and the internet is only used to
 download the models the first time. The interface is in English and Spanish.
 
+<p align="center">
+  <img src="docs/screenshots/desktop.png" alt="Tonos on a computer: the transport bar, a timeline coloured by chord, tempo 120 bpm, meter 5/4, key D minor and the bar-by-bar chord grid" width="74%">
+  <img src="docs/screenshots/phone.png" alt="Tonos on a phone: the same report in a single column" width="22.5%">
+</p>
+
 > [!IMPORTANT]
 > **Model licensing.** The code in this repository is MIT-licensed, but the analysis relies on
 > third-party model weights with their own terms: the S-KEY weights have no stated licence, and
@@ -24,11 +29,13 @@ download the models the first time. The interface is in English and Spanish.
 - **Tempo** in BPM, with its double and half, a tempo curve and a warning when the tempo drifts.
 - **Meter** (3/4, 4/4, 6/8, 5/4, 7/4…), with how sure it is and the readings it could be confused
   with. Odd meters are found from how often the harmony repeats.
-- **Key**, with the relative key and the model's second choice, possible key changes, and a
-  warning when the recording is not tuned to A = 440 Hz.
+- **Key**, with the notes of its scale, the relative key and the model's second choice, possible
+  key changes, and a warning when the recording is not tuned to A = 440 Hz.
 - **Chords**, one per beat, in letter names (C D E) or solfège (Do Re Mi), in a simple
   major/minor mode or with sevenths, basses and inversions.
-- A **bar-by-bar grid** you can click to play from any bar, and a **click** on every beat.
+- A **player** with a **click** on every beat (and a light that blinks with it), a speed control
+  from 0.5× to 1.5×, a timeline coloured by chord, and a **bar-by-bar grid** you can click to
+  play from any bar.
 - A **command line** that prints a text report or the full JSON.
 
 ## Installation
