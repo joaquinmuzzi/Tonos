@@ -12,8 +12,8 @@ Everything runs on your computer: files never leave it, and the internet is only
 download the models the first time. The interface is in English and Spanish.
 
 <p align="center">
-  <img src="docs/screenshots/desktop.png" alt="Tonos on a computer: the transport bar, a timeline coloured by chord, tempo 120 bpm, meter 5/4, key D minor and the bar-by-bar chord grid" width="74%">
-  <img src="docs/screenshots/phone.png" alt="Tonos on a phone: the same report in a single column" width="22.5%">
+  <img src="docs/screenshots/desktop.png" alt="Tonos on a computer: the transport bar, a timeline coloured by chord, tempo 120 bpm, meter 5/4, key D minor and the bar-by-bar chord grid" width="75%">
+  <img src="docs/screenshots/phone.png" alt="Tonos on a phone: the same report in a single column" width="21.6%">
 </p>
 
 > [!IMPORTANT]
