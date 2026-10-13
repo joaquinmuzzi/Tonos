@@ -11,6 +11,9 @@ note on what to update.
 
 ### Added
 
+- A reproducible benchmark, `benchmarks/run.py`. It downloads GuitarSet and GiantSteps+ EDM Key,
+  analyzes them and scores the results with mir_eval. The results are in
+  `benchmarks/results.md`, and "How reliable it is" in the README now uses them.
 - `install.sh` and `tonos.sh`, the installer and the launcher for macOS and Linux, equivalent to
   `install.ps1` and `tonos.bat`. The environment goes in `~/.local/share/tonos/venv`. A CI job
   installs Tonos with them on Ubuntu and macOS.

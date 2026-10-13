@@ -45,3 +45,6 @@ models/
 # The online demo: its song is licensed for redistribution (demo/README.md), and its build
 !demo/carefree.mp3
 _site/
+
+# Benchmark datasets: downloaded by benchmarks/run.py, never committed
+benchmarks/data/
