@@ -17,7 +17,7 @@ from . import chords, periodicity, rhythm, tonality
 from .audio import read_audio
 from .notation import Speller, describe_chord
 
-VERSION = 11  # version of the report format; bumping it invalidates the cached analyses
+VERSION = 12  # version of the report format; bumping it invalidates the cached analyses
 
 # A re-estimated steady beat is used only if its harmony repeats clearly (z-score margin between
 # the best and the second-best bar length, as in periodicity.analyze)

@@ -4,111 +4,159 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tonos</title>
-  <link rel="stylesheet" href="/static/styles.css?v=7">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%23ededed%22/%3E%3Ctext x=%228%22 y=%2212.5%22 font-size=%2212%22 text-anchor=%22middle%22 font-family=%22monospace%22%3ET%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css?v=8">
 </head>
 <body>
   <!-- Texts are in English here and translated by i18n.js (data-i18n = key in MESSAGES). -->
-  <header class="site-header">
-    <div class="title-row">
-      <h1>Tonos</h1>
-      <div class="segmented" role="group" aria-label="Language" data-i18n-aria-label="language_label">
-        <button type="button" data-language="en" lang="en" aria-pressed="true">English</button>
-        <button type="button" data-language="es" lang="es" aria-pressed="false">Español</button>
+  <div class="app">
+    <nav class="rail" aria-label="Tonos">
+      <span class="logo" aria-hidden="true">T</span>
+      <button type="button" class="rail-button" id="new-analysis" title="Analyze another song" data-i18n-title="another_song">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M5 20h14"/></svg>
+        <span class="rail-label" data-i18n="rail_analyze">analyze</span>
+      </button>
+      <a class="rail-button" href="#about" title="How reliable is this?" data-i18n-title="reliability_title">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11v6m0-10v.01M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>
+        <span class="rail-label" data-i18n="rail_about">about</span>
+      </a>
+      <a class="rail-button" href="https://github.com/joaquinmuzzi/Tonos" target="_blank" rel="noopener" title="GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
+        <span class="rail-label">GitHub</span>
+      </a>
+      <span class="rail-spacer"></span>
+      <div class="languages" role="group" aria-label="Language" data-i18n-aria-label="language_label">
+        <button type="button" data-language="en" lang="en" aria-pressed="true">en</button>
+        <button type="button" data-language="es" lang="es" aria-pressed="false">es</button>
       </div>
+    </nav>
+
+    <div class="main">
+      <header class="topbar">
+        <button type="button" class="play" id="play" aria-label="Play" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true" id="play-icon"><path d="M7 4v16l13-8z"/></svg>
+        </button>
+        <button type="button" class="metronome mono" id="click" aria-pressed="false" title="Click on every beat" data-i18n-title="click_toggle">
+          <span class="metronome-name"><span class="led" id="led" aria-hidden="true"></span><span data-i18n="click_short">click</span></span>
+          <span class="metronome-state" id="click-state">off</span>
+        </button>
+        <div class="stepper mono" role="group" aria-label="Speed" data-i18n-aria-label="speed_label">
+          <button type="button" id="slower" aria-label="Slower" data-i18n-aria-label="slower">−</button>
+          <span id="speed">1.0×</span>
+          <button type="button" id="faster" aria-label="Faster" data-i18n-aria-label="faster">+</button>
+        </div>
+        <div class="song">
+          <div class="song-title" id="song-title">Tonos</div>
+          <div class="song-meta mono" id="song-meta" data-i18n="tagline">Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.</div>
+        </div>
+        <a class="star" href="https://github.com/joaquinmuzzi/Tonos" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.2 1.2-6.9-5-4.9 6.9-1L12 1.5l3.1 6.2 6.9 1-5 4.9 1.2 6.9z"/></svg>
+          <span data-i18n="star_on_github">star on GitHub</span>
+        </a>
+        <span class="beat-count mono" id="beat-count" aria-hidden="true"></span>
+      </header>
+
+      <section id="upload" class="upload">
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="file-input"
+                 accept="audio/*,video/*,.mp4,.m4a,.mp3,.wav,.flac,.ogg,.opus,.aac,.webm,.mkv,.mov,.mpeg">
+          <span class="dropzone-title" data-i18n="dropzone_title">Drag a file here or click to choose one</span>
+          <span class="dropzone-hint mono" data-i18n="dropzone_hint">MP4, MP3, M4A, WAV, FLAC, MKV… up to 20 minutes (and 1 GB)</span>
+        </label>
+        <p class="credits mono" data-i18n="models_credit">Models: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) and Consonance-ACE (Poltronieri, Serra and Rocamora, 2025), plus librosa for the control tempo and the tuning.</p>
+      </section>
+
+      <section id="progress" class="progress" hidden>
+        <div class="progress-step mono" id="step" aria-live="polite"></div>
+        <div class="progress-track" role="progressbar" aria-label="Analysis progress" data-i18n-aria-label="progress_label"
+             aria-valuemin="0" aria-valuemax="100" id="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-time mono" id="elapsed" aria-hidden="true"></div>
+      </section>
+
+      <section id="error" class="error-box" hidden role="alert">
+        <p id="error-text"></p>
+        <button type="button" class="text-button" id="retry" data-i18n="retry">Try another file</button>
+      </section>
+
+      <section id="report" hidden>
+        <div class="timeline">
+          <canvas id="strip" height="34" aria-hidden="true"></canvas>
+          <div class="controls mono">
+            <span class="control-group">
+              <span class="control-label" data-i18n="notation_short">notation</span>
+              <span class="segmented" role="group" aria-label="Notation" data-i18n-aria-label="notation_label">
+                <button type="button" data-notation="letter" aria-pressed="true">C D E</button>
+                <button type="button" data-notation="solfege" aria-pressed="false">do re mi</button>
+              </span>
+            </span>
+            <span class="control-group">
+              <span class="control-label" data-i18n="chords_short">chords</span>
+              <span class="segmented" role="group" aria-label="Chord detail" data-i18n-aria-label="detail_label">
+                <button type="button" data-detail="simple" aria-pressed="true" data-i18n="simple_short">simple</button>
+                <button type="button" data-detail="full" aria-pressed="false" data-i18n="full_short">full</button>
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat" id="tempo-stat"></div>
+          <div class="stat" id="meter-stat"></div>
+          <div class="stat" id="key-stat"></div>
+        </div>
+
+        <div class="body">
+          <div class="bars">
+            <div class="bars-header mono">
+              <span id="bars-title"></span>
+              <button type="button" class="toggle-box" id="follow" aria-pressed="true" data-i18n="follow_short">follow</button>
+            </div>
+            <div class="bar-scroll" id="bar-scroll"><div class="bar-grid" id="bar-grid"></div></div>
+            <p class="note mono" id="grid-note"></p>
+
+            <details class="about" id="about">
+              <summary data-i18n="reliability_title">How reliable is this?</summary>
+              <ul class="reliability">
+                <li><b data-i18n="reliability_tempo_title">Tempo and beats:</b> <span data-i18n="reliability_tempo">very good for pop, rock and electronic music with drums. The typical error is giving double or half the tempo. Much worse for music without drums, live recordings or rubato. Turn on the click to check it by ear.</span></li>
+                <li><b data-i18n="reliability_meter_title">Meter:</b> <span data-i18n="reliability_meter">the hardest part. It counts the beats between downbeats, and downbeats fail more often than beats (about 1 in 5). 3/4 and 6/8 cannot be told apart automatically.</span></li>
+                <li><b data-i18n="reliability_key_title">Key:</b> <span data-i18n="reliability_key">in published tests, the model gets the exact key right for 7 to 8 songs out of 10. When it fails, it almost always confuses it with the relative key (C major ↔ A minor) or with a fifth. It gives a single key per song, and modal music (Dorian, Mixolydian…) is forced into major or minor.</span></li>
+                <li><b data-i18n="reliability_chords_title">Chords:</b> <span data-i18n="reliability_chords">correct about 78 % of the time for major/minor, less with sevenths and unusual chords. That is why they start in “simple” mode. Basses and inversions often fail.</span></li>
+                <li><b data-i18n="reliability_repertoire_title">Repertoire:</b> <span data-i18n="reliability_repertoire">the models were trained mostly on pop and rock sung in English. Folk, tango and other Latin American genres may give worse results.</span></li>
+              </ul>
+            </details>
+            <p class="credits mono" data-i18n="models_credit">Models: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) and Consonance-ACE (Poltronieri, Serra and Rocamora, 2025), plus librosa for the control tempo and the tuning.</p>
+          </div>
+
+          <aside class="panel">
+            <div class="panel-section">
+              <div class="label mono" data-i18n="could_be">could also be</div>
+              <ul class="plain" id="alternatives"></ul>
+            </div>
+            <div class="panel-section" id="notes-section">
+              <div class="label mono" data-i18n="notes_title">notes</div>
+              <div id="notes"></div>
+            </div>
+            <div class="panel-section">
+              <div class="label mono" data-i18n="hear_else">hear something else?</div>
+              <a class="link-box" href="https://github.com/joaquinmuzzi/Tonos/issues/new?template=wrong_result.yml" target="_blank" rel="noopener" data-i18n="report_result">→ report a wrong result</a>
+              <a class="link-box secondary" href="https://github.com/joaquinmuzzi/Tonos/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener" data-i18n="contribute">→ contribute</a>
+            </div>
+            <div class="panel-section panel-bottom mono">
+              <button type="button" class="link-box secondary" id="download" data-i18n="download_json">Download data (JSON)</button>
+              <div class="muted" id="version"></div>
+            </div>
+          </aside>
+        </div>
+        <audio id="audio" preload="metadata"></audio>
+        <p id="audio-error" class="note mono" hidden data-i18n="audio_unsupported">Your browser cannot play this format, but the analysis is complete.</p>
+      </section>
+
     </div>
-    <p data-i18n="tagline">Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.</p>
-  </header>
+  </div>
 
-  <main>
-    <section id="upload">
-      <label class="dropzone" id="dropzone">
-        <input type="file" id="file-input"
-               accept="audio/*,video/*,.mp4,.m4a,.mp3,.wav,.flac,.ogg,.opus,.aac,.webm,.mkv,.mov">
-        <span class="dropzone-title" data-i18n="dropzone_title">Drag a file here or click to choose one</span>
-        <span class="dropzone-hint" data-i18n="dropzone_hint">MP4, MP3, M4A, WAV, FLAC, MKV… up to 20 minutes (and 1 GB)</span>
-      </label>
-    </section>
-
-    <section id="progress" class="progress" hidden>
-      <div class="progress-step" id="step" aria-live="polite"></div>
-      <div class="progress-track" role="progressbar" aria-label="Analysis progress" data-i18n-aria-label="progress_label"
-           aria-valuemin="0" aria-valuemax="100" id="progress-track">
-        <div class="progress-fill" id="progress-fill"></div>
-      </div>
-      <div class="progress-time" id="elapsed" aria-hidden="true"></div>
-    </section>
-
-    <section id="error" class="error-box" hidden role="alert">
-      <p id="error-text"></p>
-      <button type="button" class="button" id="retry" data-i18n="retry">Try another file</button>
-    </section>
-
-    <section id="report" hidden>
-      <div class="player card">
-        <div class="file-info">
-          <strong id="file-name"></strong>
-          <span id="duration" class="muted"></span>
-          <span id="cached" class="muted" hidden data-i18n="from_cache">· result saved from a previous analysis</span>
-        </div>
-        <audio id="audio" controls preload="metadata"></audio>
-        <p id="audio-error" class="muted" hidden data-i18n="audio_unsupported">Your browser cannot play this format, but the analysis is complete.</p>
-        <div class="now-playing" aria-live="off">
-          <div><span class="muted" data-i18n="now">Now</span> <b id="current-chord">—</b></div>
-          <div><span class="muted" data-i18n="next">Next</span> <span id="next-chord">—</span></div>
-          <div><span class="muted" data-i18n="current_bar">Bar</span> <span id="current-bar">—</span></div>
-          <div class="beat-count" id="beat-count" aria-hidden="true"></div>
-        </div>
-        <div class="controls">
-          <label class="toggle"><input type="checkbox" id="click"> <span data-i18n="click_toggle">Click on every beat</span></label>
-          <div class="segmented" role="group" aria-label="Notation" data-i18n-aria-label="notation_label">
-            <button type="button" data-notation="letter" aria-pressed="true">C D E</button>
-            <button type="button" data-notation="solfege" aria-pressed="false">Do Re Mi</button>
-          </div>
-          <div class="segmented" role="group" aria-label="Chord detail" data-i18n-aria-label="detail_label">
-            <button type="button" data-detail="simple" aria-pressed="true" data-i18n="simple_chords">Simple chords</button>
-            <button type="button" data-detail="full" aria-pressed="false" data-i18n="full_chords">Full</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="cards">
-        <article class="card" id="tempo-card"></article>
-        <article class="card" id="meter-card"></article>
-        <article class="card" id="key-card"></article>
-      </div>
-
-      <article class="card">
-        <div class="title-row">
-          <h2 data-i18n="chords_title">Chords</h2>
-          <label class="toggle"><input type="checkbox" id="follow" checked> <span data-i18n="follow_playback">Follow playback</span></label>
-        </div>
-        <p class="muted" id="chords-note"></p>
-        <div class="chips" id="chord-summary"></div>
-        <h3 data-i18n="bar_by_bar">Bar by bar</h3>
-        <p class="muted" id="grid-note"></p>
-        <div class="bar-grid" id="bar-grid"></div>
-      </article>
-
-      <details class="card">
-        <summary><h2 data-i18n="reliability_title">How reliable is this?</h2></summary>
-        <ul class="reliability">
-          <li><b data-i18n="reliability_tempo_title">Tempo and beats:</b> <span data-i18n="reliability_tempo">very good for pop, rock and electronic music with drums. The typical error is giving double or half the tempo. Much worse for music without drums, live recordings or rubato. Turn on the click to check it by ear.</span></li>
-          <li><b data-i18n="reliability_meter_title">Meter:</b> <span data-i18n="reliability_meter">the hardest part. It counts the beats between downbeats, and downbeats fail more often than beats (about 1 in 5). 3/4 and 6/8 cannot be told apart automatically.</span></li>
-          <li><b data-i18n="reliability_key_title">Key:</b> <span data-i18n="reliability_key">in published tests, the model gets the exact key right for 7 to 8 songs out of 10. When it fails, it almost always confuses it with the relative key (C major ↔ A minor) or with a fifth. It gives a single key per song, and modal music (Dorian, Mixolydian…) is forced into major or minor.</span></li>
-          <li><b data-i18n="reliability_chords_title">Chords:</b> <span data-i18n="reliability_chords">correct about 78 % of the time for major/minor, less with sevenths and unusual chords. That is why they start in “simple” mode. Basses and inversions often fail.</span></li>
-          <li><b data-i18n="reliability_repertoire_title">Repertoire:</b> <span data-i18n="reliability_repertoire">the models were trained mostly on pop and rock sung in English. Folk, tango and other Latin American genres may give worse results.</span></li>
-        </ul>
-        <p class="muted" data-i18n="models_credit">Models: Beat This! (CPJKU, 2024), S-KEY (Deezer, 2025) and Consonance-ACE (Poltronieri, Serra and Rocamora, 2025), plus librosa for the control tempo and the tuning.</p>
-      </details>
-
-      <div class="actions">
-        <button type="button" class="button" id="another" data-i18n="another_song">Analyze another song</button>
-        <button type="button" class="button secondary" id="download" data-i18n="download_json">Download data (JSON)</button>
-      </div>
-    </section>
-  </main>
-
-  <script src="/static/i18n.js?v=7"></script>
-  <script src="/static/app.js?v=7"></script>
+  <script src="/static/i18n.js?v=8"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

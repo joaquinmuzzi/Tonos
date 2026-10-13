@@ -9,13 +9,17 @@ const state = {
   detail: readPreference("detail", "simple"),
   beats: [],
   beatNumbers: [], // number of each beat within its bar (1 = downbeat)
+  beatColors: [], // colour of the chord that sounds on each beat
   downbeats: new Set(),
   activeBar: -1,
   nextClick: 0,
   timer: null,
   error: null, // message shown in the error box, kept to translate it again
+  click: false,
+  follow: true,
 };
 
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
 const audio = $("audio");
 let audioContext = null;
 
@@ -52,11 +56,6 @@ function el(tag, attributes = {}, ...children) {
   return node;
 }
 
-/** Like parent.append(), but skips nulls (append would show them as the text "null"). */
-function appendAll(parent, ...children) {
-  parent.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
-}
-
 /** A message of the page itself, shaped like the ones the server sends. */
 const local = (code, params = {}) => ({ code, params });
 
@@ -85,13 +84,19 @@ function search(list, time, key = "start") {
   return answer;
 }
 
-function badge(confidence) {
-  if (!["high", "medium", "low"].includes(confidence)) return null;
-  return el("span", { class: `badge ${confidence}` }, t(`confidence_${confidence}`));
-}
-
 function show(section) {
   for (const id of ["upload", "progress", "error", "report"]) $(id).hidden = id !== section;
+}
+
+/**
+ * Colour of a chord: the hue follows the circle of fifths from its root, so chords a fifth apart
+ * get neighbouring colours (C, G, D...). Minor chords are darker; no chord is gray.
+ */
+function chordColor(segment) {
+  if (!segment || !segment.is_chord || segment.root_pc === null) return "#2a2a2a";
+  const hue = ((segment.root_pc * 7) % 12) * 30;
+  const minor = /m(?!aj)/.test(segment.letter_simple || "");
+  return `hsl(${hue}, ${minor ? 55 : 70}%, ${minor ? 42 : 56}%)`;
 }
 
 // ---------------------------------------------------------------- upload
@@ -134,6 +139,7 @@ function upload(file) {
   state.error = null;
   if (state.url) URL.revokeObjectURL(state.url);
   state.url = URL.createObjectURL(file);
+  setSong(file.name.replace(/\.[^.]+$/, ""), "");
 
   show("progress");
   setProgress(t("uploading"), 0);
@@ -205,9 +211,10 @@ function showError(message) {
 }
 
 $("retry").addEventListener("click", () => show("upload"));
-$("another").addEventListener("click", () => {
+$("new-analysis").addEventListener("click", () => {
   stopPlayback();
   state.result = null;
+  setSong("Tonos", null);
   show("upload");
   window.scrollTo({ top: 0 });
 });
@@ -224,6 +231,19 @@ $("download").addEventListener("click", () => {
 
 // ---------------------------------------------------------------- report
 
+/** Title and second line of the top bar; meta === null shows the tagline. */
+function setSong(title, meta) {
+  $("song-title").textContent = title;
+  const line = $("song-meta");
+  if (meta === null) {
+    line.dataset.i18n = "tagline";
+    line.textContent = t("tagline");
+  } else {
+    delete line.dataset.i18n;
+    line.textContent = meta;
+  }
+}
+
 function showReport(result) {
   state.result = result;
   state.beats = result.beats;
@@ -231,11 +251,10 @@ function showReport(result) {
   state.beatNumbers = numberBeats(result);
   state.activeBar = -1;
 
-  $("file-name").textContent = result.file.name;
-  $("duration").textContent = mmss(result.file.duration);
-  $("cached").hidden = !result.from_cache;
   $("audio-error").hidden = true;
-  audio.src = state.url;
+  if (state.url) audio.src = state.url;
+  $("play").disabled = false;
+  $("version").textContent = `MIT · v${result.tonos_version}`;
 
   markButtons();
   drawReport();
@@ -258,146 +277,94 @@ function numberBeats(result) {
   });
 }
 
-/** Draws every card. Called again when the notation or the chord detail changes. */
+/** Draws everything that depends on the language or the notation. */
 function drawReport() {
-  drawTempo(state.result.tempo);
-  drawMeter(state.result.meter);
-  drawKey(state.result.key, state.result.tuning);
-  drawChords();
+  const result = state.result;
+  const segments = result.chords.segments;
+  state.beatColors = result.beats.map((time) => chordColor(segments[search(segments, time + 0.05)]));
+  drawTempo(result.tempo);
+  drawMeter(result.meter);
+  drawKey(result.key);
+  drawPanel(result);
+  drawBars();
   state.activeBar = -1;
   updatePlayback();
 }
 
-function secondTempoMethodText(second) {
-  const bpm = rounded(second.bpm);
-  const known = ["same", "double", "half", "triple", "third"].includes(second.relation);
-  return t(known ? `tempo_${second.relation}` : "tempo_mismatch", { bpm });
-}
-
-function tempoCurve(curve, duration) {
-  if (!curve || curve.length < 2) return null;
-  const values = curve.map(([, b]) => b);
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  let min = Math.min(...values);
-  let max = Math.max(...values);
-  if (max - min < 8) {
-    min = mean - 4;
-    max = mean + 4;
-  }
-  const width = 300;
-  const height = 60;
-  const points = curve
-    .map(([time, bpm]) => `${((time / duration) * width).toFixed(1)},${(height - 6 - ((bpm - min) / (max - min)) * (height - 12)).toFixed(1)}`)
-    .join(" ");
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.setAttribute("class", "tempo-curve");
-  svg.setAttribute("role", "img");
-  svg.setAttribute(
-    "aria-label",
-    t("tempo_curve_label", { min: rounded(Math.min(...values)), max: rounded(Math.max(...values)) })
-  );
-  const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  line.setAttribute("points", points);
-  svg.append(line);
-  return el("div", {}, el("p", { class: "muted" }, t("tempo_curve_title")), svg);
+function stat(id, label, value, ...details) {
+  $(id).replaceChildren(el("div", { class: "label mono" }, label), value, ...details.filter(Boolean));
 }
 
 function drawTempo(tempo) {
-  const card = $("tempo-card");
-  card.replaceChildren(el("h2", {}, t("tempo_title")));
   if (!tempo.bpm) {
-    appendAll(card, el("p", { class: "big" }, "—"), el("p", {}, messageText(tempo.reason)), badge("low"));
+    stat("tempo-stat", t("tempo_title"), el("div", { class: "value" }, "—"), el("div", { class: "detail" }, messageText(tempo.reason)));
     return;
   }
-  const alt = tempo.alternatives;
-  appendAll(
-    card,
-    el("p", { class: "big" }, rounded(tempo.bpm), el("span", { class: "unit" }, " BPM")),
-    badge(tempo.confidence),
-    tempo.suggestion
-      ? el("p", { class: "highlight" }, t("tempo_suggestion", { bpm: rounded(alt[tempo.suggestion]) }))
-      : null,
-    el("p", {}, t("tempo_double_half", { double: rounded(alt.double), half: rounded(alt.half) })),
-    el(
-      "p",
-      {},
-      tempo.stable ? t("tempo_stable") : t("tempo_varies", { min: rounded(tempo.range[0]), max: rounded(tempo.range[1]) })
-    ),
-    tempo.regularity < 0.7 ? el("p", { class: "warning" }, t("tempo_irregular")) : null,
-    tempo.warning ? el("p", { class: "warning" }, messageText(tempo.warning)) : null,
-    el("p", { class: "muted" }, secondTempoMethodText(tempo.second_method)),
-    tempoCurve(tempo.curve, state.result.file.duration)
+  const detail = `${t("beat_length", { seconds: (60 / tempo.bpm).toFixed(2) })} · ×2 ${rounded(tempo.alternatives.double)} · ÷2 ${rounded(tempo.alternatives.half)}`;
+  stat(
+    "tempo-stat",
+    t("tempo_title"),
+    el("div", { class: "value" }, rounded(tempo.bpm), el("small", {}, " bpm")),
+    el("div", { class: "detail" }, detail)
   );
-}
-
-function meterReading(meter) {
-  if (!meter.time_signature) return t("meter_beats_per_bar", { beats: meter.beats_per_bar });
-  return meter.swing ? t("meter_swing", { signature: meter.time_signature }) : meter.time_signature;
 }
 
 function drawMeter(meter) {
-  const card = $("meter-card");
-  card.replaceChildren(el("h2", {}, t("meter_title")));
   if (!meter.beats_per_bar) {
-    appendAll(card, el("p", { class: "big" }, "—"), badge("low"), el("p", {}, messageText(meter.reason)));
+    stat("meter-stat", t("meter_title"), el("div", { class: "value" }, "—"), el("div", { class: "detail" }, messageText(meter.reason)));
     return;
   }
-  const source =
-    meter.source === "periodicity"
-      ? t("meter_source_periodicity", { beats: meter.beats_per_bar })
-      : t("meter_source_downbeats", {
-          beats: meter.beats_per_bar,
-          percent: percent(meter.agreement),
-          bars: meter.bars_counted,
-        });
-  appendAll(
-    card,
-    el("p", { class: "big" }, meterReading(meter)),
-    meter.alternative ? el("p", { class: "muted" }, messageText(meter.alternative)) : null,
-    badge(meter.confidence),
-    el("p", {}, source),
-    meter.second_method && meter.second_method.confirms ? el("p", { class: "muted" }, t("meter_confirmed")) : null,
-    el("p", {}, t(`subdivision_${meter.subdivision.kind}`)),
-    ...meter.warnings.map((w) => el("p", { class: "warning" }, messageText(w)))
-  );
+  const reading = meter.time_signature || t("meter_beats_per_bar", { beats: meter.beats_per_bar });
+  const kind = meter.swing ? "swing" : `sub_${meter.subdivision.kind}`;
+  const squares = el("div", { class: "squares mono", id: "squares" });
+  for (let i = 1; i <= Math.min(meter.beats_per_bar, 12); i++) squares.append(el("span", { "data-beat": String(i) }));
+  squares.append(el("em", { class: "detail" }, t(kind)));
+  stat("meter-stat", t("meter_title"), el("div", { class: "value" }, reading), squares);
 }
 
-/** "Sol mayor", "G mayor"... in the chosen notation. */
+/** "Do", "C"... in the chosen notation. */
+function tonicName(key, notation = state.notation) {
+  return key[notation];
+}
+
 function keyName(key, notation = state.notation) {
   return t("key_name", { tonic: key[notation], mode: t(key.mode) });
 }
 
-function drawKey(key, tuning) {
-  const other = state.notation === "solfege" ? "letter" : "solfege";
-  const card = $("key-card");
-  card.replaceChildren();
-  appendAll(
-    card,
-    el("h2", {}, t("key_title")),
-    el("p", { class: "big" }, keyName(key.best)),
-    el("p", { class: "muted" }, `(${keyName(key.best, other)})`),
-    badge(key.confidence)
+function drawKey(key) {
+  const best = key.best;
+  const scale = best.scale ? best.scale[state.notation].join(" ") : "";
+  stat(
+    "key-stat",
+    t("key_title"),
+    el("div", { class: "value" }, tonicName(best), el("small", {}, ` ${t(best.mode)}`)),
+    scale ? el("div", { class: "detail" }, scale) : null
   );
-  const alternatives = key.alternatives.map((a) => `${keyName(a)} (${t(`key_reason_${a.reason}`)})`);
-  appendAll(card, el("p", {}, t("key_alternatives", { keys: alternatives.join(", ") })));
+}
 
-  const second = key.second_method;
-  if (second) {
-    appendAll(card, el("p", { class: "muted" }, t(`key_chords_${second.agreement}`, { key: keyName(second) })));
+/** Other readings, and notes only where the analysis has doubts. */
+function drawPanel(result) {
+  const { tempo, meter, key, tuning } = result;
+  const alternatives = key.alternatives.map((a) => `${keyName(a)} (${t(`key_reason_${a.reason}`)})`);
+  if (tempo.bpm) {
+    alternatives.push(t("alt_double", { bpm: rounded(tempo.alternatives.double) }));
+    alternatives.push(t("alt_half", { bpm: rounded(tempo.alternatives.half) }));
   }
+  if (meter.alternative) alternatives.push(messageText(meter.alternative));
+  $("alternatives").replaceChildren(...alternatives.map((text) => el("li", {}, text)));
+
+  const notes = [];
+  if (tempo.bpm && tempo.confidence === "low") notes.push(t("uncertain_tempo"));
+  if (meter.beats_per_bar && meter.confidence === "low") notes.push(t("uncertain_meter"));
+  if (key.confidence === "low") notes.push(t("uncertain_key"));
+  if (tempo.warning) notes.push(messageText(tempo.warning));
+  for (const warning of meter.warnings || []) notes.push(messageText(warning));
   for (const change of key.sections.changes) {
-    appendAll(
-      card,
-      el(
-        "p",
-        { class: "warning" },
-        t("key_change", { start: mmss(change.start), end: mmss(change.end), key: keyName(change) })
-      )
-    );
+    notes.push(t("key_change", { start: mmss(change.start), end: mmss(change.end), key: keyName(change) }));
   }
-  if (tuning.warning) appendAll(card, el("p", { class: "warning" }, messageText(tuning.warning)));
+  if (tuning.warning) notes.push(messageText(tuning.warning));
+  $("notes").replaceChildren(...notes.map((text) => el("p", {}, text)));
+  $("notes-section").hidden = notes.length === 0;
 }
 
 function chordName(segment) {
@@ -418,38 +385,113 @@ function chordsOfBar(bar) {
   return names.length ? names.join(" · ") : "—";
 }
 
-function drawChords() {
-  const chords = state.result.chords;
-  const summary = state.detail === "simple" ? chords.summary_simple : chords.summary;
-  $("grid-note").textContent = t(state.result.meter.approximate_grid ? "grid_note_approximate" : "grid_note");
-  $("chords-note").textContent = t(state.detail === "simple" ? "chords_note_simple" : "chords_note_full");
-  $("chord-summary").replaceChildren(
-    ...summary.map((a) => el("span", { class: "chip" }, a[state.notation], el("span", {}, percent(a.share))))
-  );
-  if (!summary.length) $("chord-summary").append(el("p", { class: "muted" }, t("no_chords")));
-
-  const cells = state.result.bars.map((bar, i) =>
-    el(
+function drawBars() {
+  const result = state.result;
+  $("bars-title").textContent = t("bars_count", { count: result.bars.length });
+  $("grid-note").textContent = t(result.meter.approximate_grid ? "grid_note_approximate" : "grid_note");
+  const cells = result.bars.map((bar, i) => {
+    const first = result.chords.segments[bar.chords[0]];
+    return el(
       "button",
       {
         type: "button",
         class: "bar-cell",
         "data-i": String(i),
         title: t("listen_from", { time: mmss(bar.start) }),
+        style: `border-top-color: ${chordColor(first)}`,
         onclick: () => {
           audio.currentTime = bar.start;
-          audio.play().catch(() => {});
+          play();
         },
       },
-      el("span", { class: "num" }, barLabel(bar)),
+      el("span", { class: "num" }, bar.kind === "bar" ? String(bar.number) : barLabel(bar)),
       el("span", { class: "chord-names" }, chordsOfBar(bar))
-    )
-  );
+    );
+  });
   $("bar-grid").replaceChildren(...cells);
-  if (!cells.length) $("bar-grid").append(el("p", { class: "muted" }, t("no_bars")));
+  if (!cells.length) $("bar-grid").append(el("p", { class: "note" }, t("no_bars")));
 }
 
-// ---------------------------------------------------------------- language and notation
+// ---------------------------------------------------------------- timeline (canvas)
+
+const strip = $("strip");
+
+function drawStrip(now) {
+  const beats = state.beats;
+  const duration = state.result ? state.result.file.duration : 0;
+  const ratio = window.devicePixelRatio || 1;
+  const width = strip.clientWidth;
+  const height = strip.clientHeight;
+  if (strip.width !== Math.round(width * ratio)) {
+    strip.width = Math.round(width * ratio);
+    strip.height = Math.round(height * ratio);
+  }
+  const g = strip.getContext("2d");
+  g.setTransform(ratio, 0, 0, ratio, 0, 0);
+  g.clearRect(0, 0, width, height);
+  if (!duration || !beats.length) return;
+  const x = (time) => (time / duration) * width;
+  const current = search(beats, now, null);
+  // A beat lasts until the next one, but not across a pause without beats
+  const typical = beats.length > 1 ? (beats[beats.length - 1] - beats[0]) / (beats.length - 1) : 0.5;
+  for (let i = 0; i < beats.length; i++) {
+    const left = x(beats[i]);
+    const end = i + 1 < beats.length ? Math.min(beats[i + 1], beats[i] + 2 * typical) : beats[i] + typical;
+    const right = x(Math.min(duration, end));
+    g.globalAlpha = beats[i] <= now ? 1 : 0.35;
+    g.fillStyle = state.beatColors[i];
+    g.fillRect(left, 0, Math.max(1, right - left - 1), height);
+    if (state.downbeats.has(beats[i].toFixed(3))) {
+      g.globalAlpha = 1;
+      g.fillStyle = "#050505";
+      g.fillRect(left - 1, 0, 2, height);
+    }
+  }
+  g.globalAlpha = 1;
+  if (current >= 0) {
+    const left = x(beats[current]);
+    const right = current + 1 < beats.length ? x(beats[current + 1]) : left + 3;
+    g.strokeStyle = "#ededed";
+    g.lineWidth = 2;
+    g.strokeRect(left + 1, 1, Math.max(2, right - left - 2), height - 2);
+  }
+}
+
+strip.addEventListener("click", (e) => {
+  if (!state.result) return;
+  const rect = strip.getBoundingClientRect();
+  audio.currentTime = ((e.clientX - rect.left) / rect.width) * state.result.file.duration;
+  updatePlayback();
+});
+window.addEventListener("resize", () => drawStrip(audio.currentTime));
+// Hovering the timeline names the chord and the bar at that point
+strip.addEventListener("mousemove", (e) => {
+  if (!state.result) return;
+  const rect = strip.getBoundingClientRect();
+  const time = ((e.clientX - rect.left) / rect.width) * state.result.file.duration;
+  const segments = state.result.chords.segments;
+  const bars = state.result.bars;
+  const bar = bars[search(bars, time)];
+  strip.title = `${mmss(time)} · ${chordName(segments[search(segments, time)])}${bar ? ` · ${barLabel(bar)}` : ""}`;
+});
+
+// ---------------------------------------------------------------- controls
+
+function markButtons() {
+  for (const button of document.querySelectorAll("[data-language]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.language === language));
+  }
+  for (const button of document.querySelectorAll("[data-notation]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.notation === state.notation));
+  }
+  for (const button of document.querySelectorAll("[data-detail]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.detail === state.detail));
+  }
+  $("click").setAttribute("aria-pressed", String(state.click));
+  $("click-state").textContent = t(state.click ? "state_on" : "state_off");
+  $("follow").setAttribute("aria-pressed", String(state.follow));
+  $("speed").textContent = `${audio.playbackRate}×`;
+}
 
 function setLanguage(code) {
   language = code;
@@ -463,19 +505,6 @@ function setLanguage(code) {
 for (const button of document.querySelectorAll("[data-language]")) {
   button.addEventListener("click", () => setLanguage(button.dataset.language));
 }
-
-function markButtons() {
-  for (const button of document.querySelectorAll("[data-language]")) {
-    button.setAttribute("aria-pressed", String(button.dataset.language === language));
-  }
-  for (const button of document.querySelectorAll("[data-notation]")) {
-    button.setAttribute("aria-pressed", String(button.dataset.notation === state.notation));
-  }
-  for (const button of document.querySelectorAll("[data-detail]")) {
-    button.setAttribute("aria-pressed", String(button.dataset.detail === state.detail));
-  }
-}
-
 for (const button of document.querySelectorAll("[data-notation]")) {
   button.addEventListener("click", () => {
     state.notation = button.dataset.notation;
@@ -492,6 +521,41 @@ for (const button of document.querySelectorAll("[data-detail]")) {
     if (state.result) drawReport();
   });
 }
+$("click").addEventListener("click", () => {
+  state.click = !state.click;
+  markButtons();
+  if (state.click) ensureAudioContext();
+  resetClicks();
+});
+$("follow").addEventListener("click", () => {
+  state.follow = !state.follow;
+  markButtons();
+});
+function changeSpeed(step) {
+  const index = Math.max(0, SPEEDS.indexOf(audio.playbackRate));
+  audio.playbackRate = SPEEDS[Math.min(SPEEDS.length - 1, Math.max(0, index + step))];
+  markButtons();
+}
+$("slower").addEventListener("click", () => changeSpeed(-1));
+$("faster").addEventListener("click", () => changeSpeed(1));
+
+function play() {
+  if (state.click) ensureAudioContext();
+  audio.play().catch(() => {});
+}
+
+$("play").addEventListener("click", () => (audio.paused ? play() : audio.pause()));
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || !state.result || e.target.closest("input, textarea, select")) return;
+  e.preventDefault();
+  if (audio.paused) play();
+  else audio.pause();
+});
+
+function setPlayIcon(playing) {
+  $("play-icon").innerHTML = playing ? '<path d="M7 4h4v16H7zM13 4h4v16h-4z"/>' : '<path d="M7 4v16l13-8z"/>';
+  $("play").setAttribute("aria-label", playing ? "Pause" : "Play");
+}
 
 // ---------------------------------------------------------------- playback
 
@@ -499,10 +563,10 @@ function updatePlayback() {
   if (!state.result) return;
   const now = audio.currentTime;
   const segments = state.result.chords.segments;
+  const duration = state.result.file.duration;
 
   const i = search(segments, now);
   const current = i >= 0 && now < segments[i].end ? segments[i] : null;
-  $("current-chord").textContent = chordName(current);
   let next = null;
   for (let j = i + 1; j < segments.length; j++) {
     if (segments[j].is_chord && chordName(segments[j]) !== chordName(current)) {
@@ -510,18 +574,19 @@ function updatePlayback() {
       break;
     }
   }
-  $("next-chord").textContent = chordName(next);
+  setSong(
+    state.result.file.name.replace(/\.[^.]+$/, ""),
+    `${mmss(now)} / ${mmss(duration)} · ${chordName(current)} → ${chordName(next)}`
+  );
 
   const bars = state.result.bars;
   const k = search(bars, now);
-  const bar = k >= 0 && now < bars[k].end ? bars[k] : null;
-  $("current-bar").textContent = bar ? barLabel(bar) : "—";
   if (k !== state.activeBar) {
     $("bar-grid").querySelector(".bar-cell.active")?.classList.remove("active");
     const cell = $("bar-grid").querySelector(`.bar-cell[data-i="${k}"]`);
     if (cell) {
       cell.classList.add("active");
-      if ($("follow").checked && !audio.paused) scrollGrid(cell);
+      if (state.follow && !audio.paused) scrollGrid(cell);
     }
     state.activeBar = k;
   }
@@ -535,11 +600,21 @@ function updatePlayback() {
   const count = $("beat-count");
   count.textContent = number ? String(number) : "";
   count.classList.toggle("downbeat", number === 1);
+  // The metronome light blinks on every beat while the click is on
+  const blink = state.click && !audio.paused && p >= 0 && now - state.beats[p] < 0.12;
+  $("led").classList.toggle("on", blink);
+  $("led").classList.toggle("one", blink && number === 1);
+  for (const square of document.querySelectorAll("#squares span")) {
+    const on = Number(square.dataset.beat) === number;
+    square.classList.toggle("on", on);
+    square.classList.toggle("one", on && number === 1);
+  }
+  drawStrip(now);
 }
 
 /** Scrolls only the grid (not the page) so that the bar being played is visible. */
 function scrollGrid(cell) {
-  const grid = $("bar-grid");
+  const grid = $("bar-scroll");
   const top = cell.offsetTop;
   const bottom = top + cell.offsetHeight;
   if (top < grid.scrollTop || bottom > grid.scrollTop + grid.clientHeight) {
@@ -587,7 +662,7 @@ function resetClicks() {
 }
 
 function scheduleClicks() {
-  if (!$("click").checked || audio.paused || audio.seeking || !audioContext) return;
+  if (!state.click || audio.paused || audio.seeking || !audioContext) return;
   const now = audio.currentTime;
   const beats = state.beats;
   while (state.nextClick < beats.length && beats[state.nextClick] < now - 0.03) state.nextClick++;
@@ -602,7 +677,7 @@ function scheduleClicks() {
 let playbackTimer = null;
 
 audio.addEventListener("play", () => {
-  if ($("click").checked) ensureAudioContext();
+  setPlayIcon(true);
   resetClicks();
   clearInterval(playbackTimer);
   playbackTimer = setInterval(() => {
@@ -611,6 +686,7 @@ audio.addEventListener("play", () => {
   }, 30);
 });
 audio.addEventListener("pause", () => {
+  setPlayIcon(false);
   clearInterval(playbackTimer);
   cancelClicks();
   updatePlayback();
@@ -625,17 +701,15 @@ audio.addEventListener("error", () => {
   if (state.result && audio.getAttribute("src")) $("audio-error").hidden = false;
 });
 
-$("click").addEventListener("change", () => {
-  if ($("click").checked) ensureAudioContext();
-  resetClicks();
-});
-
 function stopPlayback() {
   audio.pause();
   clearInterval(playbackTimer);
   cancelClicks();
   audio.removeAttribute("src");
   audio.load();
+  $("play").disabled = true;
+  setPlayIcon(false);
+  $("beat-count").textContent = "";
 }
 
 translatePage();

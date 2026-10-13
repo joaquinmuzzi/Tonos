@@ -9,6 +9,36 @@
 const MESSAGES = {
   en: {
     // Page
+    rail_analyze: "analyze",
+    rail_about: "about",
+    state_on: "on",
+    state_off: "off",
+    speed_label: "Speed",
+    slower: "Slower",
+    faster: "Faster",
+    notation_short: "notation",
+    chords_short: "chords",
+    star_on_github: "star on GitHub",
+    click_short: "click",
+    follow_short: "follow",
+    simple_short: "simple",
+    full_short: "full",
+    could_be: "could also be",
+    notes_title: "notes",
+    hear_else: "hear something else?",
+    report_result: "→ report a wrong result",
+    contribute: "→ contribute on GitHub",
+    beat_length: "1 beat = {seconds} s",
+    swing: "swing",
+    sub_binary: "in eighths",
+    sub_ternary: "in triplets",
+    sub_unclear: "subdivision unclear",
+    alt_double: "{bpm} bpm (double)",
+    alt_half: "{bpm} bpm (half)",
+    uncertain_tempo: "The tempo is uncertain: check it with the click.",
+    uncertain_meter: "The meter is uncertain: check it with the click.",
+    uncertain_key: "The key is uncertain.",
+    bars_count: "{count} bars",
     tagline:
       "Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.",
     language_label: "Language",
@@ -16,19 +46,10 @@ const MESSAGES = {
     dropzone_hint: "MP4, MP3, M4A, WAV, FLAC, MKV… up to 20 minutes (and 1 GB)",
     progress_label: "Analysis progress",
     retry: "Try another file",
-    from_cache: "· result saved from a previous analysis",
     audio_unsupported: "Your browser cannot play this format, but the analysis is complete.",
-    now: "Now",
-    next: "Next",
-    current_bar: "Bar",
     click_toggle: "Click on every beat",
     notation_label: "Notation",
     detail_label: "Chord detail",
-    simple_chords: "Simple chords",
-    full_chords: "Full",
-    chords_title: "Chords",
-    follow_playback: "Follow playback",
-    bar_by_bar: "Bar by bar",
     reliability_title: "How reliable is this?",
     reliability_tempo_title: "Tempo and beats:",
     reliability_tempo:
@@ -51,9 +72,6 @@ const MESSAGES = {
     download_json: "Download data (JSON)",
 
     // Confidence badges
-    confidence_high: "High confidence",
-    confidence_medium: "Medium confidence",
-    confidence_low: "Low confidence",
 
     // Upload and progress
     too_large_client:
@@ -66,57 +84,25 @@ const MESSAGES = {
 
     // Tempo card
     tempo_title: "Tempo",
-    tempo_suggestion: "You will probably feel it at {bpm} BPM.",
-    tempo_double_half: "Counted double or half: {double} or {half} BPM.",
-    tempo_stable: "Steady tempo.",
-    tempo_varies: "The tempo varies between {min} and {max} BPM.",
-    tempo_irregular: "The beat is irregular (free tempo or rubato): take the number as approximate.",
-    tempo_same: "A second, independent method gives almost the same ({bpm} BPM).",
-    tempo_double: "A second method gives {bpm} BPM (double): the typical tempo ambiguity.",
-    tempo_half: "A second method gives {bpm} BPM (half): the typical tempo ambiguity.",
-    tempo_triple:
-      "A second method gives {bpm} BPM (triple): this often happens when the beat divides into three.",
-    tempo_third:
-      "A second method gives {bpm} BPM (a third): this often happens when the beat divides into three.",
-    tempo_mismatch: "A second method gives {bpm} BPM, which does not match: take the tempo with care.",
-    tempo_curve_title: "Tempo along the song:",
-    tempo_curve_label: "Tempo along the song, between {min} and {max} BPM",
 
     // Meter card
     meter_title: "Meter",
-    meter_swing: "{signature} swing",
     meter_beats_per_bar: "{beats} beats per bar",
-    meter_source_periodicity:
-      "Counts in {beats}: the harmony and the bass repeat every {beats} beats (or multiples).",
-    meter_source_downbeats: "Counts in {beats}: that is how {percent} of the {bars} detected bars count.",
-    meter_confirmed: "A second method (how often the harmony repeats) confirms the meter.",
-    subdivision_binary: "Each beat divides into 2 (binary subdivision).",
-    subdivision_ternary: "Each beat divides into 3 (ternary subdivision).",
-    subdivision_unclear: "It is unclear whether each beat divides into 2 or into 3.",
 
     // Key card
     key_title: "Key",
     key_name: "{tonic} {mode}",
     major: "major",
     minor: "minor",
-    key_alternatives: "It could also be: {keys}.",
     key_reason_relative: "its relative key",
     key_reason_runner_up: "the model's second choice",
-    key_chords_same: "The detected chords point to the same key.",
-    key_chords_relative: "The detected chords point to {key}, its relative key.",
-    key_chords_different: "The detected chords point to {key}: they disagree, so there are doubts.",
     key_change: "Possible key change: between {start} and {end} it seems to be in {key}.",
 
     // Chords and bars
-    chords_note_simple:
-      "Simple mode: only major and minor, which is the most reliable. Switch to “Full” to see sevenths, basses and inversions.",
-    chords_note_full: "Full mode: includes sevenths, basses and inversions, which fail more often.",
-    grid_note: "Click a bar to listen from there.",
-    grid_note_approximate:
-      "Approximate grid: it is not certain on which beat each bar starts. Click a bar to listen from there.",
-    no_chords: "No chords were detected.",
     no_bars: "No bars were detected.",
     listen_from: "Listen from {time}",
+    grid_note: "Click a bar to listen from there.",
+    grid_note_approximate: "Approximate grid: it is not certain on which beat each bar starts. Click a bar to listen from there.",
     bar: "bar {number}",
     section: "section {number}",
     pickup: "pickup",
@@ -183,6 +169,36 @@ const MESSAGES = {
   },
   es: {
     // Page
+    rail_analyze: "analizar",
+    rail_about: "info",
+    state_on: "on",
+    state_off: "off",
+    speed_label: "Velocidad",
+    slower: "Más lento",
+    faster: "Más rápido",
+    notation_short: "notación",
+    chords_short: "acordes",
+    star_on_github: "star en GitHub",
+    click_short: "clic",
+    follow_short: "seguir",
+    simple_short: "simples",
+    full_short: "completos",
+    could_be: "también podría ser",
+    notes_title: "notas",
+    hear_else: "¿escuchás otra cosa?",
+    report_result: "→ reportar un resultado",
+    contribute: "→ contribuir en GitHub",
+    beat_length: "1 pulso = {seconds} s",
+    swing: "con swing",
+    sub_binary: "en corcheas",
+    sub_ternary: "en tresillos",
+    sub_unclear: "subdivisión dudosa",
+    alt_double: "{bpm} bpm (al doble)",
+    alt_half: "{bpm} bpm (a la mitad)",
+    uncertain_tempo: "El tempo es incierto: comprobalo con el clic.",
+    uncertain_meter: "El compás es incierto: comprobalo con el clic.",
+    uncertain_key: "La tonalidad es incierta.",
+    bars_count: "{count} compases",
     tagline:
       "Subí una canción o un video y te digo el tempo, el compás, la tonalidad y los acordes. Todo se procesa en tu PC: el archivo no sale de tu computadora.",
     language_label: "Idioma",
@@ -190,19 +206,10 @@ const MESSAGES = {
     dropzone_hint: "MP4, MP3, M4A, WAV, FLAC, MKV… de hasta 20 minutos (y 1 GB)",
     progress_label: "Progreso del análisis",
     retry: "Probar con otro archivo",
-    from_cache: "· resultado guardado de un análisis anterior",
     audio_unsupported: "Tu navegador no puede reproducir este formato, pero el análisis está completo.",
-    now: "Ahora",
-    next: "Después",
-    current_bar: "Compás",
     click_toggle: "Clic en cada pulso",
     notation_label: "Notación",
     detail_label: "Detalle de los acordes",
-    simple_chords: "Acordes simples",
-    full_chords: "Completos",
-    chords_title: "Acordes",
-    follow_playback: "Seguir la reproducción",
-    bar_by_bar: "Compás por compás",
     reliability_title: "¿Qué tan confiable es esto?",
     reliability_tempo_title: "Tempo y pulsos:",
     reliability_tempo:
@@ -225,9 +232,6 @@ const MESSAGES = {
     download_json: "Descargar datos (JSON)",
 
     // Confidence badges
-    confidence_high: "Confianza alta",
-    confidence_medium: "Confianza media",
-    confidence_low: "Confianza baja",
 
     // Upload and progress
     too_large_client:
@@ -240,56 +244,25 @@ const MESSAGES = {
 
     // Tempo card
     tempo_title: "Tempo",
-    tempo_suggestion: "Probablemente lo sientas a {bpm} BPM.",
-    tempo_double_half: "Si lo contás al doble o a la mitad: {double} o {half} BPM.",
-    tempo_stable: "Tempo estable.",
-    tempo_varies: "El tempo varía entre {min} y {max} BPM.",
-    tempo_irregular: "El pulso es irregular (tempo libre o rubato): tomá el número como aproximado.",
-    tempo_same: "Un segundo método independiente da casi lo mismo ({bpm} BPM).",
-    tempo_double: "Un segundo método da {bpm} BPM (el doble): es la ambigüedad típica del tempo.",
-    tempo_half: "Un segundo método da {bpm} BPM (la mitad): es la ambigüedad típica del tempo.",
-    tempo_triple:
-      "Un segundo método da {bpm} BPM (el triple): suele pasar cuando el pulso se divide en tres.",
-    tempo_third: "Un segundo método da {bpm} BPM (un tercio): suele pasar cuando el pulso se divide en tres.",
-    tempo_mismatch: "Un segundo método da {bpm} BPM, que no coincide: tomá el tempo con cuidado.",
-    tempo_curve_title: "Tempo a lo largo de la canción:",
-    tempo_curve_label: "Tempo a lo largo de la canción, entre {min} y {max} BPM",
 
     // Meter card
     meter_title: "Compás",
-    meter_swing: "{signature} con swing",
     meter_beats_per_bar: "{beats} pulsos por compás",
-    meter_source_periodicity:
-      "Cuenta en {beats}: la armonía y el bajo se repiten cada {beats} pulsos (o múltiplos).",
-    meter_source_downbeats: "Cuenta en {beats}: así cuentan el {percent} de los {bars} compases detectados.",
-    meter_confirmed: "Un segundo método (cada cuántos pulsos se repite la armonía) confirma el compás.",
-    subdivision_binary: "Cada pulso se divide en 2 (subdivisión binaria).",
-    subdivision_ternary: "Cada pulso se divide en 3 (subdivisión ternaria).",
-    subdivision_unclear: "No queda claro si cada pulso se divide en 2 o en 3.",
 
     // Key card
     key_title: "Tonalidad",
     key_name: "{tonic} {mode}",
     major: "mayor",
     minor: "menor",
-    key_alternatives: "También podría ser: {keys}.",
     key_reason_relative: "su relativa",
     key_reason_runner_up: "segunda opción del modelo",
-    key_chords_same: "Los acordes detectados apuntan a la misma tonalidad.",
-    key_chords_relative: "Los acordes detectados apuntan a {key}, su relativa.",
-    key_chords_different: "Los acordes detectados apuntan a {key}: no coincide, así que hay dudas.",
     key_change: "Posible cambio de tonalidad: entre {start} y {end} parece estar en {key}.",
 
     // Chords and bars
-    chords_note_simple:
-      "Modo simple: solo mayor y menor, que es lo más confiable. Pasá a “Completos” para ver séptimas, bajos e inversiones.",
-    chords_note_full: "Modo completo: incluye séptimas, bajos e inversiones, que fallan más seguido.",
-    grid_note: "Hacé clic en un compás para escucharlo desde ahí.",
-    grid_note_approximate:
-      "Grilla aproximada: no se sabe con seguridad en qué pulso empieza cada compás. Hacé clic en un compás para escucharlo desde ahí.",
-    no_chords: "No se detectaron acordes.",
     no_bars: "No se detectaron compases.",
     listen_from: "Escuchar desde {time}",
+    grid_note: "Hacé clic en un compás para escucharlo desde ahí.",
+    grid_note_approximate: "Grilla aproximada: no se sabe con seguridad en qué pulso empieza cada compás. Hacé clic en un compás para escucharlo desde ahí.",
     bar: "compás {number}",
     section: "tramo {number}",
     pickup: "anacrusa",
@@ -388,11 +361,14 @@ function messageText(message) {
   return t(message.code, message.params);
 }
 
-/** Translates the fixed texts of the page (elements with data-i18n or data-i18n-aria-label). */
+/** Translates the fixed texts of the page (data-i18n, data-i18n-aria-label, data-i18n-title). */
 function translatePage() {
   document.documentElement.lang = language;
   for (const node of document.querySelectorAll("[data-i18n]")) node.textContent = t(node.dataset.i18n);
   for (const node of document.querySelectorAll("[data-i18n-aria-label]")) {
     node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel));
+  }
+  for (const node of document.querySelectorAll("[data-i18n-title]")) {
+    node.setAttribute("title", t(node.dataset.i18nTitle));
   }
 }

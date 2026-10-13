@@ -9,6 +9,20 @@ note on what to update.
 
 ## [Unreleased]
 
+### Added
+
+- The report lists the seven notes of the key's scale (`key.best.scale`), spelled for the key, in
+  both notations.
+
+### Changed
+
+- New interface: a dark studio layout with hard edges. A transport bar holds play, a metronome
+  button with a light that blinks on each beat, and a speed stepper. A timeline shows one block
+  per beat, coloured by chord. Tempo, meter and key are shown large, the key with its scale notes.
+  A side panel holds the other possible readings, the notes on the result, and links to report a
+  wrong result or contribute. The page fits the window on a computer and scrolls normally on a
+  phone.
+
 ### Fixed
 
 - Songs with a single instrument, pauses or a free tempo, where the beat detector jumps between
