@@ -12,7 +12,7 @@ import torch
 import torchaudio
 
 from ..messages import message
-from .notation import key_name, parse_skey_label, relative_key
+from .notation import key_name, parse_skey_label, relative_key, scale_names
 
 WINDOW_SECONDS = 30.0  # to see whether the key changes along the song
 WINDOW_HOP_SECONDS = 15.0
@@ -69,6 +69,7 @@ def detect_key(signal: np.ndarray, sr: int) -> dict:
     order = np.argsort(probs)[::-1]
     tonic, mode = classes[order[0]]
     best = _describe(tonic, mode, probs[order[0]])
+    best["scale"] = scale_names(tonic, mode)
 
     rel = relative_key(tonic, mode)
     relative_idx = classes.index(rel)

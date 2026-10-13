@@ -136,6 +136,13 @@ def key_name(tonic_pc: int, mode: str) -> dict:
     return {"solfege": write_note(tonic, "solfege"), "letter": write_note(tonic, "letter")}
 
 
+def scale_names(tonic_pc: int, mode: str) -> dict:
+    """The seven notes of the key's scale, spelled for the key, in both notations."""
+    speller = Speller(tonic_pc, mode)
+    pcs = [(tonic_pc + step) % 12 for step in _SCALE[mode]]
+    return {system: [speller.name(pc, system) for pc in pcs] for system in ("solfege", "letter")}
+
+
 def relative_key(tonic_pc: int, mode: str) -> tuple[int, str]:
     """C major <-> A minor."""
     if mode == "major":

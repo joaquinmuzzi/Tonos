@@ -6,6 +6,7 @@ from tonos.analysis.notation import (
     key_name,
     parse_skey_label,
     relative_key,
+    scale_names,
 )
 
 
@@ -122,3 +123,8 @@ def test_no_chord():
     d = describe_chord("N", Speller())
     assert not d["is_chord"]
     assert d["solfege"] == "—"
+
+
+def test_scale_names_are_spelled_for_the_key():
+    assert scale_names(5, "major")["letter"] == ["F", "G", "A", "B♭", "C", "D", "E"]
+    assert scale_names(4, "minor")["solfege"] == ["Mi", "Fa#", "Sol", "La", "Si", "Do", "Re"]
