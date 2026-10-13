@@ -4,6 +4,24 @@
 # (This file is plain ASCII on purpose: Windows PowerShell 5.1 misreads UTF-8 without a BOM.)
 
 $ErrorActionPreference = "Stop"
+
+# When it is started from Explorer (double-click, or right-click > "Run with PowerShell")
+# PowerShell opens its own window, which closes as soon as the script ends: the output
+# would be gone before anyone can read it. In that case the script waits for a key first.
+# Inside an existing terminal the window stays open by itself, so nothing waits there.
+$ownWindow = $false
+try {
+    $ownProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$PID"
+    $parentProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$($ownProcess.ParentProcessId)"
+    $ownWindow = $parentProcess.Name -eq "explorer.exe"
+} catch { }
+
+trap {
+    Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
+    if ($ownWindow) { Read-Host "`nPress Enter to close" }
+    exit 1
+}
+
 Set-Location $PSScriptRoot
 $data = Join-Path $env:LOCALAPPDATA "tonos"
 $venv = Join-Path $data "venv"
@@ -58,3 +76,4 @@ Write-Host "`nDone. To use it, double-click tonos.bat" -ForegroundColor Green
 if (Test-Path $oldData) {
     Write-Host "The folder $oldData is from an older version and is no longer used: you can delete it." -ForegroundColor Yellow
 }
+if ($ownWindow) { Read-Host "`nPress Enter to close" }
