@@ -1,7 +1,9 @@
 name: Docker
 
-# Builds the image and tries it on every change to it; publishes it on GitHub Container Registry
-# (ghcr.io/joaquinmuzzi/tonos) when a version tag such as v0.3.0 is pushed.
+# Builds the image and tries it on every change to it, on amd64 and arm64; publishes it on GitHub
+# Container Registry (ghcr.io/joaquinmuzzi/tonos) when a version tag such as v0.3.1 is pushed.
+# Each platform is built on a runner of its own architecture (emulating arm64 took over an hour),
+# and the two images are joined into one multi-platform image at the end.
 on:
   push:
     tags: ["v*"]
@@ -28,9 +30,15 @@ env:
 
 jobs:
   test:
-    name: build and try
-    runs-on: ubuntu-latest
+    name: build and try (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, platform: linux/amd64, runner: ubuntu-latest }
+          - { arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,14 +46,14 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - name: Build the image (linux/amd64)
+      - name: Build the image (${{ matrix.platform }})
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           load: true
           tags: tonos:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
 
       # The image has an audio-only ffmpeg: check it reads every common format, also in videos
       - name: Make test files in several formats
@@ -89,7 +97,7 @@ jobs:
           size=$(docker image inspect tonos:test --format '{{.Size}}')
           compressed=$(docker save tonos:test | gzip -1 | wc -c)
           {
-            echo "### Image size (linux/amd64)"
+            echo "### Image size (${{ matrix.platform }})"
             echo "- Uncompressed: $((size / 1000000)) MB"
             echo "- Download (gzip, approximate): $((compressed / 1000000)) MB"
             echo
@@ -100,11 +108,16 @@ jobs:
           cat "$GITHUB_STEP_SUMMARY"
 
   publish:
-    name: publish
+    name: publish (${{ matrix.arch }})
     if: startsWith(github.ref, 'refs/tags/v')
     needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, platform: linux/amd64, runner: ubuntu-latest }
+          - { arch: arm64, platform: linux/arm64, runner: ubuntu-24.04-arm }
     permissions:
       contents: read
       packages: write
@@ -112,9 +125,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      # Also builds for linux/arm64 (Apple silicon, Raspberry Pi), emulated
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -128,20 +138,75 @@ jobs:
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.IMAGE }}
-          # v0.3.0 -> 0.3.0, 0.3 and latest
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
           labels: |
             org.opencontainers.image.title=Tonos
             org.opencontainers.image.description=Finds the tempo, meter, key and chords of a song, on your computer.
 
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      # Pushed without a tag, by digest: the merge job below gives the joined image its tags
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Keep the digest for the merge job
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: publish the multi-platform image
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          # v0.3.1 -> 0.3.1, 0.3 and latest
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Join the two images under the version tags
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          tags=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          # shellcheck disable=SC2086 # one -t per tag, one argument per digest
+          docker buildx imagetools create $tags $(printf "$IMAGE@sha256:%s " *)
+
+      - name: Show what was published
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: docker buildx imagetools inspect "$IMAGE:$VERSION"
