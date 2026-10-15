@@ -113,7 +113,8 @@ published with each version; `docker build -t tonos .` builds it from this folde
   already running, only the browser opens. You can drop a file anywhere on the page, even over a
   report.
 - **Command line:** `tonos.bat "C:\path\to\song.mp4"` or `./tonos.sh path/to/song.mp4` prints a
-  text report; add `--json` for all the data. `--help` lists every option.
+  text report; add `--json` for all the data. See the [JSON report format](docs/report-format.md)
+  for the machine-readable schema. `--help` lists every option.
 
 An analysis takes 10 to 30 seconds per song. Uploading the same file again gives the result
 instantly, because it is cached. What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
