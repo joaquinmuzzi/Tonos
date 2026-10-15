@@ -9,6 +9,12 @@ note on what to update.
 
 ## [Unreleased]
 
+### Fixed
+
+- The Docker image is published. In 0.3.0 its arm64 build failed, so no image came out: on arm64,
+  torchaudio needs the system's OpenMP runtime, which the image now includes. Each platform is
+  now built on a runner of its own architecture, and both are tried before publishing.
+
 ## [0.3.0] - 2026-10-15
 
 ### Added

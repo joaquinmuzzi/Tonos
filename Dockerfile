@@ -6,6 +6,11 @@
 # python:3.12-slim (Debian 13); Dependabot keeps the digest up to date
 FROM python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS base
 
+# The OpenMP runtime: on arm64, torchaudio loads it from the system (the amd64 build brings its own)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # ---------------------------------------------------------------- build: the environment and the models
 FROM base AS build
 
