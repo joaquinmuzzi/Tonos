@@ -9,6 +9,8 @@ note on what to update.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-15
+
 ### Fixed
 
 - The Docker image is published. In 0.3.0 its arm64 build failed, so no image came out: on arm64,
@@ -111,7 +113,8 @@ Compared with the unreleased prototype, everything is now in English. If you use
   the old `%LOCALAPPDATA%\analizador-musical` folder can then be deleted (its saved analyses use
   the old report format and would be recomputed anyway).
 
-[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/joaquinmuzzi/tonos/releases/tag/v0.1.0
