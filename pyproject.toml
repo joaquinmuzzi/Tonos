@@ -1,6 +1,6 @@
 [project]
 name = "tonos"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local, offline music analysis: tempo, meter, key and chords, bar by bar."
 readme = "README.md"
 license = "MIT"
