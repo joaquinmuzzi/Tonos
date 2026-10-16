@@ -18,6 +18,7 @@ const state = {
   error: null, // message shown in the error box, kept to translate it again
   click: false,
   follow: true,
+  file: null, // the chosen file, sent again to separate its tracks
 };
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
@@ -141,6 +142,8 @@ function upload(file) {
   state.error = null;
   if (state.url) URL.revokeObjectURL(state.url);
   state.url = URL.createObjectURL(file);
+  state.file = file;
+  resetStems();
   setSong(file.name.replace(/\.[^.]+$/, ""), "");
 
   show("progress");
@@ -215,6 +218,7 @@ function showError(message) {
 $("retry").addEventListener("click", () => (DEMO ? location.reload() : show("upload")));
 $("new-analysis").addEventListener("click", () => {
   stopPlayback();
+  resetStems();
   state.result = null;
   setSong("Tonos", null);
   show("upload");
@@ -715,6 +719,177 @@ function stopPlayback() {
   $("beat-count").textContent = "";
 }
 
+// ---------------------------------------------------------------- stems (optional, issue #56)
+
+/* The song can be split into vocals, drums, bass and the rest, each with its volume, mute and
+   solo. The main <audio> keeps playing, muted, as the clock of the click and the grid; one
+   <audio> per stem follows it. */
+const STEM_NAMES = ["vocals", "drums", "bass", "other"];
+const stems = { job: null, players: {}, volume: {}, muted: {}, solo: null, timer: null };
+
+function showStems(part) {
+  $("stems-start").hidden = part !== "start";
+  $("stems-progress").hidden = part !== "progress";
+  $("stems-mixer").hidden = part !== "mixer";
+}
+
+function setStemsProgress(text, fraction) {
+  $("stems-step").textContent = text;
+  $("stems-fill").style.width = `${Math.max(0, Math.min(100, fraction * 100))}%`;
+}
+
+function stemsError(message) {
+  stems.job = null;
+  showStems("start");
+  $("stems-error").textContent = messageText(message);
+  $("stems-error").hidden = false;
+}
+
+/** Back to the original mix, and cancels a separation that is still running. */
+function resetStems() {
+  if (stems.job) fetch(`/api/separations/${stems.job}`, { method: "DELETE" }).catch(() => {});
+  stems.job = null;
+  clearInterval(stems.timer);
+  for (const player of Object.values(stems.players)) {
+    player.pause();
+    player.removeAttribute("src");
+    player.load();
+  }
+  stems.players = {};
+  stems.solo = null;
+  audio.muted = false;
+  $("stems-error").hidden = true;
+  showStems("start");
+}
+
+$("separate").addEventListener("click", () => {
+  if (!state.file) return;
+  $("stems-error").hidden = true;
+  showStems("progress");
+  setStemsProgress(t("uploading"), 0);
+  const form = new FormData();
+  form.append("file", state.file);
+  const request = new XMLHttpRequest();
+  request.open("POST", "/api/separations");
+  request.upload.addEventListener("progress", (e) => {
+    if (e.lengthComputable) setStemsProgress(t("uploading_percent", { percent: percent(e.loaded / e.total) }), 0);
+  });
+  request.addEventListener("load", () => {
+    let body = {};
+    try {
+      body = JSON.parse(request.responseText);
+    } catch {
+      /* empty response */
+    }
+    if (request.status === 200 && body.id) pollStems(body.id);
+    else stemsError(serverMessage(body.detail, request.status));
+  });
+  request.addEventListener("error", () => stemsError(local("connection_failed")));
+  request.send(form);
+});
+
+$("stems-cancel").addEventListener("click", resetStems);
+$("stems-off").addEventListener("click", resetStems);
+
+async function pollStems(id) {
+  stems.job = id;
+  let failures = 0;
+  while (stems.job === id) {
+    let job;
+    try {
+      const response = await fetch(`/api/separations/${id}`);
+      job = await response.json();
+      if (!response.ok) throw new Error(messageText(serverMessage(job.detail, response.status)));
+      failures = 0;
+    } catch (error) {
+      if (++failures >= 5) {
+        stemsError(local("connection_lost", { detail: error.message }));
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+    if (stems.job !== id) return; // cancelled meanwhile
+    if (job.status === "done") {
+      stems.job = null;
+      loadStems(job.result.stems);
+      return;
+    }
+    if (job.status === "error") {
+      stemsError(job.error);
+      return;
+    }
+    setStemsProgress(`${t(job.step)}… ${percent(job.progress)}`, job.progress);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+function loadStems(urls) {
+  for (const name of STEM_NAMES) {
+    const player = new Audio(urls[name]);
+    player.preload = "auto";
+    stems.players[name] = player;
+    stems.volume[name] ??= 1;
+    stems.muted[name] ??= false;
+  }
+  audio.muted = true;
+  drawMixer();
+  showStems("mixer");
+  syncStems(true);
+  clearInterval(stems.timer);
+  stems.timer = setInterval(() => syncStems(false), 250);
+}
+
+function drawMixer() {
+  $("stems-rows").replaceChildren(
+    ...STEM_NAMES.map((name) => {
+      const mute = el("button", { type: "button", class: "stem-mute", title: t("stem_mute"), "aria-pressed": String(stems.muted[name]) }, "M");
+      const solo = el("button", { type: "button", class: "stem-solo", title: t("stem_solo"), "aria-pressed": String(stems.solo === name) }, "S");
+      const volume = el("input", { type: "range", min: "0", max: "100", value: String(Math.round(stems.volume[name] * 100)), "aria-label": t(`stem_${name}`) });
+      mute.addEventListener("click", () => {
+        stems.muted[name] = !stems.muted[name];
+        drawMixer();
+      });
+      solo.addEventListener("click", () => {
+        stems.solo = stems.solo === name ? null : name;
+        drawMixer();
+      });
+      volume.addEventListener("input", () => {
+        stems.volume[name] = Number(volume.value) / 100;
+        applyStemVolumes();
+      });
+      return el("div", { class: "stem-row", "data-stem": name }, el("span", { class: "stem-name" }, t(`stem_${name}`)), mute, solo, volume);
+    })
+  );
+  applyStemVolumes();
+}
+
+function applyStemVolumes() {
+  for (const [name, player] of Object.entries(stems.players)) {
+    const audible = stems.solo ? stems.solo === name : !stems.muted[name];
+    player.volume = audible ? stems.volume[name] : 0;
+    document.querySelector(`.stem-row[data-stem="${name}"]`)?.classList.toggle("silent", !audible);
+  }
+}
+
+/** Keeps every stem on the main player's time, speed and play/pause state. */
+function syncStems(force) {
+  for (const player of Object.values(stems.players)) {
+    player.playbackRate = audio.playbackRate;
+    if (!player.seeking && (force || Math.abs(player.currentTime - audio.currentTime) > 0.06)) {
+      player.currentTime = audio.currentTime;
+    }
+    if (audio.paused && !player.paused) player.pause();
+    else if (!audio.paused && player.paused) player.play().catch(() => {});
+  }
+}
+
+for (const event of ["play", "pause", "seeked", "ratechange"]) {
+  audio.addEventListener(event, () => {
+    if (Object.keys(stems.players).length) syncStems(true);
+  });
+}
+
 // ---------------------------------------------------------------- online demo
 
 /** The demo has no server: it opens one song that is already analyzed (see demo/README.md). */
@@ -722,6 +897,7 @@ async function startDemo() {
   $("new-analysis").hidden = true;
   $("install").hidden = false;
   $("demo-bar").hidden = false;
+  $("stems-section").hidden = true; // separating needs the app's server
   drawDemoBar();
   try {
     const response = await fetch(DEMO.result);

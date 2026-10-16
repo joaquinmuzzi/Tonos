@@ -82,6 +82,13 @@ jobs:
               print(f"{path.name}: {len(signal) / sr:.1f} s")
           '
           docker run --rm --network none -v "$PWD/media:/media:ro" tonos:test python -m tonos /media/video.mp4
+          # Separation into stems, with the model inside the image
+          docker run --rm --network none -v "$PWD/media:/media:ro" tonos:test python -c '
+          from pathlib import Path
+          from tonos.analysis import separation
+          for stem, path in separation.separate(Path("/media/beat.mp3"), Path("/tmp/stems")).items():
+              print(f"{stem}: {path.stat().st_size // 1000} kB")
+          '
 
       - name: Serve the web app
         run: |

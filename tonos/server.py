@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .analysis import pipeline
+from .analysis import pipeline, separation
 from .analysis.audio import AudioError
 from .messages import message
 
@@ -32,6 +32,8 @@ DATA_DIR = Path(
 )
 CACHE_DIR = DATA_DIR / "cache"
 UPLOAD_DIR = DATA_DIR / "uploads"
+STEMS_DIR = DATA_DIR / "stems"
+MAX_STEM_SONGS = 10  # each song's stems take about 15 MB
 MAX_UPLOAD_BYTES = 1024**3  # 1 GB
 MAX_JOBS = 30
 
@@ -114,11 +116,10 @@ def _read_cache(path: Path) -> dict | None:
     return result if result.get("version") == pipeline.VERSION else None
 
 
-@app.post("/api/analyses")
-async def upload(file: UploadFile):
+async def _save_upload(file: UploadFile) -> tuple[Path, str, str]:
+    """Saves an uploaded file under UPLOAD_DIR. Returns (path, original name, SHA-256 of the content)."""
     name = Path(file.filename or "song").name or "song"
-    id_ = uuid.uuid4().hex[:12]
-    folder = UPLOAD_DIR / id_
+    folder = UPLOAD_DIR / uuid.uuid4().hex[:12]
     # Neutral file name on disk: avoids ffmpeg problems with unusual characters
     target = folder / ("input" + _safe_extension(name))
 
@@ -142,11 +143,17 @@ async def upload(file: UploadFile):
     if total == 0:
         shutil.rmtree(folder, ignore_errors=True)
         raise HTTPException(400, message("empty_file"))
+    return target, name, hasher.hexdigest()
 
-    cache_path = CACHE_DIR / f"{hasher.hexdigest()}.json"
+
+@app.post("/api/analyses")
+async def upload(file: UploadFile):
+    target, name, digest = await _save_upload(file)
+    id_ = target.parent.name
+    cache_path = CACHE_DIR / f"{digest}.json"
     cached = _read_cache(cache_path)
     if cached is not None:
-        shutil.rmtree(folder, ignore_errors=True)
+        shutil.rmtree(target.parent, ignore_errors=True)
         cached["file"]["name"] = name
         cached["from_cache"] = True
         _register_job(id_, name=name, status="done", step="done", progress=1.0, result=cached)
@@ -178,13 +185,103 @@ def _run_analysis(id_: str, path: Path, name: str, cache_path: Path) -> None:
 
 
 @app.get("/api/analyses/{id_}")
+@app.get("/api/separations/{id_}")
 def job_status(id_: str):
     """{"status": "queued" | "running" | "done" | "error", "step", "progress", "name",
     "result" (when done), "error" (a message, when it failed)}."""
     with _lock:
-        job = dict(_jobs.get(id_) or {})
+        job = {k: v for k, v in (_jobs.get(id_) or {}).items() if k != "cancel"}
     if not job:
         raise HTTPException(404, message("job_not_found"))
     if job["status"] == "queued" and not _models_ready.is_set():
         job["step"] = "loading_models"
     return job
+
+
+# ---------------------------------------------------------------- stems (optional, issue #56)
+
+
+def _stems_result(digest: str) -> dict:
+    return {"stems": {stem: f"/stems/{digest}/{stem}.mp3" for stem in separation.STEMS}}
+
+
+def _stems_ready(folder: Path) -> bool:
+    return all((folder / f"{stem}.mp3").is_file() for stem in separation.STEMS)
+
+
+def _prune_stems(keep: Path) -> None:
+    """Keeps the stems of the MAX_STEM_SONGS most recently separated songs (they are large)."""
+    folders = sorted(
+        (f for f in STEMS_DIR.iterdir() if f.is_dir() and f != keep), key=lambda f: f.stat().st_mtime
+    )
+    for old in folders[: max(0, len(folders) - (MAX_STEM_SONGS - 1))]:
+        shutil.rmtree(old, ignore_errors=True)
+
+
+@app.post("/api/separations")
+async def separate(file: UploadFile):
+    """Separates a song into stems. The same file the analysis got: the browser sends it again."""
+    target, name, digest = await _save_upload(file)
+    id_ = target.parent.name
+    folder = STEMS_DIR / digest
+    if _stems_ready(folder):
+        shutil.rmtree(target.parent, ignore_errors=True)
+        folder.touch()  # recently used: pruned last
+        _register_job(id_, name=name, status="done", step="done", progress=1.0, result=_stems_result(digest))
+    else:
+        _register_job(id_, name=name, cancel=threading.Event())
+        _executor.submit(_run_separation, id_, target, name, digest)
+    return {"id": id_}
+
+
+@app.delete("/api/separations/{id_}")
+def cancel_separation(id_: str):
+    with _lock:
+        job = _jobs.get(id_)
+        if not job or "cancel" not in job:
+            raise HTTPException(404, message("job_not_found"))
+        job["cancel"].set()
+        if job["status"] == "queued":
+            job.update(status="error", error=message("separation_cancelled"))
+    return {"id": id_}
+
+
+def _run_separation(id_: str, path: Path, name: str, digest: str) -> None:
+    with _lock:
+        cancel = _jobs[id_]["cancel"] if id_ in _jobs else threading.Event()
+
+    def progress(fraction: float) -> None:
+        _update_job(id_, status="running", step="separating_tracks", progress=round(fraction, 3))
+
+    folder = STEMS_DIR / digest
+    partial = STEMS_DIR / f"{digest}.partial"
+    try:
+        if cancel.is_set():
+            return
+        progress(0.0)
+        STEMS_DIR.mkdir(parents=True, exist_ok=True)
+        separation.separate(path, partial, progress, cancel.is_set)
+        shutil.rmtree(folder, ignore_errors=True)
+        partial.rename(folder)
+        _prune_stems(keep=folder)
+        _update_job(id_, status="done", step="done", progress=1.0, result=_stems_result(digest))
+    except separation.Cancelled:
+        _update_job(id_, status="error", error=message("separation_cancelled"))
+    except AudioError as e:
+        _update_job(id_, status="error", error=e.message)
+    except Exception as e:
+        log.exception("The separation of %s failed", name)
+        _update_job(id_, status="error", error=message("unexpected_error", detail=str(e)))
+    finally:
+        shutil.rmtree(partial, ignore_errors=True)
+        shutil.rmtree(path.parent, ignore_errors=True)
+
+
+@app.get("/stems/{digest}/{stem}.mp3")
+def stem_file(digest: str, stem: str):
+    if not re.fullmatch(r"[0-9a-f]{64}", digest) or stem not in separation.STEMS:
+        raise HTTPException(404)
+    path = STEMS_DIR / digest / f"{stem}.mp3"
+    if not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="audio/mpeg")

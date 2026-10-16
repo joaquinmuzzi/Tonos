@@ -6,7 +6,7 @@
   <title>Tonos</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%23ededed%22/%3E%3Ctext x=%228%22 y=%2212.5%22 font-size=%2212%22 text-anchor=%22middle%22 font-family=%22monospace%22%3ET%3C/text%3E%3C/svg%3E">
   <!-- Relative paths, so the same page also works as the online demo (see demo/README.md) -->
-  <link rel="stylesheet" href="static/styles.css?v=9">
+  <link rel="stylesheet" href="static/styles.css?v=10">
 </head>
 <body>
   <!-- Texts are in English here and translated by i18n.js (data-i18n = key in MESSAGES). -->
@@ -144,6 +144,23 @@
               <div class="label mono" data-i18n="notes_title">notes</div>
               <div id="notes"></div>
             </div>
+            <div class="panel-section" id="stems-section">
+              <div class="label mono" data-i18n="stems_title">tracks</div>
+              <div id="stems-start">
+                <button type="button" class="link-box" id="separate" data-i18n="separate_button">Separate tracks</button>
+                <p class="note mono" id="stems-error" hidden></p>
+                <p class="muted stems-hint" data-i18n="separate_hint">Vocals, drums, bass and the rest, to mute or solo each one. It takes about a third of the song's length.</p>
+              </div>
+              <div id="stems-progress" hidden>
+                <div class="mono stems-step" id="stems-step"></div>
+                <div class="progress-track"><div class="progress-fill" id="stems-fill"></div></div>
+                <button type="button" class="link-box secondary" id="stems-cancel" data-i18n="cancel">cancel</button>
+              </div>
+              <div id="stems-mixer" hidden>
+                <div class="stems-rows" id="stems-rows"></div>
+                <button type="button" class="link-box secondary" id="stems-off" data-i18n="stems_off">Back to the original mix</button>
+              </div>
+            </div>
             <div class="panel-section">
               <div class="label mono" data-i18n="hear_else">hear something else?</div>
               <a class="link-box" href="https://github.com/joaquinmuzzi/Tonos/issues/new?template=wrong_result.yml" target="_blank" rel="noopener" data-i18n="report_result">→ report a wrong result</a>
@@ -162,8 +179,8 @@
     </div>
   </div>
 
-  <script src="static/i18n.js?v=9"></script>
-  <script src="static/demo.js?v=9"></script>
-  <script src="static/app.js?v=9"></script>
+  <script src="static/i18n.js?v=10"></script>
+  <script src="static/demo.js?v=10"></script>
+  <script src="static/app.js?v=10"></script>
 </body>
 </html>

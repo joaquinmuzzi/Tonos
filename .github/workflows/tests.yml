@@ -66,12 +66,13 @@ jobs:
         run: |
           pip install -r requirements.txt -c constraints.txt
           pip install --no-deps "consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71"
+          pip install --no-deps demucs==4.0.1
 
-      - name: Cache the beat-tracking model (Beat This!, 77 MB)
+      - name: Cache the beat-tracking and separation models (Beat This!, 77 MB; Demucs, 80 MB)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/torch/hub
-          key: beat-this-final0
+          key: beat-this-final0-htdemucs
 
       - name: Fast tests
         run: python -m pytest -q -m "not slow"

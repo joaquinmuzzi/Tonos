@@ -9,6 +9,7 @@ set -euo pipefail
 # Versions pinned like in install.ps1 (and requirements.txt / constraints.txt)
 TORCH_VERSION="2.7.1"
 TORCH_INDEX="https://download.pytorch.org/whl/cpu"
+DEMUCS="demucs==4.0.1"  # separation into stems, optional (issue #56)
 CONSONANCE_ACE="consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71"
 
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}/tonos"
@@ -80,7 +81,7 @@ step "Installing PyTorch (CPU version, ~200 MB)"
 
 step "Installing the analysis models and the web server"
 "$PY" -m pip install -r requirements.txt -c constraints.txt
-"$PY" -m pip install --no-deps "$CONSONANCE_ACE"
+"$PY" -m pip install --no-deps "$CONSONANCE_ACE" "$DEMUCS"
 
 step "Downloading and testing the models (the first time downloads ~77 MB)"
 "$PY" -m tonos --preload
