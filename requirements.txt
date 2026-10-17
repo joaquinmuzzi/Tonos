@@ -1,5 +1,5 @@
 # PyTorch (CPU build) is installed separately from the PyTorch index: see install.ps1.
-# Consonance-ACE is installed separately with --no-deps (it pins old versions of beat-this and
+# Consonance-ACE and Demucs are installed separately with --no-deps (it pins old versions of beat-this and
 # wandb that are not needed to use the model).
 
 # Beats and downbeats
@@ -17,6 +17,12 @@ lightning==2.6.6
 music21
 scikit-learn
 soundfile
+# Separation into stems (Demucs, issue #56). Demucs itself is installed with --no-deps, because
+# it pins an old torchaudio; these are what it needs to run the htdemucs model.
+dora-search
+julius
+einops
+openunmix
 # Local web server
 fastapi
 uvicorn

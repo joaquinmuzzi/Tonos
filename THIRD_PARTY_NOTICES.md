@@ -20,6 +20,7 @@ downloaded from its authors' server on first use.
 | [Beat This!](https://github.com/CPJKU/beat_this) (CPJKU, ISMIR 2024) | Beats and downbeats | `beat-this==1.1.0`, checkpoint `final0` | MIT | MIT, according to the authors | The authors note that some of the audio used for training is copyrighted. |
 | [S-KEY](https://github.com/deezer/s-key) (Deezer, ICASSP 2025) | Key detection | commit `918b83d` | MIT | **Not stated** | The checkpoint (`skey/models/skey.pt`) is distributed with the package, but no licence is declared for it. |
 | [Consonance-ACE](https://github.com/andreamust/consonance-ACE) (Poltronieri, Serra & Rocamora, ISMIR 2025) | Chord recognition | commit `d17633a` | MIT | **Not stated separately** | Trained on third-party chord annotation datasets (Isophonics and the McGill Billboard corpus, via ChoCo), whose terms may restrict commercial use. |
+| [Demucs](https://github.com/facebookresearch/demucs) v4 (Meta, 2022) | Separation into stems (optional) | `demucs==4.0.1`, model `htdemucs` | MIT | **Not stated separately** | Downloaded from Meta's server the first time tracks are separated (inside the Docker image already). The upstream repository is archived; fixes go to [its author's fork](https://github.com/adefossez/demucs). Trained on MUSDB18-HQ, a research dataset, plus other songs. |
 
 **Commercial use of the model weights is not confirmed.** Personal, local use is the intended use
 of this project. If you plan to use it in a commercial product or service, review the licence and
@@ -49,14 +50,20 @@ Main runtime dependencies and the licences declared in their package metadata:
 | music21 | BSD-3-Clause |
 | scikit-learn, numpy, soundfile | BSD-3-Clause |
 | nnAudio, einops, rotary-embedding-torch | MIT |
+| demucs, dora-search, julius, openunmix, submitit (separation into stems) | MIT |
+| omegaconf, cloudpickle (used by Demucs) | BSD-3-Clause |
+| retrying (used by Demucs) | Apache-2.0 |
+| treetable (used by Demucs) | Unlicense |
 | soxr (python-soxr, bundles libsoxr) | LGPL-2.1-or-later |
 | FastAPI | MIT |
 | uvicorn | BSD-3-Clause |
 | python-multipart | Apache-2.0 |
 
-[FFmpeg](https://ffmpeg.org/legal.html) is used as an external program that you install
-separately (`winget install Gyan.FFmpeg`); it is not distributed with this project. Its licence
-(LGPL or GPL, depending on the build) applies to your copy.
+[FFmpeg](https://ffmpeg.org/legal.html) is used as an external program. With the installers you
+install it separately (`winget install Gyan.FFmpeg`, `brew install ffmpeg`, `apt install ffmpeg`),
+and its licence (LGPL or GPL, depending on the build) applies to your copy. The Docker image
+includes an audio-only FFmpeg built from the official source without GPL components, under the
+LGPL-2.1-or-later.
 
 ## Citations
 

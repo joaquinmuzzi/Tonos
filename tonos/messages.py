@@ -43,6 +43,8 @@ ENGLISH = {
     "recognizing_chords": "Recognizing the chords",
     "locating_bars": "Locating the bars",
     "building_report": "Building the report",
+    "separating_tracks": "Separating the tracks",
+    "separation_cancelled": "The separation was cancelled.",
     "done": "Done",
     # Tempo
     "too_few_beats": "Too few beats were detected to estimate the tempo.",

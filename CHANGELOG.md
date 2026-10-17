@@ -9,6 +9,15 @@ note on what to update.
 
 ## [Unreleased]
 
+### Added
+
+- **Separate tracks** (#56): a button in the report splits the song into vocals, drums, bass and
+  the rest with Demucs v4 (`htdemucs`), in the background, with progress and a cancel button.
+  The player then gets a volume, mute and solo control for each track. It takes about a third of
+  the song's length on a CPU; the tracks of the last 10 songs are kept as MP3 in the `stems`
+  folder. The model (80 MB) is downloaded the first time, or already inside the Docker image.
+  Run the installer again to get the new dependencies.
+
 ## [0.3.1] - 2026-10-15
 
 ### Fixed

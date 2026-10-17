@@ -6,7 +6,7 @@
   <title>Tonos</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%23ededed%22/%3E%3Ctext x=%228%22 y=%2212.5%22 font-size=%2212%22 text-anchor=%22middle%22 font-family=%22monospace%22%3ET%3C/text%3E%3C/svg%3E">
   <!-- Relative paths, so the same page also works as the online demo (see demo/README.md) -->
-  <link rel="stylesheet" href="static/styles.css?v=9">
+  <link rel="stylesheet" href="static/styles.css?v=14">
 </head>
 <body>
   <!-- Texts are in English here and translated by i18n.js (data-i18n = key in MESSAGES). -->
@@ -51,15 +51,24 @@
           <span id="speed">1.0×</span>
           <button type="button" id="faster" aria-label="Faster" data-i18n-aria-label="faster">+</button>
         </div>
+        <div class="volume" id="volume-group" role="group" aria-label="Volume" data-i18n-aria-label="volume_label">
+          <button type="button" id="volume-mute" aria-pressed="false" title="Mute the song" data-i18n-title="volume_mute" aria-label="Mute the song" data-i18n-aria-label="volume_mute">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="waves" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/><path class="cross" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+          </button>
+          <input type="range" id="volume" min="0" max="100" step="1" value="100" aria-label="Volume" data-i18n-aria-label="volume_label">
+        </div>
         <div class="song">
           <div class="song-title" id="song-title">Tonos</div>
           <div class="song-meta mono" id="song-meta" data-i18n="tagline">Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.</div>
         </div>
+        <button type="button" class="separate" id="separate" title="Vocals, drums, bass and the rest, to mute or solo each one. It takes about a third of the song's length." data-i18n-title="separate_hint" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          <span data-i18n="separate_button">Separate tracks</span>
+        </button>
         <a class="star" href="https://github.com/joaquinmuzzi/Tonos" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.2 1.2-6.9-5-4.9 6.9-1L12 1.5l3.1 6.2 6.9 1-5 4.9 1.2 6.9z"/></svg>
           <span data-i18n="star_on_github">star on GitHub</span>
         </a>
-        <span class="beat-count mono" id="beat-count" aria-hidden="true"></span>
       </header>
 
       <section id="upload" class="upload">
@@ -105,6 +114,18 @@
               </span>
             </span>
           </div>
+        </div>
+
+        <div class="tracks" id="stems-section" hidden>
+          <div class="tracks-head">
+            <span class="tracks-title" data-i18n="stems_title">tracks</span>
+            <span class="muted tracks-step" id="stems-step"></span>
+            <button type="button" class="tracks-action" id="stems-cancel" data-i18n="cancel">cancel</button>
+            <button type="button" class="tracks-action" id="stems-off" data-i18n="stems_off">Back to the original mix</button>
+          </div>
+          <div class="progress-track" id="stems-progress"><div class="progress-fill" id="stems-fill"></div></div>
+          <p class="note" id="stems-error" hidden></p>
+          <div class="stems-rows" id="stems-rows"></div>
         </div>
 
         <div class="stats">
@@ -162,8 +183,8 @@
     </div>
   </div>
 
-  <script src="static/i18n.js?v=9"></script>
-  <script src="static/demo.js?v=9"></script>
-  <script src="static/app.js?v=9"></script>
+  <script src="static/i18n.js?v=14"></script>
+  <script src="static/demo.js?v=14"></script>
+  <script src="static/app.js?v=14"></script>
 </body>
 </html>

@@ -18,6 +18,9 @@ const state = {
   error: null, // message shown in the error box, kept to translate it again
   click: false,
   follow: true,
+  file: null, // the chosen file, sent again to separate its tracks
+  volume: Math.min(1, Math.max(0, Number(readPreference("volume", "1")) || 0)), // 0..1, remembered
+  volumeOff: false, // the speaker button: silent without forgetting the volume
 };
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
@@ -88,6 +91,7 @@ function search(list, time, key = "start") {
 
 function show(section) {
   for (const id of ["upload", "progress", "error", "report"]) $(id).hidden = id !== section;
+  updateSeparateButton();
 }
 
 /**
@@ -95,10 +99,11 @@ function show(section) {
  * get neighbouring colours (C, G, D...). Minor chords are darker; no chord is gray.
  */
 function chordColor(segment) {
-  if (!segment || !segment.is_chord || segment.root_pc === null) return "#2a2a2a";
+  if (!segment || !segment.is_chord || segment.root_pc === null) return "#3a352f";
   const hue = ((segment.root_pc * 7) % 12) * 30;
   const minor = /m(?!aj)/.test(segment.letter_simple || "");
-  return `hsl(${hue}, ${minor ? 55 : 70}%, ${minor ? 42 : 56}%)`;
+  // Muted colours, so the timeline and the grid do not shout on the warm background
+  return `hsl(${hue}, ${minor ? 32 : 42}%, ${minor ? 46 : 58}%)`;
 }
 
 // ---------------------------------------------------------------- upload
@@ -141,6 +146,8 @@ function upload(file) {
   state.error = null;
   if (state.url) URL.revokeObjectURL(state.url);
   state.url = URL.createObjectURL(file);
+  state.file = file;
+  resetStems();
   setSong(file.name.replace(/\.[^.]+$/, ""), "");
 
   show("progress");
@@ -216,6 +223,7 @@ $("retry").addEventListener("click", () => (DEMO ? location.reload() : show("upl
 $("new-analysis").addEventListener("click", () => {
   stopPlayback();
   state.result = null;
+  resetStems();
   setSong("Tonos", null);
   show("upload");
   window.scrollTo({ top: 0 });
@@ -254,6 +262,7 @@ function showReport(result) {
   state.activeBar = -1;
 
   $("audio-error").hidden = true;
+  if (!stemsPlaying() && !stems.job && !stems.request) showStems("start");
   if (state.url) audio.src = state.url;
   $("play").disabled = false;
   $("version").textContent = `MIT · v${result.tonos_version}`;
@@ -445,7 +454,7 @@ function drawStrip(now) {
     g.fillRect(left, 0, Math.max(1, right - left - 1), height);
     if (state.downbeats.has(beats[i].toFixed(3))) {
       g.globalAlpha = 1;
-      g.fillStyle = "#050505";
+      g.fillStyle = "#22201d";
       g.fillRect(left - 1, 0, 2, height);
     }
   }
@@ -453,7 +462,7 @@ function drawStrip(now) {
   if (current >= 0) {
     const left = x(beats[current]);
     const right = current + 1 < beats.length ? x(beats[current + 1]) : left + 3;
-    g.strokeStyle = "#ededed";
+    g.strokeStyle = "#e2ddd4";
     g.lineWidth = 2;
     g.strokeRect(left + 1, 1, Math.max(2, right - left - 2), height - 2);
   }
@@ -503,6 +512,8 @@ function setLanguage(code) {
   if (state.error) $("error-text").textContent = messageText(state.error);
   if (state.result) drawReport();
   if (DEMO) drawDemoBar();
+  if (stemsPlaying()) drawMixer();
+  if (stems.error) $("stems-error").textContent = messageText(stems.error);
 }
 
 for (const button of document.querySelectorAll("[data-language]")) {
@@ -545,6 +556,10 @@ $("faster").addEventListener("click", () => changeSpeed(1));
 function play() {
   if (state.click) ensureAudioContext();
   audio.play().catch(() => {});
+  for (const player of Object.values(stems.players)) {
+    player.currentTime = audio.currentTime;
+    player.play().catch(() => {});
+  }
 }
 
 $("play").addEventListener("click", () => (audio.paused ? play() : audio.pause()));
@@ -600,9 +615,6 @@ function updatePlayback() {
   let number = near ? state.beatNumbers[p] : null;
   // If a downbeat is missing, the count would run on (8, 9, 10...): better show nothing
   if (number && perBar && number > perBar + 1) number = null;
-  const count = $("beat-count");
-  count.textContent = number ? String(number) : "";
-  count.classList.toggle("downbeat", number === 1);
   // The metronome light blinks on every beat while the click is on
   const blink = state.click && !audio.paused && p >= 0 && now - state.beats[p] < 0.12;
   $("led").classList.toggle("on", blink);
@@ -613,6 +625,7 @@ function updatePlayback() {
     square.classList.toggle("one", on && number === 1);
   }
   drawStrip(now);
+  if (stemsPlaying()) moveLanePlayhead(now);
 }
 
 /** Scrolls only the grid (not the page) so that the bar being played is visible. */
@@ -712,7 +725,312 @@ function stopPlayback() {
   audio.load();
   $("play").disabled = true;
   setPlayIcon(false);
-  $("beat-count").textContent = "";
+}
+
+// ---------------------------------------------------------------- stems (optional, issue #56)
+
+/* The song can be split into vocals, drums, bass and the rest, each with its volume, mute and
+   solo. The main <audio> keeps playing, muted, as the clock of the click and the grid; one
+   <audio> per stem follows it. */
+const STEM_NAMES = ["vocals", "drums", "bass", "other"];
+// Hue of each track's lane, muted to sit on the warm background
+const STEM_HUES = { vocals: 205, drums: 28, bass: 275, other: 160 };
+const stems = {
+  part: "start", // "start" | "progress" | "mixer" | "error"
+  generation: 0, // bumped by every reset: late answers of an older request are ignored
+  request: null, // the upload in flight
+  job: null, // the separation running on the server
+  error: null, // the message shown, kept to translate it again
+  players: {},
+  peaks: null, // each track's waveform, 0-100
+  volume: {},
+  muted: {},
+  solo: null,
+  timer: null,
+};
+
+function stemsPlaying() {
+  return Object.keys(stems.players).length > 0;
+}
+
+/** The button only makes sense on a report, and while no separation is running or loaded. */
+function updateSeparateButton() {
+  $("separate").hidden = DEMO || $("report").hidden || stems.part === "progress" || stems.part === "mixer";
+}
+
+function showStems(part) {
+  stems.part = part;
+  if (part !== "error") stems.error = null;
+  $("stems-section").hidden = part === "start";
+  $("stems-progress").hidden = part !== "progress";
+  $("stems-cancel").hidden = part !== "progress";
+  $("stems-off").hidden = part !== "mixer";
+  $("stems-rows").hidden = part !== "mixer";
+  $("stems-error").hidden = part !== "error";
+  if (part !== "progress") $("stems-step").textContent = "";
+  updateSeparateButton();
+}
+
+function setStemsProgress(text, fraction) {
+  $("stems-step").textContent = text;
+  $("stems-fill").style.width = `${Math.max(0, Math.min(100, fraction * 100))}%`;
+}
+
+function stemsError(message) {
+  stems.job = null;
+  stems.request = null;
+  showStems("error");
+  stems.error = message;
+  $("stems-error").textContent = messageText(message);
+}
+
+/** Back to the original mix, and cancels a separation that is still uploading or running. */
+function resetStems() {
+  stems.generation += 1;
+  if (stems.request) stems.request.abort();
+  stems.request = null;
+  if (stems.job) fetch(`/api/separations/${stems.job}`, { method: "DELETE" }).catch(() => {});
+  stems.job = null;
+  clearInterval(stems.timer);
+  for (const player of Object.values(stems.players)) {
+    player.pause();
+    player.removeAttribute("src");
+    player.load();
+  }
+  stems.players = {};
+  stems.peaks = null;
+  stems.solo = null;
+  $("stems-rows").replaceChildren();
+  showStems("start");
+  applyVolume();
+}
+
+$("separate").addEventListener("click", () => {
+  if (!state.file) return;
+  const generation = stems.generation;
+  showStems("progress");
+  setStemsProgress(t("uploading"), 0);
+  const form = new FormData();
+  form.append("file", state.file);
+  const request = new XMLHttpRequest();
+  stems.request = request;
+  request.open("POST", "/api/separations");
+  request.upload.addEventListener("progress", (e) => {
+    if (generation !== stems.generation) return;
+    if (e.lengthComputable) setStemsProgress(t("uploading_percent", { percent: percent(e.loaded / e.total) }), 0);
+  });
+  request.addEventListener("load", () => {
+    let body = {};
+    try {
+      body = JSON.parse(request.responseText);
+    } catch {
+      /* empty response */
+    }
+    if (generation !== stems.generation) {
+      // Cancelled after the upload had already reached the server: cancel the job too
+      if (body.id) fetch(`/api/separations/${body.id}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
+    stems.request = null;
+    if (request.status === 200 && body.id) pollStems(body.id, generation);
+    else stemsError(serverMessage(body.detail, request.status));
+  });
+  request.addEventListener("error", () => {
+    if (generation === stems.generation) stemsError(local("connection_failed"));
+  });
+  request.send(form);
+});
+
+$("stems-cancel").addEventListener("click", resetStems);
+$("stems-off").addEventListener("click", resetStems);
+
+async function pollStems(id, generation) {
+  stems.job = id;
+  let failures = 0;
+  while (stems.job === id && generation === stems.generation) {
+    let job;
+    try {
+      const response = await fetch(`/api/separations/${id}`);
+      job = await response.json();
+      if (!response.ok) throw new Error(messageText(serverMessage(job.detail, response.status)));
+      failures = 0;
+    } catch (error) {
+      if (++failures >= 5) {
+        if (generation === stems.generation) stemsError(local("connection_lost", { detail: error.message }));
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+    if (stems.job !== id || generation !== stems.generation) return; // cancelled meanwhile
+    if (job.status === "done") {
+      stems.job = null;
+      loadStems(job.result);
+      return;
+    }
+    if (job.status === "error") {
+      stemsError(job.error);
+      return;
+    }
+    setStemsProgress(`${t(job.step)}… ${percent(job.progress)}`, job.progress);
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+function loadStems(result) {
+  const urls = result.stems;
+  stems.peaks = null;
+  if (result.peaks) {
+    const generation = stems.generation;
+    fetch(result.peaks)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((peaks) => {
+        if (peaks && generation === stems.generation) {
+          stems.peaks = peaks;
+          drawLanes();
+        }
+      })
+      .catch(() => {});
+  }
+  for (const name of STEM_NAMES) {
+    const player = new Audio(urls[name]);
+    player.preload = "auto";
+    stems.players[name] = player;
+    stems.volume[name] ??= 1;
+    stems.muted[name] ??= false;
+  }
+  drawMixer();
+  showStems("mixer");
+  applyVolume(); // mutes the main player, which stays as the clock
+  syncStems(true);
+  clearInterval(stems.timer);
+  stems.timer = setInterval(() => syncStems(false), 250);
+}
+
+/** Builds the rows; mute, solo and volume then only update them (keyboard focus stays put). */
+function drawMixer() {
+  $("stems-rows").replaceChildren(
+    ...STEM_NAMES.map((name) => {
+      const label = t(`stem_${name}`);
+      const mute = el("button", { type: "button", class: "stem-mute", title: t("stem_mute"), "aria-label": `${t("stem_mute")}: ${label}` }, "M");
+      const solo = el("button", { type: "button", class: "stem-solo", title: t("stem_solo"), "aria-label": `${t("stem_solo")}: ${label}` }, "S");
+      const volume = el("input", { type: "range", min: "0", max: "100", step: "1", value: String(Math.round(stems.volume[name] * 100)), "aria-label": label });
+      mute.addEventListener("click", () => {
+        stems.muted[name] = !stems.muted[name];
+        applyStemVolumes();
+      });
+      solo.addEventListener("click", () => {
+        stems.solo = stems.solo === name ? null : name;
+        applyStemVolumes();
+      });
+      volume.addEventListener("input", () => {
+        stems.volume[name] = Number(volume.value) / 100;
+        applyStemVolumes();
+      });
+      const lane = el("canvas", { class: "stem-lane", "aria-hidden": "true" });
+      lane.addEventListener("click", (e) => {
+        if (!state.result) return;
+        const rect = lane.getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * state.result.file.duration;
+      });
+      return el(
+        "div",
+        { class: "stem-row", "data-stem": name },
+        el("div", { class: "stem-controls" }, el("span", { class: "stem-name" }, label), mute, solo, volume),
+        lane
+      );
+    })
+  );
+  $("stems-rows").append(el("span", { class: "lanes-playhead", id: "lanes-playhead", "aria-hidden": "true" }));
+  applyStemVolumes();
+}
+
+/** Draws each track's waveform in its lane, dimmed when the track is silent. */
+function drawLanes() {
+  for (const name of STEM_NAMES) {
+    const row = document.querySelector(`.stem-row[data-stem="${name}"]`);
+    if (!row) continue;
+    const canvas = row.querySelector(".stem-lane");
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (!width || !height) continue;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    const g = canvas.getContext("2d");
+    g.scale(ratio, ratio);
+    const hue = STEM_HUES[name];
+    const silent = row.classList.contains("silent");
+    g.fillStyle = `hsl(${hue}, ${silent ? 8 : 22}%, ${silent ? 18 : 24}%)`;
+    g.fillRect(0, 0, width, height);
+    const peaks = stems.peaks && stems.peaks[name];
+    g.fillStyle = `hsl(${hue}, ${silent ? 10 : 45}%, ${silent ? 38 : 64}%)`;
+    const middle = height / 2;
+    if (!peaks) {
+      g.fillRect(0, middle, width, 1);
+      continue;
+    }
+    for (let x = 0; x < width; x++) {
+      const from = Math.floor((x / width) * peaks.length);
+      const to = Math.max(from + 1, Math.floor(((x + 1) / width) * peaks.length));
+      let peak = 0;
+      for (let i = from; i < to && i < peaks.length; i++) peak = Math.max(peak, peaks[i]);
+      const half = Math.max(0.5, (peak / 100) * (middle - 2));
+      g.fillRect(x, middle - half, 1, half * 2);
+    }
+  }
+  moveLanePlayhead(audio.currentTime);
+}
+
+/** The vertical line that marks the time across every lane. */
+function moveLanePlayhead(now) {
+  const line = $("lanes-playhead");
+  const lane = document.querySelector(".stem-lane");
+  if (!line || !lane || !state.result) return;
+  const box = $("stems-rows").getBoundingClientRect();
+  const rect = lane.getBoundingClientRect();
+  const fraction = Math.max(0, Math.min(1, now / state.result.file.duration));
+  line.style.left = `${rect.left - box.left + fraction * rect.width}px`;
+}
+
+window.addEventListener("resize", () => {
+  if (stemsPlaying()) drawLanes();
+});
+
+/**
+ * Silencing uses `muted`, which every browser honours; the level uses `volume`, which iOS
+ * ignores (there the hardware buttons set it).
+ */
+function applyStemVolumes() {
+  for (const [name, player] of Object.entries(stems.players)) {
+    const audible = stems.solo ? stems.solo === name : !stems.muted[name];
+    player.muted = !audible || songVolume() === 0;
+    player.volume = stems.volume[name] * state.volume;
+    const row = document.querySelector(`.stem-row[data-stem="${name}"]`);
+    if (!row) continue;
+    row.classList.toggle("silent", !audible);
+    row.querySelector(".stem-mute").setAttribute("aria-pressed", String(stems.muted[name]));
+    row.querySelector(".stem-solo").setAttribute("aria-pressed", String(stems.solo === name));
+  }
+  if (stemsPlaying()) drawLanes();
+}
+
+/** Keeps every stem on the main player's time, speed and play/pause state. */
+function syncStems(force) {
+  for (const player of Object.values(stems.players)) {
+    player.playbackRate = audio.playbackRate;
+    if (!player.seeking && (force || Math.abs(player.currentTime - audio.currentTime) > 0.06)) {
+      player.currentTime = audio.currentTime;
+    }
+    if (audio.paused && !player.paused) player.pause();
+    else if (!audio.paused && player.paused) player.play().catch(() => {});
+  }
+}
+
+for (const event of ["play", "pause", "seeked", "ratechange"]) {
+  audio.addEventListener(event, () => {
+    if (stemsPlaying()) syncStems(true);
+  });
 }
 
 // ---------------------------------------------------------------- online demo
@@ -747,6 +1065,36 @@ function drawDemoBar() {
   );
 }
 
+// ---------------------------------------------------------------- volume
+
+/** The song's volume (0..1): the slider, or 0 while the speaker button is off. */
+function songVolume() {
+  return state.volumeOff ? 0 : state.volume;
+}
+
+/** Applies the volume to the song and, when they play, to the separated tracks. */
+function applyVolume() {
+  audio.volume = state.volume;
+  audio.muted = stemsPlaying() || songVolume() === 0;
+  applyStemVolumes();
+  const silent = songVolume() === 0;
+  $("volume").value = String(Math.round(state.volume * 100));
+  $("volume-mute").setAttribute("aria-pressed", String(state.volumeOff));
+  $("volume-group").classList.toggle("off", silent);
+}
+
+$("volume").addEventListener("input", () => {
+  state.volume = Number($("volume").value) / 100;
+  state.volumeOff = false;
+  savePreference("volume", String(state.volume));
+  applyVolume();
+});
+$("volume-mute").addEventListener("click", () => {
+  state.volumeOff = !state.volumeOff;
+  applyVolume();
+});
+
 translatePage();
 markButtons();
+applyVolume();
 if (DEMO) startDemo();

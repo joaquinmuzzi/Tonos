@@ -41,9 +41,9 @@ can check the analysis by ear.
 
 > [!IMPORTANT]
 > **Model licensing.** The code in this repository is MIT-licensed, but the analysis relies on
-> third-party model weights with their own terms: the S-KEY weights have no stated licence, and
-> the Consonance-ACE weights were trained on third-party annotation datasets that may restrict
-> commercial use. This project is intended for personal, local use. Commercial use of the models
+> third-party model weights with their own terms: the S-KEY and Demucs weights have no stated
+> licence of their own, and the Consonance-ACE weights were trained on third-party annotation
+> datasets that may restrict commercial use. This project is intended for personal, local use. Commercial use of the models
 > is not confirmed and may require review. See [License](#license) and
 > [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -59,6 +59,9 @@ can check the analysis by ear.
 - A **player** with a **click** on every beat (and a light that blinks with it), a speed control
   from 0.5× to 1.5×, a timeline coloured by chord, and a **bar-by-bar grid** you can click to
   play from any bar.
+- **Separate tracks** (optional): split the song into vocals, drums, bass and the rest with
+  Demucs, then mute or solo each one while it plays. It takes about a third of the song's length
+  on a CPU.
 - A **command line** that prints a text report or the full JSON.
 
 ## Installation
@@ -166,7 +169,9 @@ The code is in [`tonos/analysis`](tonos/analysis), one module per step.
 - `%LOCALAPPDATA%\tonos\cache` (`~/.cache/tonos/cache` on macOS and Linux): finished analyses,
   small JSON files. The `TONOS_DATA_DIR` environment variable moves this folder; the Docker image
   sets it to `/data`, its volume.
-- `~/.cache/torch/hub/checkpoints/beat_this-final0.ckpt`: the beat model (77 MB).
+- `stems`, next to `cache`: the separated tracks of the last 10 songs, about 10–15 MB each, as MP3.
+- `~/.cache/torch/hub/checkpoints/`: the beat model (`beat_this-final0.ckpt`, 77 MB) and, the
+  first time you separate tracks, the Demucs model (`955717e8-8726e21a.th`, 80 MB).
 
 To uninstall, delete those and this folder. Versions before 0.1.0 used
 `%LOCALAPPDATA%\analizador-musical`, which can be deleted too; version 0.1.0, called orfeo, used
@@ -196,6 +201,8 @@ does not include their weights; they are installed from their original sources:
 - **S-KEY** (key): MIT code; **no licence is stated for the weights**.
 - **Consonance-ACE** (chords): MIT code; the weights were trained on third-party chord annotation
   datasets whose terms **may restrict commercial use**.
+- **Demucs** (separating tracks, optional): MIT code; **no licence is stated separately for the
+  weights**, which were trained on a research dataset (MUSDB18-HQ) and other songs.
 
 Because of this, Tonos is intended for **personal, local use**. Commercial use of the model
 weights is not confirmed: if you plan to use this project commercially, review each model's

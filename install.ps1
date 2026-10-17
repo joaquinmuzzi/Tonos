@@ -68,6 +68,7 @@ Step "Installing the analysis models and the web server"
 Run $py @("-m", "pip", "install", "-r", "requirements.txt", "-c", "constraints.txt")
 Run $py @("-m", "pip", "install", "--no-deps",
     "consonance-ace @ git+https://github.com/andreamust/consonance-ACE@d17633aea4e68e616e735d09df97b97ae3428e71")
+Run $py @("-m", "pip", "install", "--no-deps", "demucs==4.0.1")
 
 Step "Downloading and testing the models (the first time downloads ~77 MB)"
 Run $py @("-m", "tonos", "--preload")

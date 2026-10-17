@@ -9,6 +9,19 @@
 const MESSAGES = {
   en: {
     // Page
+    volume_label: "Volume",
+    volume_mute: "Mute the song",
+    stems_title: "tracks",
+    separate_button: "Separate tracks",
+    separate_hint: "Vocals, drums, bass and the rest, to mute or solo each one. It takes about a third of the song's length.",
+    stems_off: "Back to the original mix",
+    cancel: "cancel",
+    stem_vocals: "vocals",
+    stem_drums: "drums",
+    stem_bass: "bass",
+    stem_other: "other",
+    stem_mute: "Mute",
+    stem_solo: "Solo",
     rail_install: "install",
     demo_badge: "demo",
     demo_credit: "Song: “{title}” by {author}",
@@ -139,6 +152,8 @@ const MESSAGES = {
     recognizing_chords: "Recognizing the chords",
     locating_bars: "Locating the bars",
     building_report: "Building the report",
+    separating_tracks: "Separating the tracks",
+    separation_cancelled: "The separation was cancelled.",
     done: "Done",
     too_few_beats: "Too few beats were detected to estimate the tempo.",
     beats_corrected:
@@ -174,6 +189,19 @@ const MESSAGES = {
   },
   es: {
     // Page
+    volume_label: "Volumen",
+    volume_mute: "Silenciar la canción",
+    stems_title: "pistas",
+    separate_button: "Separar pistas",
+    separate_hint: "Voz, batería, bajo y el resto, para silenciar o escuchar cada una sola. Tarda alrededor de un tercio de lo que dura el tema.",
+    stems_off: "Volver a la mezcla original",
+    cancel: "cancelar",
+    stem_vocals: "voz",
+    stem_drums: "batería",
+    stem_bass: "bajo",
+    stem_other: "resto",
+    stem_mute: "Silenciar",
+    stem_solo: "Escuchar sola",
     rail_install: "instalar",
     demo_badge: "demo",
     demo_credit: "Canción: “{title}” de {author}",
@@ -304,6 +332,8 @@ const MESSAGES = {
     recognizing_chords: "Reconociendo los acordes",
     locating_bars: "Ubicando los compases",
     building_report: "Armando el reporte",
+    separating_tracks: "Separando las pistas",
+    separation_cancelled: "Se canceló la separación.",
     done: "Listo",
     too_few_beats: "Se detectaron muy pocos pulsos para estimar el tempo.",
     beats_corrected:
