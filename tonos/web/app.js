@@ -96,10 +96,11 @@ function show(section) {
  * get neighbouring colours (C, G, D...). Minor chords are darker; no chord is gray.
  */
 function chordColor(segment) {
-  if (!segment || !segment.is_chord || segment.root_pc === null) return "#2a2a2a";
+  if (!segment || !segment.is_chord || segment.root_pc === null) return "#3a352f";
   const hue = ((segment.root_pc * 7) % 12) * 30;
   const minor = /m(?!aj)/.test(segment.letter_simple || "");
-  return `hsl(${hue}, ${minor ? 55 : 70}%, ${minor ? 42 : 56}%)`;
+  // Muted colours, so the timeline and the grid do not shout on the warm background
+  return `hsl(${hue}, ${minor ? 32 : 42}%, ${minor ? 46 : 58}%)`;
 }
 
 // ---------------------------------------------------------------- upload
@@ -218,8 +219,8 @@ function showError(message) {
 $("retry").addEventListener("click", () => (DEMO ? location.reload() : show("upload")));
 $("new-analysis").addEventListener("click", () => {
   stopPlayback();
-  resetStems();
   state.result = null;
+  resetStems();
   setSong("Tonos", null);
   show("upload");
   window.scrollTo({ top: 0 });
@@ -258,6 +259,7 @@ function showReport(result) {
   state.activeBar = -1;
 
   $("audio-error").hidden = true;
+  if (!Object.keys(stems.players).length && !stems.job) showStems("start");
   if (state.url) audio.src = state.url;
   $("play").disabled = false;
   $("version").textContent = `MIT · v${result.tonos_version}`;
@@ -449,7 +451,7 @@ function drawStrip(now) {
     g.fillRect(left, 0, Math.max(1, right - left - 1), height);
     if (state.downbeats.has(beats[i].toFixed(3))) {
       g.globalAlpha = 1;
-      g.fillStyle = "#050505";
+      g.fillStyle = "#22201d";
       g.fillRect(left - 1, 0, 2, height);
     }
   }
@@ -457,7 +459,7 @@ function drawStrip(now) {
   if (current >= 0) {
     const left = x(beats[current]);
     const right = current + 1 < beats.length ? x(beats[current + 1]) : left + 3;
-    g.strokeStyle = "#ededed";
+    g.strokeStyle = "#e2ddd4";
     g.lineWidth = 2;
     g.strokeRect(left + 1, 1, Math.max(2, right - left - 2), height - 2);
   }
@@ -604,9 +606,6 @@ function updatePlayback() {
   let number = near ? state.beatNumbers[p] : null;
   // If a downbeat is missing, the count would run on (8, 9, 10...): better show nothing
   if (number && perBar && number > perBar + 1) number = null;
-  const count = $("beat-count");
-  count.textContent = number ? String(number) : "";
-  count.classList.toggle("downbeat", number === 1);
   // The metronome light blinks on every beat while the click is on
   const blink = state.click && !audio.paused && p >= 0 && now - state.beats[p] < 0.12;
   $("led").classList.toggle("on", blink);
@@ -716,7 +715,6 @@ function stopPlayback() {
   audio.load();
   $("play").disabled = true;
   setPlayIcon(false);
-  $("beat-count").textContent = "";
 }
 
 // ---------------------------------------------------------------- stems (optional, issue #56)
@@ -727,10 +725,16 @@ function stopPlayback() {
 const STEM_NAMES = ["vocals", "drums", "bass", "other"];
 const stems = { job: null, players: {}, volume: {}, muted: {}, solo: null, timer: null };
 
+/** "start": only the button; "progress": separating; "mixer": the tracks; "error": the message. */
 function showStems(part) {
-  $("stems-start").hidden = part !== "start";
+  $("separate").hidden = DEMO || !state.result || part === "progress" || part === "mixer";
+  $("stems-section").hidden = part === "start";
   $("stems-progress").hidden = part !== "progress";
-  $("stems-mixer").hidden = part !== "mixer";
+  $("stems-cancel").hidden = part !== "progress";
+  $("stems-off").hidden = part !== "mixer";
+  $("stems-rows").hidden = part !== "mixer";
+  $("stems-error").hidden = part !== "error";
+  if (part !== "progress") $("stems-step").textContent = "";
 }
 
 function setStemsProgress(text, fraction) {
@@ -740,9 +744,8 @@ function setStemsProgress(text, fraction) {
 
 function stemsError(message) {
   stems.job = null;
-  showStems("start");
+  showStems("error");
   $("stems-error").textContent = messageText(message);
-  $("stems-error").hidden = false;
 }
 
 /** Back to the original mix, and cancels a separation that is still running. */
@@ -758,13 +761,11 @@ function resetStems() {
   stems.players = {};
   stems.solo = null;
   audio.muted = false;
-  $("stems-error").hidden = true;
   showStems("start");
 }
 
 $("separate").addEventListener("click", () => {
   if (!state.file) return;
-  $("stems-error").hidden = true;
   showStems("progress");
   setStemsProgress(t("uploading"), 0);
   const form = new FormData();
@@ -897,7 +898,6 @@ async function startDemo() {
   $("new-analysis").hidden = true;
   $("install").hidden = false;
   $("demo-bar").hidden = false;
-  $("stems-section").hidden = true; // separating needs the app's server
   drawDemoBar();
   try {
     const response = await fetch(DEMO.result);

@@ -6,7 +6,7 @@
   <title>Tonos</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%23ededed%22/%3E%3Ctext x=%228%22 y=%2212.5%22 font-size=%2212%22 text-anchor=%22middle%22 font-family=%22monospace%22%3ET%3C/text%3E%3C/svg%3E">
   <!-- Relative paths, so the same page also works as the online demo (see demo/README.md) -->
-  <link rel="stylesheet" href="static/styles.css?v=10">
+  <link rel="stylesheet" href="static/styles.css?v=11">
 </head>
 <body>
   <!-- Texts are in English here and translated by i18n.js (data-i18n = key in MESSAGES). -->
@@ -55,11 +55,14 @@
           <div class="song-title" id="song-title">Tonos</div>
           <div class="song-meta mono" id="song-meta" data-i18n="tagline">Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.</div>
         </div>
+        <button type="button" class="separate" id="separate" title="Vocals, drums, bass and the rest, to mute or solo each one. It takes about a third of the song's length." data-i18n-title="separate_hint" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          <span data-i18n="separate_button">Separate tracks</span>
+        </button>
         <a class="star" href="https://github.com/joaquinmuzzi/Tonos" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 17.3-6.2 3.2 1.2-6.9-5-4.9 6.9-1L12 1.5l3.1 6.2 6.9 1-5 4.9 1.2 6.9z"/></svg>
           <span data-i18n="star_on_github">star on GitHub</span>
         </a>
-        <span class="beat-count mono" id="beat-count" aria-hidden="true"></span>
       </header>
 
       <section id="upload" class="upload">
@@ -107,6 +110,18 @@
           </div>
         </div>
 
+        <div class="tracks" id="stems-section" hidden>
+          <div class="tracks-head">
+            <span class="tracks-title" data-i18n="stems_title">tracks</span>
+            <span class="muted tracks-step" id="stems-step"></span>
+            <button type="button" class="tracks-action" id="stems-cancel" data-i18n="cancel">cancel</button>
+            <button type="button" class="tracks-action" id="stems-off" data-i18n="stems_off">Back to the original mix</button>
+          </div>
+          <div class="progress-track" id="stems-progress"><div class="progress-fill" id="stems-fill"></div></div>
+          <p class="note" id="stems-error" hidden></p>
+          <div class="stems-rows" id="stems-rows"></div>
+        </div>
+
         <div class="stats">
           <div class="stat" id="tempo-stat"></div>
           <div class="stat" id="meter-stat"></div>
@@ -144,22 +159,6 @@
               <div class="label mono" data-i18n="notes_title">notes</div>
               <div id="notes"></div>
             </div>
-            <div class="panel-section" id="stems-section">
-              <div class="label mono" data-i18n="stems_title">tracks</div>
-              <div id="stems-start">
-                <button type="button" class="link-box" id="separate" data-i18n="separate_button">Separate tracks</button>
-                <p class="note mono" id="stems-error" hidden></p>
-                <p class="muted stems-hint" data-i18n="separate_hint">Vocals, drums, bass and the rest, to mute or solo each one. It takes about a third of the song's length.</p>
-              </div>
-              <div id="stems-progress" hidden>
-                <div class="mono stems-step" id="stems-step"></div>
-                <div class="progress-track"><div class="progress-fill" id="stems-fill"></div></div>
-                <button type="button" class="link-box secondary" id="stems-cancel" data-i18n="cancel">cancel</button>
-              </div>
-              <div id="stems-mixer" hidden>
-                <div class="stems-rows" id="stems-rows"></div>
-                <button type="button" class="link-box secondary" id="stems-off" data-i18n="stems_off">Back to the original mix</button>
-              </div>
             </div>
             <div class="panel-section">
               <div class="label mono" data-i18n="hear_else">hear something else?</div>
@@ -179,8 +178,8 @@
     </div>
   </div>
 
-  <script src="static/i18n.js?v=10"></script>
-  <script src="static/demo.js?v=10"></script>
-  <script src="static/app.js?v=10"></script>
+  <script src="static/i18n.js?v=11"></script>
+  <script src="static/demo.js?v=11"></script>
+  <script src="static/app.js?v=11"></script>
 </body>
 </html>

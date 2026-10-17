@@ -1,15 +1,21 @@
 :root {
-  --bg: #050505;
-  --surface: #0f0f0f;
-  --line: #2a2a2a;
-  --line-strong: #555;
-  --text: #ededed;
-  --muted: #8a8a8a;
-  --accent: #ef9f27;
-  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  /* Warm graphite, like a studio with wood: softer than black and white */
+  --bg: #22201d;
+  --surface: #2c2925;
+  --line: #3a352f;
+  --line-strong: #5a534a;
+  --text: #e2ddd4;
+  --muted: #a39d92;
+  --accent: #e0a24f;
+  --on-accent: #3a2405;
+  --radius: 3px;
+  /* One typeface everywhere; numbers keep a fixed width (tabular figures) instead */
+  --mono: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
-* { box-sizing: border-box; border-radius: 0; }
+* { box-sizing: border-box; }
+button, .link-box, .star, .segmented, .stepper, .metronome, .play, .logo,
+.languages button, .rail-button, .demo-badge { border-radius: var(--radius); }
 /* `hidden` always hides, also elements whose class sets a display */
 [hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
@@ -19,7 +25,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--line-strong); }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-body { font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+body { font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; font-variant-numeric: tabular-nums; }
 a { color: inherit; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 .mono { font-family: var(--mono); }
@@ -38,7 +44,9 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .languages { display: flex; flex-direction: column; gap: 4px; font: 12px var(--mono); }
 .languages button { color: var(--muted); padding: 2px 6px; }
 .languages button[aria-pressed="true"] { color: var(--bg); background: var(--text); }
-.main { min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+/* On a short window the column scrolls like a page instead of squeezing the grid and cutting
+   the panel off; the top bar stays at hand */
+.main { min-width: 0; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
 .upload, .progress, .error-box { flex: 1; overflow-y: auto; }
 #report:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
@@ -49,7 +57,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .demo-bar a:hover { color: var(--accent); }
 
 /* Top bar */
-.topbar { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--bg); position: sticky; top: 0; z-index: 2; flex: none; }
 .play { width: 40px; height: 40px; background: var(--text); color: var(--bg); display: grid; place-items: center; flex-shrink: 0; }
 .play svg { fill: currentColor; stroke: none; width: 20px; height: 20px; }
 .play:disabled { background: var(--line); cursor: default; }
@@ -59,8 +67,6 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .star { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; border: 1px solid var(--text); padding: 6px 10px; text-decoration: none; white-space: nowrap; }
 .star:hover { background: var(--text); color: var(--bg); }
 .star svg { width: 14px; height: 14px; }
-.beat-count { font-size: 28px; font-weight: 500; min-width: 1.2em; text-align: right; }
-.beat-count.downbeat { color: var(--accent); }
 /* Transport: metronome and speed next to play */
 .metronome { height: 40px; min-width: 66px; padding: 0 8px; border: 1px solid var(--line-strong); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; line-height: 1.3; flex-shrink: 0; }
 .metronome-name { display: flex; align-items: center; gap: 5px; text-transform: uppercase; }
@@ -123,7 +129,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .squares em { font-style: normal; margin-left: 6px; }
 
 /* Bars and side panel */
-.body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 220px; grid-template-rows: minmax(0, 1fr); }
+.body { flex: 1; min-height: 420px; display: grid; grid-template-columns: minmax(0, 1fr) 220px; grid-template-rows: minmax(0, 1fr); }
 .bars { padding: 14px 18px 12px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .bars-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .bar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
@@ -161,6 +167,14 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   /* On a phone the page scrolls normally, with the transport always at hand */
   .app { grid-template-columns: 1fr; height: auto; overflow: visible; }
   .main, #report:not([hidden]), .body, .bars { display: block; }
+  /* The page scrolls, not the column (otherwise the sticky top bar would not stick) */
+  .main { overflow: visible; }
+  .body { min-height: 0; }
+  .separate { padding: 9px; }
+  .separate span { display: none; }
+  .tracks { padding: 10px 12px; }
+  .tracks-step { flex-basis: 100%; order: 3; }
+  .tracks-head { flex-wrap: wrap; }
   .rail { flex-direction: row; gap: 2px; padding: 6px 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .rail-button { width: 52px; }
   .languages { flex-direction: row; }
@@ -170,7 +184,6 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   .song { order: -1; flex: 1 1 100%; }
   .star { margin-left: auto; padding: 9px; }
   .star span { display: none; }
-  .beat-count { font-size: 24px; }
   .upload, .progress, .error-box { padding: 20px 12px; }
   .dropzone { padding: 48px 12px; }
   .timeline { padding: 10px 12px; }
@@ -190,13 +203,21 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   .panel { border-left: 0; border-top: 1px solid var(--line); }
 }
 
-/* Stems: one row per track, with its volume, mute and solo */
-.stems-hint { margin: 6px 0 0; font-size: 12px; }
-.stems-step { font-size: 12px; margin-bottom: 6px; }
-.stems-rows { display: grid; gap: 6px; }
-.stem-row { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 6px; align-items: center; }
-.stem-row input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--text); }
-.stem-row button { border: 1px solid var(--line-strong); padding: 1px 7px; font-size: 12px; }
+/* Separate tracks: a button in the top bar, and one row per track under the timeline */
+.separate { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--on-accent); font-size: 13px; font-weight: 500; padding: 7px 12px; white-space: nowrap; }
+.separate:hover { filter: brightness(1.08); }
+.tracks { padding: 10px 18px 12px; border-bottom: 1px solid var(--line); }
+.tracks-head { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.tracks-title { font-weight: 500; }
+.tracks-step { flex: 1; font-size: 12px; }
+.tracks-action { font-size: 12px; color: var(--muted); border: 1px solid var(--line-strong); padding: 3px 9px; }
+.tracks-action:hover { color: var(--text); }
+.tracks .progress-track { margin-top: 8px; }
+.stems-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 18px; margin-top: 6px; }
+.stem-row { display: grid; grid-template-columns: 64px auto auto 1fr; gap: 6px; align-items: center; font-size: 13px; }
+.stem-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.stem-row button { border: 1px solid var(--line-strong); padding: 1px 8px; font-size: 12px; }
 .stem-row button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
-.stem-row .stem-solo[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
-.stem-row.silent .stem-name { color: var(--muted); }
+.stem-row .stem-solo[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.stem-row.silent .stem-name { color: var(--muted); text-decoration: line-through; }
+.stem-row.silent input[type="range"] { opacity: 0.4; }
