@@ -59,6 +59,9 @@ can check the analysis by ear.
 - A **player** with a **click** on every beat (and a light that blinks with it), a speed control
   from 0.5× to 1.5×, a timeline coloured by chord, and a **bar-by-bar grid** you can click to
   play from any bar.
+- **Transpose**: move the song up or down by up to 6 semitones without changing its speed, to
+  play along in another key. The key, its scale and the chords move with it, spelled for the
+  new key, with the original key shown next to it.
 - **Separate tracks** (optional): split the song into vocals, drums, bass and the rest with
   Demucs, then mute or solo each one while it plays. It takes about a third of the song's length
   on a CPU.
@@ -203,6 +206,9 @@ does not include their weights; they are installed from their original sources:
   datasets whose terms **may restrict commercial use**.
 - **Demucs** (separating tracks, optional): MIT code; **no licence is stated separately for the
   weights**, which were trained on a research dataset (MUSDB18-HQ) and other songs.
+
+The web page includes the audio processor of [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS),
+used to transpose, under the Mozilla Public License 2.0.
 
 Because of this, Tonos is intended for **personal, local use**. Commercial use of the model
 weights is not confirmed: if you plan to use this project commercially, review each model's
