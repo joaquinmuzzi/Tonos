@@ -21,7 +21,7 @@ can check the analysis by ear.
 -->
 
 <p align="center">
-  <img src="docs/screenshots/desktop.png" alt="Tonos on a computer: the transport bar, a timeline coloured by chord, tempo 120 bpm, meter 5/4, key D minor and the bar-by-bar chord grid" width="75%">
+  <img src="docs/screenshots/desktop.png" alt="Tonos on a computer: the top bar with play, click, speed, key and volume controls and the Separate tracks button, a timeline coloured by chord, tempo 120 bpm, meter 5/4, key D minor and the bar-by-bar chord grid" width="75%">
   <img src="docs/screenshots/phone.png" alt="Tonos on a phone: the same report in a single column" width="21.6%">
 </p>
 
