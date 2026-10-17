@@ -8,14 +8,11 @@
   --muted: #a39d92;
   --accent: #e0a24f;
   --on-accent: #3a2405;
-  --radius: 3px;
   /* One typeface everywhere; numbers keep a fixed width (tabular figures) instead */
   --mono: system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
-* { box-sizing: border-box; }
-button, .link-box, .star, .segmented, .stepper, .metronome, .play, .logo,
-.languages button, .rail-button, .demo-badge { border-radius: var(--radius); }
+* { box-sizing: border-box; border-radius: 0; }
 /* `hidden` always hides, also elements whose class sets a display */
 [hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
@@ -214,10 +211,16 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .tracks-action:hover { color: var(--text); }
 .tracks .progress-track { margin-top: 8px; }
 .stems-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 18px; margin-top: 6px; }
-.stem-row { display: grid; grid-template-columns: 64px auto auto 1fr; gap: 6px; align-items: center; font-size: 13px; }
+.stem-row { display: grid; grid-template-columns: 64px auto auto 1fr 56px; gap: 6px; align-items: center; font-size: 13px; }
 .stem-row input[type="range"] { width: 100%; accent-color: var(--accent); }
 .stem-row button { border: 1px solid var(--line-strong); padding: 1px 8px; font-size: 12px; }
 .stem-row button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
 .stem-row .stem-solo[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .stem-row.silent .stem-name { color: var(--muted); text-decoration: line-through; }
 .stem-row.silent input[type="range"] { opacity: 0.4; }
+
+/* Level meters: the bar rises with the sound and falls slowly; amber near full scale */
+.meter { display: block; height: 8px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.meter > span { display: block; height: 100%; width: 0; background: var(--muted); }
+.meter.hot > span { background: var(--accent); }
+.master-meter { width: 72px; flex-shrink: 0; }

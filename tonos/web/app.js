@@ -549,7 +549,8 @@ $("slower").addEventListener("click", () => changeSpeed(-1));
 $("faster").addEventListener("click", () => changeSpeed(1));
 
 function play() {
-  if (state.click) ensureAudioContext();
+  ensureAudioContext();
+  connectMain();
   audio.play().catch(() => {});
 }
 
@@ -717,13 +718,73 @@ function stopPlayback() {
   setPlayIcon(false);
 }
 
+// ---------------------------------------------------------------- level meters
+
+/* What is heard goes through Web Audio, so its level can be measured: the main player into a
+   master analyser, and each stem through its own volume (a gain) and analyser into the same
+   master. Without Web Audio the page plays as before, without meters. */
+const METER_FLOOR = -48; // dBFS shown as an empty meter
+const levels = { master: null, mainSource: null, frame: 0, shown: new Map() };
+
+function connectMain() {
+  if (levels.master || !audioContext) return;
+  try {
+    levels.master = audioContext.createAnalyser();
+    levels.master.fftSize = 1024;
+    levels.master.connect(audioContext.destination);
+    levels.mainSource = audioContext.createMediaElementSource(audio);
+    levels.mainSource.connect(levels.master);
+  } catch {
+    levels.master = null; // the audio keeps playing straight to the speakers
+  }
+}
+
+/** Level in dBFS (RMS) of what an analyser hears now. */
+function levelOf(analyser) {
+  const data = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(data);
+  let sum = 0;
+  for (const x of data) sum += x * x;
+  return 10 * Math.log10(sum / data.length + 1e-12);
+}
+
+/** Moves a meter's bar: it rises at once and falls slowly, like a VU meter. */
+function showLevel(meter, db) {
+  const fill = meter.firstElementChild;
+  const previous = levels.shown.get(meter) ?? METER_FLOOR;
+  const shown = Math.max(db, previous - 1.2); // ~70 dB/s at 60 frames per second
+  levels.shown.set(meter, shown);
+  const fraction = Math.max(0, Math.min(1, (shown - METER_FLOOR) / -METER_FLOOR));
+  fill.style.width = `${fraction * 100}%`;
+  meter.classList.toggle("hot", shown > -6);
+  return shown > METER_FLOOR + 0.5;
+}
+
+function drawLevels() {
+  levels.frame = 0;
+  let moving = false;
+  if (levels.master) moving = showLevel($("master-meter"), levelOf(levels.master)) || moving;
+  for (const [name, node] of Object.entries(stems.nodes)) {
+    const meter = document.querySelector(`.stem-row[data-stem="${name}"] .meter`);
+    if (meter) moving = showLevel(meter, levelOf(node.analyser)) || moving;
+  }
+  // Keeps drawing while something plays, and until the bars have fallen after a pause
+  if (moving || !audio.paused) levels.frame = requestAnimationFrame(drawLevels);
+}
+
+function startLevels() {
+  if (!levels.frame) levels.frame = requestAnimationFrame(drawLevels);
+}
+
+audio.addEventListener("play", startLevels);
+
 // ---------------------------------------------------------------- stems (optional, issue #56)
 
 /* The song can be split into vocals, drums, bass and the rest, each with its volume, mute and
    solo. The main <audio> keeps playing, muted, as the clock of the click and the grid; one
    <audio> per stem follows it. */
 const STEM_NAMES = ["vocals", "drums", "bass", "other"];
-const stems = { job: null, players: {}, volume: {}, muted: {}, solo: null, timer: null };
+const stems = { job: null, players: {}, nodes: {}, volume: {}, muted: {}, solo: null, timer: null };
 
 /** "start": only the button; "progress": separating; "mixer": the tracks; "error": the message. */
 function showStems(part) {
@@ -758,7 +819,12 @@ function resetStems() {
     player.removeAttribute("src");
     player.load();
   }
+  for (const node of Object.values(stems.nodes)) {
+    node.source.disconnect();
+    node.analyser.disconnect();
+  }
   stems.players = {};
+  stems.nodes = {};
   stems.solo = null;
   audio.muted = false;
   showStems("start");
@@ -825,11 +891,28 @@ async function pollStems(id) {
   }
 }
 
+function connectStem(name, player) {
+  ensureAudioContext();
+  connectMain();
+  if (!levels.master) return; // no Web Audio: the element's own volume is used
+  try {
+    const source = audioContext.createMediaElementSource(player);
+    const gain = audioContext.createGain();
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 1024;
+    source.connect(gain).connect(analyser).connect(levels.master);
+    stems.nodes[name] = { source, gain, analyser };
+  } catch {
+    /* plays without its meter */
+  }
+}
+
 function loadStems(urls) {
   for (const name of STEM_NAMES) {
     const player = new Audio(urls[name]);
     player.preload = "auto";
     stems.players[name] = player;
+    connectStem(name, player);
     stems.volume[name] ??= 1;
     stems.muted[name] ??= false;
   }
@@ -859,7 +942,8 @@ function drawMixer() {
         stems.volume[name] = Number(volume.value) / 100;
         applyStemVolumes();
       });
-      return el("div", { class: "stem-row", "data-stem": name }, el("span", { class: "stem-name" }, t(`stem_${name}`)), mute, solo, volume);
+      const meter = el("span", { class: "meter", "aria-hidden": "true" }, el("span"));
+      return el("div", { class: "stem-row", "data-stem": name }, el("span", { class: "stem-name" }, t(`stem_${name}`)), mute, solo, volume, meter);
     })
   );
   applyStemVolumes();
@@ -868,7 +952,9 @@ function drawMixer() {
 function applyStemVolumes() {
   for (const [name, player] of Object.entries(stems.players)) {
     const audible = stems.solo ? stems.solo === name : !stems.muted[name];
-    player.volume = audible ? stems.volume[name] : 0;
+    const volume = audible ? stems.volume[name] : 0;
+    if (stems.nodes[name]) stems.nodes[name].gain.gain.value = volume;
+    else player.volume = volume;
     document.querySelector(`.stem-row[data-stem="${name}"]`)?.classList.toggle("silent", !audible);
   }
 }
