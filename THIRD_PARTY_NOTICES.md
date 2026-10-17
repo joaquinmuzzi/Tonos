@@ -50,14 +50,20 @@ Main runtime dependencies and the licences declared in their package metadata:
 | music21 | BSD-3-Clause |
 | scikit-learn, numpy, soundfile | BSD-3-Clause |
 | nnAudio, einops, rotary-embedding-torch | MIT |
+| demucs, dora-search, julius, openunmix, submitit (separation into stems) | MIT |
+| omegaconf, cloudpickle (used by Demucs) | BSD-3-Clause |
+| retrying (used by Demucs) | Apache-2.0 |
+| treetable (used by Demucs) | Unlicense |
 | soxr (python-soxr, bundles libsoxr) | LGPL-2.1-or-later |
 | FastAPI | MIT |
 | uvicorn | BSD-3-Clause |
 | python-multipart | Apache-2.0 |
 
-[FFmpeg](https://ffmpeg.org/legal.html) is used as an external program that you install
-separately (`winget install Gyan.FFmpeg`); it is not distributed with this project. Its licence
-(LGPL or GPL, depending on the build) applies to your copy.
+[FFmpeg](https://ffmpeg.org/legal.html) is used as an external program. With the installers you
+install it separately (`winget install Gyan.FFmpeg`, `brew install ffmpeg`, `apt install ffmpeg`),
+and its licence (LGPL or GPL, depending on the build) applies to your copy. The Docker image
+includes an audio-only FFmpeg built from the official source without GPL components, under the
+LGPL-2.1-or-later.
 
 ## Citations
 

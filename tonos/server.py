@@ -61,6 +61,10 @@ async def _lifespan(_app: FastAPI):
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     _executor.submit(_preload)
     yield
+    with _lock:
+        for job in _jobs.values():
+            if "cancel" in job:
+                job["cancel"].set()
     _executor.shutdown(wait=False, cancel_futures=True)
 
 
@@ -228,9 +232,23 @@ async def separate(file: UploadFile):
         shutil.rmtree(target.parent, ignore_errors=True)
         folder.touch()  # recently used: pruned last
         _register_job(id_, name=name, status="done", step="done", progress=1.0, result=_stems_result(digest))
-    else:
-        _register_job(id_, name=name, cancel=threading.Event())
-        _executor.submit(_run_separation, id_, target, name, digest)
+        return {"id": id_}
+    with _lock:
+        running = next(
+            (
+                k
+                for k, job in _jobs.items()
+                if job.get("digest") == digest
+                and job["status"] in ("queued", "running")
+                and not job["cancel"].is_set()
+            ),
+            None,
+        )
+    if running:
+        shutil.rmtree(target.parent, ignore_errors=True)
+        return {"id": running}
+    _register_job(id_, name=name, digest=digest, cancel=threading.Event())
+    _executor.submit(_run_separation, id_, target, name, digest)
     return {"id": id_}
 
 
@@ -248,7 +266,11 @@ def cancel_separation(id_: str):
 
 def _run_separation(id_: str, path: Path, name: str, digest: str) -> None:
     with _lock:
-        cancel = _jobs[id_]["cancel"] if id_ in _jobs else threading.Event()
+        job = _jobs.get(id_)
+    # A job dropped from the list while it waited can no longer be followed: treat it as cancelled
+    cancel = job["cancel"] if job else threading.Event()
+    if job is None:
+        cancel.set()
 
     def progress(fraction: float) -> None:
         _update_job(id_, status="running", step="separating_tracks", progress=round(fraction, 3))
@@ -257,6 +279,10 @@ def _run_separation(id_: str, path: Path, name: str, digest: str) -> None:
     partial = STEMS_DIR / f"{digest}.partial"
     try:
         if cancel.is_set():
+            return
+        if _stems_ready(folder):  # another job separated the same song meanwhile
+            folder.touch()
+            _update_job(id_, status="done", step="done", progress=1.0, result=_stems_result(digest))
             return
         progress(0.0)
         STEMS_DIR.mkdir(parents=True, exist_ok=True)

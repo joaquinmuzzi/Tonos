@@ -56,7 +56,9 @@ python -m pytest                 # everything, about 1-2 minutes
 ```
 
 The tests marked `slow` run the real models on synthetic songs (a pop song in G at 120 BPM, a
-waltz in D at 150 BPM, odd meters...). The first run downloads the beat model (77 MB).
+waltz in D at 150 BPM, odd meters...) and separate a short one into stems. The first run
+downloads the beat model (77 MB) and the Demucs model (80 MB); Demucs is installed by the
+installers.
 
 Most analysis code can be tested without the models: build beats, downbeats or chord segments
 by hand, as the tests in `tests/test_rhythm.py` do. When you fix a wrong result, add a test that

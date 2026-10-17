@@ -181,12 +181,6 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   /* The page scrolls, not the column (otherwise the sticky top bar would not stick) */
   .main { overflow: visible; }
   .body { min-height: 0; }
-  .separate { padding: 9px; }
-  .volume input[type="range"] { width: 64px; }
-  .separate span { display: none; }
-  .tracks { padding: 10px 12px; }
-  .tracks-step { flex-basis: 100%; order: 3; }
-  .tracks-head { flex-wrap: wrap; }
   .rail { flex-direction: row; gap: 2px; padding: 6px 10px; border-right: 0; border-bottom: 1px solid var(--line); }
   .rail-button { width: 52px; }
   .languages { flex-direction: row; }
@@ -233,3 +227,13 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .stem-row .stem-solo[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .stem-row.silent .stem-name { color: var(--muted); text-decoration: line-through; }
 .stem-row.silent input[type="range"] { opacity: 0.4; }
+
+/* Phone overrides of the rules above (they must come after them to apply) */
+@media (max-width: 760px) {
+  .separate { padding: 9px; }
+  .separate span { display: none; }
+  .tracks { padding: 10px 12px; }
+  .tracks-step { flex-basis: 100%; order: 3; }
+  .tracks-head { flex-wrap: wrap; }
+  .volume input[type="range"] { width: 64px; }
+}

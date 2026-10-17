@@ -91,6 +91,7 @@ function search(list, time, key = "start") {
 
 function show(section) {
   for (const id of ["upload", "progress", "error", "report"]) $(id).hidden = id !== section;
+  updateSeparateButton();
 }
 
 /**
@@ -261,7 +262,7 @@ function showReport(result) {
   state.activeBar = -1;
 
   $("audio-error").hidden = true;
-  if (!Object.keys(stems.players).length && !stems.job) showStems("start");
+  if (!stemsPlaying() && !stems.job && !stems.request) showStems("start");
   if (state.url) audio.src = state.url;
   $("play").disabled = false;
   $("version").textContent = `MIT · v${result.tonos_version}`;
@@ -511,6 +512,8 @@ function setLanguage(code) {
   if (state.error) $("error-text").textContent = messageText(state.error);
   if (state.result) drawReport();
   if (DEMO) drawDemoBar();
+  if (stemsPlaying()) drawMixer();
+  if (stems.error) $("stems-error").textContent = messageText(stems.error);
 }
 
 for (const button of document.querySelectorAll("[data-language]")) {
@@ -553,6 +556,10 @@ $("faster").addEventListener("click", () => changeSpeed(1));
 function play() {
   if (state.click) ensureAudioContext();
   audio.play().catch(() => {});
+  for (const player of Object.values(stems.players)) {
+    player.currentTime = audio.currentTime;
+    player.play().catch(() => {});
+  }
 }
 
 $("play").addEventListener("click", () => (audio.paused ? play() : audio.pause()));
@@ -725,11 +732,31 @@ function stopPlayback() {
    solo. The main <audio> keeps playing, muted, as the clock of the click and the grid; one
    <audio> per stem follows it. */
 const STEM_NAMES = ["vocals", "drums", "bass", "other"];
-const stems = { job: null, players: {}, volume: {}, muted: {}, solo: null, timer: null };
+const stems = {
+  part: "start", // "start" | "progress" | "mixer" | "error"
+  generation: 0, // bumped by every reset: late answers of an older request are ignored
+  request: null, // the upload in flight
+  job: null, // the separation running on the server
+  error: null, // the message shown, kept to translate it again
+  players: {},
+  volume: {},
+  muted: {},
+  solo: null,
+  timer: null,
+};
 
-/** "start": only the button; "progress": separating; "mixer": the tracks; "error": the message. */
+function stemsPlaying() {
+  return Object.keys(stems.players).length > 0;
+}
+
+/** The button only makes sense on a report, and while no separation is running or loaded. */
+function updateSeparateButton() {
+  $("separate").hidden = DEMO || $("report").hidden || stems.part === "progress" || stems.part === "mixer";
+}
+
 function showStems(part) {
-  $("separate").hidden = DEMO || !state.result || part === "progress" || part === "mixer";
+  stems.part = part;
+  if (part !== "error") stems.error = null;
   $("stems-section").hidden = part === "start";
   $("stems-progress").hidden = part !== "progress";
   $("stems-cancel").hidden = part !== "progress";
@@ -737,6 +764,7 @@ function showStems(part) {
   $("stems-rows").hidden = part !== "mixer";
   $("stems-error").hidden = part !== "error";
   if (part !== "progress") $("stems-step").textContent = "";
+  updateSeparateButton();
 }
 
 function setStemsProgress(text, fraction) {
@@ -746,12 +774,17 @@ function setStemsProgress(text, fraction) {
 
 function stemsError(message) {
   stems.job = null;
+  stems.request = null;
   showStems("error");
+  stems.error = message;
   $("stems-error").textContent = messageText(message);
 }
 
-/** Back to the original mix, and cancels a separation that is still running. */
+/** Back to the original mix, and cancels a separation that is still uploading or running. */
 function resetStems() {
+  stems.generation += 1;
+  if (stems.request) stems.request.abort();
+  stems.request = null;
   if (stems.job) fetch(`/api/separations/${stems.job}`, { method: "DELETE" }).catch(() => {});
   stems.job = null;
   clearInterval(stems.timer);
@@ -762,19 +795,23 @@ function resetStems() {
   }
   stems.players = {};
   stems.solo = null;
-  audio.muted = false;
+  $("stems-rows").replaceChildren();
   showStems("start");
+  applyVolume();
 }
 
 $("separate").addEventListener("click", () => {
   if (!state.file) return;
+  const generation = stems.generation;
   showStems("progress");
   setStemsProgress(t("uploading"), 0);
   const form = new FormData();
   form.append("file", state.file);
   const request = new XMLHttpRequest();
+  stems.request = request;
   request.open("POST", "/api/separations");
   request.upload.addEventListener("progress", (e) => {
+    if (generation !== stems.generation) return;
     if (e.lengthComputable) setStemsProgress(t("uploading_percent", { percent: percent(e.loaded / e.total) }), 0);
   });
   request.addEventListener("load", () => {
@@ -784,20 +821,28 @@ $("separate").addEventListener("click", () => {
     } catch {
       /* empty response */
     }
-    if (request.status === 200 && body.id) pollStems(body.id);
+    if (generation !== stems.generation) {
+      // Cancelled after the upload had already reached the server: cancel the job too
+      if (body.id) fetch(`/api/separations/${body.id}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
+    stems.request = null;
+    if (request.status === 200 && body.id) pollStems(body.id, generation);
     else stemsError(serverMessage(body.detail, request.status));
   });
-  request.addEventListener("error", () => stemsError(local("connection_failed")));
+  request.addEventListener("error", () => {
+    if (generation === stems.generation) stemsError(local("connection_failed"));
+  });
   request.send(form);
 });
 
 $("stems-cancel").addEventListener("click", resetStems);
 $("stems-off").addEventListener("click", resetStems);
 
-async function pollStems(id) {
+async function pollStems(id, generation) {
   stems.job = id;
   let failures = 0;
-  while (stems.job === id) {
+  while (stems.job === id && generation === stems.generation) {
     let job;
     try {
       const response = await fetch(`/api/separations/${id}`);
@@ -806,13 +851,13 @@ async function pollStems(id) {
       failures = 0;
     } catch (error) {
       if (++failures >= 5) {
-        stemsError(local("connection_lost", { detail: error.message }));
+        if (generation === stems.generation) stemsError(local("connection_lost", { detail: error.message }));
         return;
       }
       await new Promise((r) => setTimeout(r, 1000));
       continue;
     }
-    if (stems.job !== id) return; // cancelled meanwhile
+    if (stems.job !== id || generation !== stems.generation) return; // cancelled meanwhile
     if (job.status === "done") {
       stems.job = null;
       loadStems(job.result.stems);
@@ -835,43 +880,54 @@ function loadStems(urls) {
     stems.volume[name] ??= 1;
     stems.muted[name] ??= false;
   }
-  audio.muted = true;
   drawMixer();
   showStems("mixer");
+  applyVolume(); // mutes the main player, which stays as the clock
   syncStems(true);
   clearInterval(stems.timer);
   stems.timer = setInterval(() => syncStems(false), 250);
 }
 
+/** Builds the rows; mute, solo and volume then only update them (keyboard focus stays put). */
 function drawMixer() {
   $("stems-rows").replaceChildren(
     ...STEM_NAMES.map((name) => {
-      const mute = el("button", { type: "button", class: "stem-mute", title: t("stem_mute"), "aria-pressed": String(stems.muted[name]) }, "M");
-      const solo = el("button", { type: "button", class: "stem-solo", title: t("stem_solo"), "aria-pressed": String(stems.solo === name) }, "S");
-      const volume = el("input", { type: "range", min: "0", max: "100", value: String(Math.round(stems.volume[name] * 100)), "aria-label": t(`stem_${name}`) });
+      const label = t(`stem_${name}`);
+      const mute = el("button", { type: "button", class: "stem-mute", title: t("stem_mute"), "aria-label": `${t("stem_mute")}: ${label}` }, "M");
+      const solo = el("button", { type: "button", class: "stem-solo", title: t("stem_solo"), "aria-label": `${t("stem_solo")}: ${label}` }, "S");
+      const volume = el("input", { type: "range", min: "0", max: "100", step: "1", value: String(Math.round(stems.volume[name] * 100)), "aria-label": label });
       mute.addEventListener("click", () => {
         stems.muted[name] = !stems.muted[name];
-        drawMixer();
+        applyStemVolumes();
       });
       solo.addEventListener("click", () => {
         stems.solo = stems.solo === name ? null : name;
-        drawMixer();
+        applyStemVolumes();
       });
       volume.addEventListener("input", () => {
         stems.volume[name] = Number(volume.value) / 100;
         applyStemVolumes();
       });
-      return el("div", { class: "stem-row", "data-stem": name }, el("span", { class: "stem-name" }, t(`stem_${name}`)), mute, solo, volume);
+      return el("div", { class: "stem-row", "data-stem": name }, el("span", { class: "stem-name" }, label), mute, solo, volume);
     })
   );
   applyStemVolumes();
 }
 
+/**
+ * Silencing uses `muted`, which every browser honours; the level uses `volume`, which iOS
+ * ignores (there the hardware buttons set it).
+ */
 function applyStemVolumes() {
   for (const [name, player] of Object.entries(stems.players)) {
     const audible = stems.solo ? stems.solo === name : !stems.muted[name];
-    player.volume = audible ? stems.volume[name] * songVolume() : 0;
-    document.querySelector(`.stem-row[data-stem="${name}"]`)?.classList.toggle("silent", !audible);
+    player.muted = !audible || songVolume() === 0;
+    player.volume = stems.volume[name] * state.volume;
+    const row = document.querySelector(`.stem-row[data-stem="${name}"]`);
+    if (!row) continue;
+    row.classList.toggle("silent", !audible);
+    row.querySelector(".stem-mute").setAttribute("aria-pressed", String(stems.muted[name]));
+    row.querySelector(".stem-solo").setAttribute("aria-pressed", String(stems.solo === name));
   }
 }
 
@@ -889,7 +945,7 @@ function syncStems(force) {
 
 for (const event of ["play", "pause", "seeked", "ratechange"]) {
   audio.addEventListener(event, () => {
-    if (Object.keys(stems.players).length) syncStems(true);
+    if (stemsPlaying()) syncStems(true);
   });
 }
 
@@ -934,7 +990,8 @@ function songVolume() {
 
 /** Applies the volume to the song and, when they play, to the separated tracks. */
 function applyVolume() {
-  audio.volume = songVolume();
+  audio.volume = state.volume;
+  audio.muted = stemsPlaying() || songVolume() === 0;
   applyStemVolumes();
   const silent = songVolume() === 0;
   $("volume").value = String(Math.round(state.volume * 100));

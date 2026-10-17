@@ -41,9 +41,9 @@ can check the analysis by ear.
 
 > [!IMPORTANT]
 > **Model licensing.** The code in this repository is MIT-licensed, but the analysis relies on
-> third-party model weights with their own terms: the S-KEY weights have no stated licence, and
-> the Consonance-ACE weights were trained on third-party annotation datasets that may restrict
-> commercial use. This project is intended for personal, local use. Commercial use of the models
+> third-party model weights with their own terms: the S-KEY and Demucs weights have no stated
+> licence of their own, and the Consonance-ACE weights were trained on third-party annotation
+> datasets that may restrict commercial use. This project is intended for personal, local use. Commercial use of the models
 > is not confirmed and may require review. See [License](#license) and
 > [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -201,6 +201,8 @@ does not include their weights; they are installed from their original sources:
 - **S-KEY** (key): MIT code; **no licence is stated for the weights**.
 - **Consonance-ACE** (chords): MIT code; the weights were trained on third-party chord annotation
   datasets whose terms **may restrict commercial use**.
+- **Demucs** (separating tracks, optional): MIT code; **no licence is stated separately for the
+  weights**, which were trained on a research dataset (MUSDB18-HQ) and other songs.
 
 Because of this, Tonos is intended for **personal, local use**. Commercial use of the model
 weights is not confirmed: if you plan to use this project commercially, review each model's

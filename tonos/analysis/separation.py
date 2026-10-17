@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from .audio import MAX_DURATION, AudioError, find_ffmpeg
+from .audio import MAX_DURATION, AudioError, SilentAudioError, count_audio_tracks, find_ffmpeg
 
 MODEL = "htdemucs"
 STEMS = ("vocals", "drums", "bass", "other")  # in the order the player shows them
@@ -48,7 +48,18 @@ def preload() -> None:
 
 
 def _read_stereo(input_path: Path, wav_path: Path) -> np.ndarray:
-    """The first audio track as 44.1 kHz stereo float32, shape (2, samples)."""
+    """The first audio track that is not silent, as the analysis picks it: 44.1 kHz stereo float32,
+    shape (2, samples)."""
+    tracks = count_audio_tracks(input_path)
+    for track in range(tracks):
+        audio = _read_track(input_path, wav_path, track)
+        if float(np.max(np.abs(audio), initial=0.0)) >= 1e-4:
+            return audio
+    # The same messages the analysis gives for a silent file
+    raise SilentAudioError("all_tracks_silent", tracks=tracks) if tracks > 1 else SilentAudioError("silent")
+
+
+def _read_track(input_path: Path, wav_path: Path, track: int) -> np.ndarray:
     command = [
         find_ffmpeg(),
         "-nostdin",
@@ -59,7 +70,7 @@ def _read_stereo(input_path: Path, wav_path: Path) -> np.ndarray:
         "-i",
         str(input_path),
         "-map",
-        "0:a:0",
+        f"0:a:{track}",
         "-vn",
         "-ac",
         "2",
