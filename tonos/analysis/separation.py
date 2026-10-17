@@ -7,6 +7,8 @@ write without ffmpeg (the Docker image's ffmpeg only writes WAV).
 
 from __future__ import annotations
 
+import itertools
+import json
 import subprocess
 import tempfile
 import threading
@@ -22,6 +24,7 @@ from .audio import MAX_DURATION, AudioError, SilentAudioError, count_audio_track
 MODEL = "htdemucs"
 STEMS = ("vocals", "drums", "bass", "other")  # in the order the player shows them
 SAMPLE_RATE = 44100  # the rate Demucs works at
+PEAKS = 1000  # points of each track's waveform in the player
 
 _model = None
 _model_lock = threading.Lock()
@@ -144,5 +147,33 @@ def separate(
         data = sources[model.sources.index(stem)].T
         paths[stem] = out_dir / f"{stem}.mp3"
         sf.write(paths[stem], np.clip(data, -1.0, 1.0), SAMPLE_RATE, format="MP3")
+    write_peaks({stem: sources[model.sources.index(stem)] for stem in STEMS}, out_dir)
     report(1.0)
     return paths
+
+
+def _peaks(signal: np.ndarray) -> np.ndarray:
+    """Loudest sample of each of PEAKS equal slices of a (channels, samples) signal."""
+    mono = np.abs(signal).max(axis=0) if signal.ndim == 2 else np.abs(signal)
+    edges = np.linspace(0, len(mono), PEAKS + 1).astype(int)
+    return np.array([mono[a:b].max(initial=0.0) for a, b in itertools.pairwise(edges)])
+
+
+def write_peaks(stems: dict[str, np.ndarray], out_dir: Path) -> Path:
+    """peaks.json: each track's waveform, 0-100, on one scale for all of them (so a quiet track
+    looks quiet)."""
+    peaks = {stem: _peaks(signal) for stem, signal in stems.items()}
+    loudest = max((float(p.max(initial=0.0)) for p in peaks.values()), default=0.0) or 1.0
+    path = out_dir / "peaks.json"
+    path.write_text(
+        json.dumps({stem: [round(float(x) / loudest * 100) for x in p] for stem, p in peaks.items()}),
+        encoding="utf-8",
+    )
+    return path
+
+
+def peaks_from_files(out_dir: Path) -> Path:
+    """peaks.json for stems separated before the player had waveforms."""
+    return write_peaks(
+        {stem: sf.read(out_dir / f"{stem}.mp3", always_2d=True)[0].T for stem in STEMS}, out_dir
+    )

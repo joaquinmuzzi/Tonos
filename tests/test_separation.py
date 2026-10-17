@@ -1,5 +1,6 @@
 """Separation into stems (issue #56): the module with the real model, and the server's stem folders."""
 
+import json
 import os
 import subprocess
 import time
@@ -31,6 +32,8 @@ def test_separation_writes_one_mp3_per_stem(short_song, tmp_path):
         assert sr == separation.SAMPLE_RATE
         assert len(audio) / sr == pytest.approx(8, abs=0.2)
     assert reported[-1] == 1.0
+    peaks = json.loads((tmp_path / "stems" / "peaks.json").read_text(encoding="utf-8"))
+    assert set(peaks) == set(separation.STEMS)
     assert reported == sorted(reported)
 
 
@@ -123,3 +126,14 @@ def test_separation_reads_the_first_track_that_is_not_silent(tmp_path):
     audio = separation._read_stereo(path, tmp_path / "out.wav")
     assert audio.shape[0] == 2
     assert np.abs(audio).max() > 0.05  # ffmpeg's sine source peaks at about 0.09
+
+
+def test_peaks_share_one_scale(tmp_path):
+    """Each track's waveform, 0-100, scaled to the loudest track, so a quiet track looks quiet."""
+    loud = np.sin(np.linspace(0, 200, 44100 * 2))[None].repeat(2, 0)
+    quiet = loud * 0.25
+    path = separation.write_peaks({"a": loud, "b": quiet}, tmp_path)
+    peaks = json.loads(path.read_text(encoding="utf-8"))
+    assert len(peaks["a"]) == separation.PEAKS
+    assert max(peaks["a"]) == 100
+    assert max(peaks["b"]) == 25

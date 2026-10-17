@@ -625,6 +625,7 @@ function updatePlayback() {
     square.classList.toggle("one", on && number === 1);
   }
   drawStrip(now);
+  if (stemsPlaying()) moveLanePlayhead(now);
 }
 
 /** Scrolls only the grid (not the page) so that the bar being played is visible. */
@@ -732,6 +733,8 @@ function stopPlayback() {
    solo. The main <audio> keeps playing, muted, as the clock of the click and the grid; one
    <audio> per stem follows it. */
 const STEM_NAMES = ["vocals", "drums", "bass", "other"];
+// Hue of each track's lane, muted to sit on the warm background
+const STEM_HUES = { vocals: 205, drums: 28, bass: 275, other: 160 };
 const stems = {
   part: "start", // "start" | "progress" | "mixer" | "error"
   generation: 0, // bumped by every reset: late answers of an older request are ignored
@@ -739,6 +742,7 @@ const stems = {
   job: null, // the separation running on the server
   error: null, // the message shown, kept to translate it again
   players: {},
+  peaks: null, // each track's waveform, 0-100
   volume: {},
   muted: {},
   solo: null,
@@ -794,6 +798,7 @@ function resetStems() {
     player.load();
   }
   stems.players = {};
+  stems.peaks = null;
   stems.solo = null;
   $("stems-rows").replaceChildren();
   showStems("start");
@@ -860,7 +865,7 @@ async function pollStems(id, generation) {
     if (stems.job !== id || generation !== stems.generation) return; // cancelled meanwhile
     if (job.status === "done") {
       stems.job = null;
-      loadStems(job.result.stems);
+      loadStems(job.result);
       return;
     }
     if (job.status === "error") {
@@ -872,7 +877,21 @@ async function pollStems(id, generation) {
   }
 }
 
-function loadStems(urls) {
+function loadStems(result) {
+  const urls = result.stems;
+  stems.peaks = null;
+  if (result.peaks) {
+    const generation = stems.generation;
+    fetch(result.peaks)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((peaks) => {
+        if (peaks && generation === stems.generation) {
+          stems.peaks = peaks;
+          drawLanes();
+        }
+      })
+      .catch(() => {});
+  }
   for (const name of STEM_NAMES) {
     const player = new Audio(urls[name]);
     player.preload = "auto";
@@ -908,11 +927,75 @@ function drawMixer() {
         stems.volume[name] = Number(volume.value) / 100;
         applyStemVolumes();
       });
-      return el("div", { class: "stem-row", "data-stem": name }, el("span", { class: "stem-name" }, label), mute, solo, volume);
+      const lane = el("canvas", { class: "stem-lane", "aria-hidden": "true" });
+      lane.addEventListener("click", (e) => {
+        if (!state.result) return;
+        const rect = lane.getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * state.result.file.duration;
+      });
+      return el(
+        "div",
+        { class: "stem-row", "data-stem": name },
+        el("div", { class: "stem-controls" }, el("span", { class: "stem-name" }, label), mute, solo, volume),
+        lane
+      );
     })
   );
+  $("stems-rows").append(el("span", { class: "lanes-playhead", id: "lanes-playhead", "aria-hidden": "true" }));
   applyStemVolumes();
 }
+
+/** Draws each track's waveform in its lane, dimmed when the track is silent. */
+function drawLanes() {
+  for (const name of STEM_NAMES) {
+    const row = document.querySelector(`.stem-row[data-stem="${name}"]`);
+    if (!row) continue;
+    const canvas = row.querySelector(".stem-lane");
+    const ratio = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (!width || !height) continue;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    const g = canvas.getContext("2d");
+    g.scale(ratio, ratio);
+    const hue = STEM_HUES[name];
+    const silent = row.classList.contains("silent");
+    g.fillStyle = `hsl(${hue}, ${silent ? 8 : 22}%, ${silent ? 18 : 24}%)`;
+    g.fillRect(0, 0, width, height);
+    const peaks = stems.peaks && stems.peaks[name];
+    g.fillStyle = `hsl(${hue}, ${silent ? 10 : 45}%, ${silent ? 38 : 64}%)`;
+    const middle = height / 2;
+    if (!peaks) {
+      g.fillRect(0, middle, width, 1);
+      continue;
+    }
+    for (let x = 0; x < width; x++) {
+      const from = Math.floor((x / width) * peaks.length);
+      const to = Math.max(from + 1, Math.floor(((x + 1) / width) * peaks.length));
+      let peak = 0;
+      for (let i = from; i < to && i < peaks.length; i++) peak = Math.max(peak, peaks[i]);
+      const half = Math.max(0.5, (peak / 100) * (middle - 2));
+      g.fillRect(x, middle - half, 1, half * 2);
+    }
+  }
+  moveLanePlayhead(audio.currentTime);
+}
+
+/** The vertical line that marks the time across every lane. */
+function moveLanePlayhead(now) {
+  const line = $("lanes-playhead");
+  const lane = document.querySelector(".stem-lane");
+  if (!line || !lane || !state.result) return;
+  const box = $("stems-rows").getBoundingClientRect();
+  const rect = lane.getBoundingClientRect();
+  const fraction = Math.max(0, Math.min(1, now / state.result.file.duration));
+  line.style.left = `${rect.left - box.left + fraction * rect.width}px`;
+}
+
+window.addEventListener("resize", () => {
+  if (stemsPlaying()) drawLanes();
+});
 
 /**
  * Silencing uses `muted`, which every browser honours; the level uses `volume`, which iOS
@@ -929,6 +1012,7 @@ function applyStemVolumes() {
     row.querySelector(".stem-mute").setAttribute("aria-pressed", String(stems.muted[name]));
     row.querySelector(".stem-solo").setAttribute("aria-pressed", String(stems.solo === name));
   }
+  if (stemsPlaying()) drawLanes();
 }
 
 /** Keeps every stem on the main player's time, speed and play/pause state. */

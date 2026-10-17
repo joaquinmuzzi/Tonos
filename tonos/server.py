@@ -206,7 +206,10 @@ def job_status(id_: str):
 
 
 def _stems_result(digest: str) -> dict:
-    return {"stems": {stem: f"/stems/{digest}/{stem}.mp3" for stem in separation.STEMS}}
+    return {
+        "stems": {stem: f"/stems/{digest}/{stem}.mp3" for stem in separation.STEMS},
+        "peaks": f"/stems/{digest}/peaks.json",
+    }
 
 
 def _stems_ready(folder: Path) -> bool:
@@ -311,3 +314,15 @@ def stem_file(digest: str, stem: str):
     if not path.is_file():
         raise HTTPException(404)
     return FileResponse(path, media_type="audio/mpeg")
+
+
+@app.get("/stems/{digest}/peaks.json")
+def stem_peaks(digest: str):
+    """Each track's waveform for the player (made from the MP3s for stems separated earlier)."""
+    folder = STEMS_DIR / digest
+    if not re.fullmatch(r"[0-9a-f]{64}", digest) or not _stems_ready(folder):
+        raise HTTPException(404)
+    path = folder / "peaks.json"
+    if not path.is_file():
+        path = separation.peaks_from_files(folder)
+    return FileResponse(path, media_type="application/json")
