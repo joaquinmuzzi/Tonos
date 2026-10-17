@@ -9,9 +9,11 @@ note on what to update.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-17
+
 ### Added
 
-- **Transpose**: a "key" stepper in the top bar moves the song up or down by semitones (up to 6),
+- **Transpose** (#59): a "key" stepper in the top bar moves the song up or down by semitones (up to 6),
   without changing its speed, also with the tracks separated. The key, its scale and the chords
   move with it, spelled for the new key, and the original key is shown next to it. The number
   turns amber while the song is moved, and a new song starts unmoved. The sound goes through
@@ -142,7 +144,8 @@ Compared with the unreleased prototype, everything is now in English. If you use
   the old `%LOCALAPPDATA%\analizador-musical` folder can then be deleted (its saved analyses use
   the old report format and would be recomputed anyway).
 
-[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.2.0...v0.3.0
