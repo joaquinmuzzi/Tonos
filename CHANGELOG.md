@@ -9,14 +9,26 @@ note on what to update.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
 ### Added
 
-- **Separate tracks** (#56): a button in the report splits the song into vocals, drums, bass and
+- **Separate tracks** (#56): a button in the top bar splits the song into vocals, drums, bass and
   the rest with Demucs v4 (`htdemucs`), in the background, with progress and a cancel button.
-  The player then gets a volume, mute and solo control for each track. It takes about a third of
-  the song's length on a CPU; the tracks of the last 10 songs are kept as MP3 in the `stems`
-  folder. The model (80 MB) is downloaded the first time, or already inside the Docker image.
-  Run the installer again to get the new dependencies.
+  The tracks open under the timeline as lanes, each with its waveform, volume, mute and solo, and
+  one playhead across them; clicking a lane jumps there. It takes about a third of the song's
+  length on a CPU; the tracks of the last 10 songs are kept as MP3 in the `stems` folder. The
+  model (80 MB) is downloaded the first time, or already inside the Docker image. Run the
+  installer again to get the new dependencies.
+- A volume control for the song in the top bar (a speaker button and a slider), remembered
+  between visits.
+
+### Changed
+
+- A softer look: warm graphite instead of black and white, one sans-serif typeface, muted chord
+  colours. The big beat counter in the top right is gone (the meter's squares show the beat).
+- On short windows the page scrolls instead of squeezing the bar grid and cutting off the side
+  panel.
 
 ## [0.3.1] - 2026-10-15
 
@@ -122,7 +134,8 @@ Compared with the unreleased prototype, everything is now in English. If you use
   the old `%LOCALAPPDATA%\analizador-musical` folder can then be deleted (its saved analyses use
   the old report format and would be recomputed anyway).
 
-[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/joaquinmuzzi/tonos/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/joaquinmuzzi/tonos/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/joaquinmuzzi/tonos/compare/v0.1.0...v0.2.0
