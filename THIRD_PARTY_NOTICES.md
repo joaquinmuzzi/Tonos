@@ -59,6 +59,13 @@ Main runtime dependencies and the licences declared in their package metadata:
 | uvicorn | BSD-3-Clause |
 | python-multipart | Apache-2.0 |
 
+The web page includes one third-party file, unmodified:
+[SoundTouchJS](https://github.com/cutterbl/SoundTouchJS)'s AudioWorklet processor
+(`@soundtouchjs/audio-worklet` 2.1.1, a JavaScript port of Olli Parviainen's SoundTouch), which
+changes the pitch of the song without changing its speed. It is under the
+[Mozilla Public License 2.0](https://mozilla.org/MPL/2.0/); its licence is next to it, in
+`tonos/web/vendor/soundtouch/LICENSE`.
+
 [FFmpeg](https://ffmpeg.org/legal.html) is used as an external program. With the installers you
 install it separately (`winget install Gyan.FFmpeg`, `brew install ffmpeg`, `apt install ffmpeg`),
 and its licence (LGPL or GPL, depending on the build) applies to your copy. The Docker image

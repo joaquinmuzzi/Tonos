@@ -21,9 +21,11 @@ const state = {
   file: null, // the chosen file, sent again to separate its tracks
   volume: Math.min(1, Math.max(0, Number(readPreference("volume", "1")) || 0)), // 0..1, remembered
   volumeOff: false, // the speaker button: silent without forgetting the volume
+  pitch: 0, // semitones the song is moved up or down (the names and the sound)
 };
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
+const MAX_PITCH = 6; // semitones up or down
 const DEMO = window.TONOS_DEMO; // set only in the online demo (static/demo.js)
 const audio = $("audio");
 let audioContext = null;
@@ -100,6 +102,7 @@ function show(section) {
  */
 function chordColor(segment) {
   if (!segment || !segment.is_chord || segment.root_pc === null) return "#3a352f";
+  segment = movedChord(segment);
   const hue = ((segment.root_pc * 7) % 12) * 30;
   const minor = /m(?!aj)/.test(segment.letter_simple || "");
   // Muted colours, so the timeline and the grid do not shout on the warm background
@@ -256,6 +259,10 @@ function setSong(title, meta) {
 
 function showReport(result) {
   state.result = result;
+  state.pitch = 0;
+  movedChords = new WeakMap();
+  markButtons();
+  applyPitch();
   state.beats = result.beats;
   state.downbeats = new Set(result.downbeats.map((time) => time.toFixed(3)));
   state.beatNumbers = numberBeats(result);
@@ -333,22 +340,33 @@ function drawMeter(meter) {
   stat("meter-stat", t("meter_title"), el("div", { class: "value" }, reading), squares);
 }
 
+/** A key as it sounds with the song moved by state.pitch semitones. */
+function movedKey(key) {
+  return TonosTranspose.key(key, state.pitch);
+}
+
 /** "Do", "C"... in the chosen notation. */
 function tonicName(key, notation = state.notation) {
-  return key[notation];
+  return movedKey(key)[notation];
 }
 
 function keyName(key, notation = state.notation) {
-  return t("key_name", { tonic: key[notation], mode: t(key.mode) });
+  return t("key_name", { tonic: tonicName(key, notation), mode: t(key.mode) });
 }
 
 function drawKey(key) {
-  const best = key.best;
+  const best = movedKey(key.best);
   const scale = best.scale ? best.scale[state.notation].join(" ") : "";
   stat(
     "key-stat",
     t("key_title"),
-    el("div", { class: "value" }, tonicName(best), el("small", {}, ` ${t(best.mode)}`)),
+    el(
+      "div",
+      { class: "value" },
+      tonicName(key.best),
+      el("small", {}, ` ${t(best.mode)}`),
+      state.pitch ? el("small", { class: "original-key" }, ` ${t("original_key", { tonic: key.best[state.notation] })}`) : null
+    ),
     scale ? el("div", { class: "detail" }, scale) : null
   );
 }
@@ -378,9 +396,21 @@ function drawPanel(result) {
   $("notes-section").hidden = notes.length === 0;
 }
 
+/** A chord segment as it sounds with the song moved; kept until the pitch changes. */
+let movedChords = new WeakMap();
+function movedChord(segment) {
+  if (!state.pitch || !segment || !segment.is_chord) return segment;
+  if (!movedChords.has(segment)) {
+    const best = state.result.key.best;
+    const speller = new TonosTranspose.Speller(best.tonic_pc + state.pitch, best.mode);
+    movedChords.set(segment, TonosTranspose.chord(segment, state.pitch, speller));
+  }
+  return movedChords.get(segment);
+}
+
 function chordName(segment) {
   if (!segment) return "—";
-  return segment[state.detail === "simple" ? `${state.notation}_simple` : state.notation];
+  return movedChord(segment)[state.detail === "simple" ? `${state.notation}_simple` : state.notation];
 }
 
 function barLabel(bar) {
@@ -502,6 +532,10 @@ function markButtons() {
   $("click-state").textContent = t(state.click ? "state_on" : "state_off");
   $("follow").setAttribute("aria-pressed", String(state.follow));
   $("speed").textContent = `${audio.playbackRate}×`;
+  $("pitch").textContent = state.pitch > 0 ? `+${state.pitch}` : state.pitch < 0 ? `−${-state.pitch}` : "0";
+  $("pitch").classList.toggle("changed", state.pitch !== 0);
+  $("pitch-down").disabled = state.pitch <= -MAX_PITCH;
+  $("pitch-up").disabled = state.pitch >= MAX_PITCH;
 }
 
 function setLanguage(code) {
@@ -553,8 +587,18 @@ function changeSpeed(step) {
 $("slower").addEventListener("click", () => changeSpeed(-1));
 $("faster").addEventListener("click", () => changeSpeed(1));
 
+function setPitch(semitones) {
+  state.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, semitones));
+  movedChords = new WeakMap();
+  markButtons();
+  if (state.result) drawReport();
+  applyPitch();
+}
+$("pitch-down").addEventListener("click", () => setPitch(state.pitch - 1));
+$("pitch-up").addEventListener("click", () => setPitch(state.pitch + 1));
+
 function play() {
-  if (state.click) ensureAudioContext();
+  if (state.click || shifter.node) ensureAudioContext();
   audio.play().catch(() => {});
   for (const player of Object.values(stems.players)) {
     player.currentTime = audio.currentTime;
@@ -642,6 +686,63 @@ function ensureAudioContext() {
   const Context = window.AudioContext || window.webkitAudioContext;
   if (!audioContext && Context) audioContext = new Context();
   if (audioContext && audioContext.state === "suspended") audioContext.resume();
+}
+
+// ---------------------------------------------------------------- pitch
+
+/*
+ * Browsers cannot change the pitch of an <audio> without changing its speed, so once the song
+ * is moved, the players go through Web Audio and SoundTouch (an AudioWorklet), which moves the
+ * pitch and keeps the tempo. The speed stays with the players (playbackRate keeps the pitch).
+ * A player can be routed only once, so after that it stays routed, straight to the speakers
+ * while the pitch is 0.
+ */
+const shifter = {
+  node: null, // the SoundTouch node every player goes through while the song is moved
+  loading: null,
+  sources: new WeakMap(), // player -> its MediaElementAudioSourceNode
+};
+
+function loadShifter() {
+  ensureAudioContext();
+  if (!audioContext || !audioContext.audioWorklet || !window.AudioWorkletNode) {
+    return Promise.reject(new Error("no AudioWorklet"));
+  }
+  shifter.loading ??= audioContext.audioWorklet.addModule("static/vendor/soundtouch/soundtouch-processor.js").then(() => {
+    shifter.node = new AudioWorkletNode(audioContext, "soundtouch-processor", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      processorOptions: { sampleBufferType: "circular" },
+    });
+    shifter.node.connect(audioContext.destination);
+  });
+  return shifter.loading;
+}
+
+/** Sends a player through the shifter while the song is moved, or straight out otherwise. */
+function routeThroughShifter(player) {
+  if (!shifter.node) return;
+  let source = shifter.sources.get(player);
+  if (!source) {
+    source = audioContext.createMediaElementSource(player);
+    shifter.sources.set(player, source);
+  }
+  source.disconnect();
+  source.connect(state.pitch ? shifter.node : audioContext.destination);
+}
+
+function applyPitch() {
+  if (!state.pitch && !shifter.node) return; // never moved: the players play on their own
+  loadShifter()
+    .then(() => {
+      shifter.node.parameters.get("pitchSemitones").value = state.pitch;
+      for (const player of [audio, ...Object.values(stems.players)]) routeThroughShifter(player);
+    })
+    .catch(() => {
+      // An old browser: the names move, the sound cannot
+      $("pitch-group").title = t("pitch_unsupported");
+    });
 }
 
 function playClick(when, accent) {
@@ -896,6 +997,7 @@ function loadStems(result) {
     const player = new Audio(urls[name]);
     player.preload = "auto";
     stems.players[name] = player;
+    routeThroughShifter(player);
     stems.volume[name] ??= 1;
     stems.muted[name] ??= false;
   }
