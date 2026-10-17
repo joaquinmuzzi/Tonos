@@ -9,6 +9,14 @@ note on what to update.
 
 ## [Unreleased]
 
+### Added
+
+- **Transpose**: a "key" stepper in the top bar moves the song up or down by semitones (up to 6),
+  without changing its speed, also with the tracks separated. The key, its scale and the chords
+  move with it, spelled for the new key, and the original key is shown next to it. The number
+  turns amber while the song is moved, and a new song starts unmoved. The sound goes through
+  SoundTouchJS (MPL-2.0) in the browser.
+
 ## [0.4.0] - 2026-10-17
 
 ### Added
