@@ -60,7 +60,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .play:disabled { background: var(--line); cursor: default; }
 .song { min-width: 0; flex: 1; }
 .song-title { font-size: 16px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.song-meta { font-size: 12px; color: var(--muted); }
+.song-meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .star { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; border: 1px solid var(--text); padding: 6px 10px; text-decoration: none; white-space: nowrap; }
 .star:hover { background: var(--text); color: var(--bg); }
 .star svg { width: 14px; height: 14px; }
@@ -77,6 +77,14 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .stepper button { padding: 0 10px; color: var(--muted); }
 .stepper button:hover { color: var(--text); background: var(--surface); }
 .stepper span { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--line-strong); border-right: 1px solid var(--line-strong); min-width: 52px; justify-content: center; }
+/* Volume of the song: a speaker button (silent / not) and a slider */
+.volume { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+#volume-mute { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line-strong); color: var(--text); }
+#volume-mute:hover { background: var(--surface); }
+.volume .cross, .volume.off .waves { display: none; }
+.volume.off .cross { display: inline; }
+.volume.off #volume-mute { color: var(--muted); }
+.volume input[type="range"] { width: 88px; accent-color: var(--accent); }
 
 /* Upload, progress, error */
 .upload, .progress, .error-box { padding: 32px 18px; }
@@ -160,6 +168,12 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .reliability li { margin: 6px 0; }
 .reliability b { color: var(--text); font-weight: 500; }
 
+/* Medium widths: the top bar keeps one row; the star button shows only its icon */
+@media (max-width: 1100px) {
+  .star { padding: 9px; }
+  .star span { display: none; }
+}
+
 @media (max-width: 760px) {
   /* On a phone the page scrolls normally, with the transport always at hand */
   .app { grid-template-columns: 1fr; height: auto; overflow: visible; }
@@ -168,6 +182,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   .main { overflow: visible; }
   .body { min-height: 0; }
   .separate { padding: 9px; }
+  .volume input[type="range"] { width: 64px; }
   .separate span { display: none; }
   .tracks { padding: 10px 12px; }
   .tracks-step { flex-basis: 100%; order: 3; }
@@ -211,16 +226,10 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .tracks-action:hover { color: var(--text); }
 .tracks .progress-track { margin-top: 8px; }
 .stems-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 18px; margin-top: 6px; }
-.stem-row { display: grid; grid-template-columns: 64px auto auto 1fr 56px; gap: 6px; align-items: center; font-size: 13px; }
+.stem-row { display: grid; grid-template-columns: 64px auto auto 1fr; gap: 6px; align-items: center; font-size: 13px; }
 .stem-row input[type="range"] { width: 100%; accent-color: var(--accent); }
 .stem-row button { border: 1px solid var(--line-strong); padding: 1px 8px; font-size: 12px; }
 .stem-row button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
 .stem-row .stem-solo[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .stem-row.silent .stem-name { color: var(--muted); text-decoration: line-through; }
 .stem-row.silent input[type="range"] { opacity: 0.4; }
-
-/* Level meters: the bar rises with the sound and falls slowly; amber near full scale */
-.meter { display: block; height: 8px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
-.meter > span { display: block; height: 100%; width: 0; background: var(--muted); }
-.meter.hot > span { background: var(--accent); }
-.master-meter { width: 72px; flex-shrink: 0; }

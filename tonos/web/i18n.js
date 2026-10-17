@@ -9,7 +9,8 @@
 const MESSAGES = {
   en: {
     // Page
-    level: "Level",
+    volume_label: "Volume",
+    volume_mute: "Mute the song",
     stems_title: "tracks",
     separate_button: "Separate tracks",
     separate_hint: "Vocals, drums, bass and the rest, to mute or solo each one. It takes about a third of the song's length.",
@@ -188,7 +189,8 @@ const MESSAGES = {
   },
   es: {
     // Page
-    level: "Nivel",
+    volume_label: "Volumen",
+    volume_mute: "Silenciar la canción",
     stems_title: "pistas",
     separate_button: "Separar pistas",
     separate_hint: "Voz, batería, bajo y el resto, para silenciar o escuchar cada una sola. Tarda alrededor de un tercio de lo que dura el tema.",

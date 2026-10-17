@@ -51,7 +51,12 @@
           <span id="speed">1.0×</span>
           <button type="button" id="faster" aria-label="Faster" data-i18n-aria-label="faster">+</button>
         </div>
-        <span class="meter master-meter" id="master-meter" title="Level" data-i18n-title="level" aria-hidden="true"><span></span></span>
+        <div class="volume" id="volume-group" role="group" aria-label="Volume" data-i18n-aria-label="volume_label">
+          <button type="button" id="volume-mute" aria-pressed="false" title="Mute the song" data-i18n-title="volume_mute" aria-label="Mute the song" data-i18n-aria-label="volume_mute">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="waves" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/><path class="cross" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+          </button>
+          <input type="range" id="volume" min="0" max="100" step="1" value="100" aria-label="Volume" data-i18n-aria-label="volume_label">
+        </div>
         <div class="song">
           <div class="song-title" id="song-title">Tonos</div>
           <div class="song-meta mono" id="song-meta" data-i18n="tagline">Upload a song or a video and get its tempo, meter, key and chords. Everything runs on your computer: the file never leaves it.</div>
