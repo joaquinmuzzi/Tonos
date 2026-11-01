@@ -16,7 +16,7 @@ Issues = "https://github.com/joaquinmuzzi/tonos/issues"
 
 [dependency-groups]
 # Development tools: pip install --group dev
-dev = ["pytest", "ruff==0.17.0"]
+dev = ["pytest", "ruff==0.17.2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
