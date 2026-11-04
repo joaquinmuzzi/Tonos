@@ -3,13 +3,17 @@
 import subprocess
 from collections import Counter
 
+import mido
 import numpy as np
 import pytest
 import soundfile as sf
+from harte.harte import Harte
 
 from tests.synthetic import FS, save_mp4, song
+from tests.test_export import _notes
 from tonos.analysis import pipeline
 from tonos.analysis.audio import AudioError
+from tonos.export import write_midi
 
 pytestmark = pytest.mark.slow
 
@@ -106,6 +110,18 @@ def test_pop_ending_has_no_gaps(pop_in_g):
     duration = pop_in_g["file"]["duration"]
     last_segments = [s for s in segments if s["end"] > duration - 8 and s["start"] < duration - 1.5]
     assert all(s["is_chord"] for s in last_segments)
+
+
+def test_pop_midi_matches_the_analyzed_chords(pop_in_g, tmp_path):
+    path = tmp_path / "pop.mid"
+    write_midi(pop_in_g, path)
+    groups = {}
+    for pitch, start, end in _notes(mido.MidiFile(path)):
+        groups.setdefault((start, end), set()).add(pitch % 12)
+    segments = [s for s in pop_in_g["chords"]["segments"] if s["is_chord"]]
+    for ((start, end), pitches), segment in zip(sorted(groups.items()), segments, strict=True):
+        assert pitches == set(Harte(segment["label"]).pitchClasses)
+        assert (start, end) == pytest.approx((segment["start"], segment["end"]), abs=0.002)
 
 
 def test_file_without_audio(tmp_path):
