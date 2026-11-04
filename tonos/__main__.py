@@ -145,6 +145,9 @@ def main() -> None:
     p.add_argument("file", nargs="?", help="file to analyze in the terminal (without it, opens the app)")
     p.add_argument("--json", action="store_true", help="print the full result as JSON")
     p.add_argument(
+        "--midi", type=Path, metavar="OUT.mid", help="write the chords and beat grid to a MIDI file"
+    )
+    p.add_argument(
         "--host",
         default="127.0.0.1",
         help="address the web app listens on (default: 127.0.0.1, only this computer; "
@@ -155,6 +158,8 @@ def main() -> None:
     p.add_argument("--preload", action="store_true", help="download and test the models")
     p.add_argument("--version", action="version", version=f"Tonos {__version__}")
     args = p.parse_args()
+    if args.midi and (not args.file or args.preload):
+        p.error("--midi requires a file to analyze")
 
     if args.preload:
         _silence_logs()
@@ -172,6 +177,8 @@ def main() -> None:
         path = Path(args.file)
         if not path.is_file():
             sys.exit(f"File not found: {path}")
+        if args.midi and args.midi.exists() and args.midi.samefile(path):
+            p.error("the MIDI output must differ from the input file")
 
         def progress(step: str, fraction: float) -> None:
             text = english(message(step))
@@ -182,6 +189,13 @@ def main() -> None:
         except AudioError as e:
             sys.exit(f"\n{e}")
         print("\r" + " " * 60 + "\r", end="", file=sys.stderr)
+        if args.midi:
+            from .export import write_midi
+
+            try:
+                write_midi(result, args.midi)
+            except OSError as e:
+                sys.exit(f"Could not write MIDI file: {e}")
         print(json.dumps(result, ensure_ascii=False, indent=2) if args.json else _text_report(result))
         return
 
